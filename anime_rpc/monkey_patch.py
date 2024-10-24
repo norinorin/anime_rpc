@@ -24,8 +24,6 @@ patched = re.sub(
     patched,
 )
 
-print(patched)
-
 loc = {}
 exec(compile(ast.parse(patched), "<string>", "exec"), discordrpc.presence.__dict__, loc)  # type: ignore
 
