@@ -33,12 +33,9 @@ def _get_vars_html(html: str) -> Vars:
     return ret
 
 
-def get_conn(port: int = 13579) -> HTTPConnection:
-    return HTTPConnection("127.0.0.1", port)
-
-
-def get_vars(conn: HTTPConnection) -> Vars | None:
+def get_vars(port: int = 13579) -> Vars | None:
     try:
+        conn = HTTPConnection("127.0.0.1", port)
         conn.request("GET", "/variables.html")
         response = conn.getresponse()
     except (ConnectionRefusedError, CannotSendRequest):
