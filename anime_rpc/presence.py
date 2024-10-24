@@ -18,14 +18,14 @@ def now() -> int:
 
 def get_ep_title(
     pattern: str, file: str, title_fallback: str
-) -> tuple[int, str] | None:
+) -> tuple[int, str | None] | None:
     if not (match := re.search(pattern, file)):
         return
 
     groups = match.groupdict()
     ep = groups["ep"]
-    title = groups.get("title", title_fallback)
-    return int(ep), title.strip()
+    title = groups.get("title")
+    return int(ep), title.strip() if title else None
 
 
 def _maybe_strip_leading_zeros(timestamp: str) -> str:
@@ -78,19 +78,23 @@ def update_activity(
         return clear(state)
 
     ep: int
-    title: str
+    title: str | None
     ep, title = ep_title
     _now = now()
 
     if vars["state"] == WatchingState.PLAYING:
         kwargs["details"] = config["title"]
-        kwargs["state"] = f"Episode {ep} {quote(title)*(config['title'] != title)}"
+        kwargs["state"] = f"Episode {ep} {quote(title) if title else ''}"
         kwargs["ts_start"] = _now - vars["position"] // 1_000
         kwargs["ts_end"] = _now + (vars["duration"] - vars["position"]) // 1_000
         kwargs["small_text"] = "Playing"
         kwargs["small_image"] = "new-playing"
     elif vars["state"] == WatchingState.PAUSED:
-        kwargs["details"] = f"Episode {ep} {quote(title)}"
+        kwargs["details"] = (
+            f"Episode {ep} {quote(title)}"
+            if title
+            else f"{quote(config['title'])} E{ep}"
+        )
         kwargs["state"] = (
             f"{_maybe_strip_leading_zeros(vars['positionstring'])}/{_maybe_strip_leading_zeros(vars['durationstring'])}"
         )
