@@ -22,7 +22,7 @@ def loop(event: threading.Event):
 
         # only force update if the position seems off (seeking)
         pos: int = vars["position"] if vars else 0
-        state = update_activity(vars, config, state, abs(pos - last_pos) > 5_000)
+        state = update_activity(vars, config, state, abs(pos - last_pos) > 3_000)
         last_pos = pos
         event.wait(1)
 
