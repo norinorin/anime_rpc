@@ -13,7 +13,7 @@ class Config(TypedDict):
 def read_rpc_config(filedir: str, file: str = "rpc.config") -> Config | None:
     config: Config = {}  # type: ignore
     try:
-        with open(join(filedir, file), "r") as f:
+        with open(join(filedir, file), "r", encoding="utf-8") as f:
             for line in f:
                 key, value = line.split("=", maxsplit=1)
                 config[key] = value.strip()
