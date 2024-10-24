@@ -18,11 +18,6 @@ patched = re.sub(
     r"\1 or None",
     source_,
 )
-patched = re.sub(
-    r"(self._setup\(\))",
-    r"\1\n\n    print(remove_none(act) or None)\n",
-    patched,
-)
 
 loc = {}
 exec(compile(ast.parse(patched), "<string>", "exec"), discordrpc.presence.__dict__, loc)  # type: ignore
