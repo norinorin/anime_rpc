@@ -20,7 +20,7 @@ def read_rpc_config(filedir: str, file: str = "rpc.config") -> Config | None:
     except FileNotFoundError:
         return None
 
-    config["rewatching"] = bool(config["rewatching"])
+    config["rewatching"] = bool(int(config["rewatching"]))
     return config
 
 
