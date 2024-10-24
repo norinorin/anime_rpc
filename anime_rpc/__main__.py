@@ -2,6 +2,7 @@ import threading
 import time
 from typing import Any
 
+import anime_rpc.monkey_patch  # type: ignore
 from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.mpc import Vars, get_vars
 from anime_rpc.presence import update_activity

@@ -55,7 +55,7 @@ def _compare_states(a: dict[str, Any], b: dict[str, Any]) -> bool:
 
 def clear(state: dict[str, Any]) -> dict[str, Any]:
     if not _compare_states(state, {}):
-        RPC_CLIENT.set_activity()  # type: ignore
+        RPC_CLIENT.set_activity(act_type=None)  # type: ignore
 
     return {}
 
