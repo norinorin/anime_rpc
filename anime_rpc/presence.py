@@ -4,6 +4,7 @@ import time
 
 from anime_rpc.config import Config, APPLICATION_ID
 from anime_rpc.mpc import Vars, WatchingState
+from anime_rpc.formatting import quote
 
 from discordrpc import RPC  # type: ignore
 
@@ -25,12 +26,6 @@ def get_ep_title(
     ep = groups["ep"]
     title = groups.get("title", title_fallback)
     return int(ep), title.strip()
-
-
-def quote(text: str) -> str:
-    if text.startswith('"') or text.endswith('"'):
-        return text
-    return f'"{text}"'
 
 
 def _maybe_strip_leading_zeros(timestamp: str) -> str:
