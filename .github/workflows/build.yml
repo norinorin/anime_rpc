@@ -13,7 +13,7 @@ jobs:
             uses: sayyid5416/pyinstaller@v1
             with:
               python_ver: '3.10'
-              spec: 'anime_rpc/__main__.py'
+              spec: 'launcher.py'
               requirements: 'requirements.txt'
               options: --onefile, --name anime_rpc
               clean_checkout: false
