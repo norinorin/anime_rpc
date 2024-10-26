@@ -8,6 +8,9 @@ from anime_rpc.mpc import Vars, get_vars
 from anime_rpc.presence import update_activity
 
 
+TIME_DISCREPANCY_TOLERANCE = 3_000  # 3 seconds
+
+
 def loop(event: threading.Event):
     last_file_dir: str | None = None
     config: Config | None = None
@@ -22,7 +25,9 @@ def loop(event: threading.Event):
 
         # only force update if the position seems off (seeking)
         pos: int = vars["position"] if vars else 0
-        state = update_activity(vars, config, state, abs(pos - last_pos) > 3_000)
+        state = update_activity(
+            vars, config, state, abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE
+        )
         last_pos = pos
         event.wait(1)
 
