@@ -95,8 +95,11 @@ def update_activity(
             if title
             else f"{quote(config['title'])} E{ep}"
         )
-        kwargs["state"] = (
-            f"{_maybe_strip_leading_zeros(vars['positionstring'])}/{_maybe_strip_leading_zeros(vars['durationstring'])}"
+        kwargs["state"] = "/".join(
+            [
+                _maybe_strip_leading_zeros(vars[i])
+                for i in ("positionstring", "durationstring")
+            ]
         )
         kwargs["ts_start"] = _now
         kwargs["small_text"] = "Paused"
