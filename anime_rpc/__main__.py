@@ -8,7 +8,8 @@ from anime_rpc.mpc import Vars, get_vars
 from anime_rpc.presence import update_activity
 
 
-TIME_DISCREPANCY_TOLERANCE = 3_000  # 3 seconds
+TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
+VARS_POLLING_INTERVAL = 1  # fetch vars every 1 second
 
 
 def loop(event: threading.Event):
@@ -26,10 +27,10 @@ def loop(event: threading.Event):
         # only force update if the position seems off (seeking)
         pos: int = vars["position"] if vars else 0
         state = update_activity(
-            vars, config, state, abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE
+            vars, config, state, abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS
         )
         last_pos = pos
-        event.wait(1)
+        event.wait(VARS_POLLING_INTERVAL)
 
 
 def main():
