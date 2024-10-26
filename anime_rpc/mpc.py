@@ -9,7 +9,7 @@ P_TAG_PATTERN = re.compile(
 
 
 class WatchingState(IntEnum):
-    NOTAVAILABLE = -1
+    NOT_AVAILABLE = -1
     STOPPED = 0
     PAUSED = 1
     PLAYING = 2
