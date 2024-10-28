@@ -2,20 +2,22 @@ name: Build artifacts
 
 on:
   push:
-    tags: [ "*" ]
+    branches: [ main ]
+    paths: [ anime_rpc/__init__.py ]
 
 jobs:
     build:
         runs-on: windows-latest
 
         steps:
-          - name: Create executable
-            uses: sayyid5416/pyinstaller@v1
+          - uses: actions/checkout@v4
+          - name: Build executable
+            uses: actions/setup-python@v5
             with:
-              python_ver: '3.10'
-              spec: 'anime_rpc.spec'
-              requirements: 'requirements.txt'
-              clean_checkout: false
+              python-version: '3.10' 
+          - run: |
+              pip install -r requirements.txt -r dev-requirements.txt
+              pyinstaller --onefile --name anime_rpc --optimize 2 --additional-hooks-dir=. launcher.py
           - name: Get version
             id: get_version
             shell: bash
