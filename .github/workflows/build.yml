@@ -19,6 +19,7 @@ jobs:
               clean_checkout: false
           - name: Get version
             id: get_version
+            shell: bash
             run: echo "version=$(python -c 'import anime_rpc; print(anime_rpc.__version__)')" >> $GITHUB_OUTPUT
           - name: Zip the module
             run: |
