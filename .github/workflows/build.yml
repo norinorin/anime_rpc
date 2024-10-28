@@ -2,7 +2,7 @@ name: Build artifacts
 
 on:
   push:
-    branches: [ main ]
+    tags: [ "*" ]
 
 jobs:
     build:
@@ -28,6 +28,6 @@ jobs:
             id: create_release
             uses: ncipollo/release-action@v1
             with:
-                tag: ${{ steps.get_version.outputs.version }}
+                tag: v${{ steps.get_version.outputs.version }}
+                name: Release v${{ steps.get_version.outputs.version }}
                 artifacts: "./anime_rpc_win.zip"
-                replacesArtifacts: true
