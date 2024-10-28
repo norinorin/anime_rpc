@@ -19,6 +19,7 @@ class State(TypedDict, total=False):
     url: str
     rewatching: bool
     watching_state: WatchingState
+    origin: str  # keep setting 'origin' with the active source so that no other source can take control (mpc feeds states every 1 second)
 
 
 def compare_states(a: State, b: State) -> bool:

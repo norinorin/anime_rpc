@@ -48,7 +48,7 @@ async def get_vars(client: aiohttp.ClientSession, port: int = 13579) -> Vars | N
 
 
 def get_state(vars: Vars, config: Config) -> State:
-    state: State = State()
+    state: State = State(origin="mpc")
     state["title"] = config["title"]
     state["rewatching"] = config["rewatching"]
     state["position"] = vars["position"]
@@ -57,7 +57,7 @@ def get_state(vars: Vars, config: Config) -> State:
 
     # if nothing matches, return an empty state as to clear the activity
     if not maybe_ep_title:
-        return State()
+        return State(origin="mpc")
 
     state["episode"], ep_title = maybe_ep_title
 

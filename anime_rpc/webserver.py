@@ -24,15 +24,21 @@ def ws_handler(
         await resp.prepare(request)
         await resp.send_str("Hello!")
 
+        origin: str = "web"
+
         async for msg in resp:
             if msg.type is WSMsgType.TEXT:
-                # await queue.put(json.loads(msg.data))
-                ...
+                if msg.data == "keepalive":
+                    continue
+
+                data: State = json.loads(msg.data)
+                assert "origin" in data
+                origin = data["origin"]
+                await queue.put(data)
             else:
                 return resp
 
-        # on exit dont forget to set state back to {}
-        # queue.put(State())
+        await queue.put(State(origin=origin))
         return resp
 
     return wrapper

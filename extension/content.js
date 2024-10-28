@@ -1,13 +1,17 @@
 console.log("Loaded");
 const ws = new WebSocket("ws://localhost:56727/ws");
 ws.onmessage = (e) => console.log(e);
+ws.onopen = () => {
+  setInterval(ws.send("keepalive"), 30000);
+};
 
 const SITES_MAP = { "www.bilibili.tv": getStateFromBilibili };
 let lastUrl = window.location.href;
 let interval;
 
 function handleVideoStateChanges() {
-  const func = SITES_MAP[window.location.hostname];
+  const origin = window.location.hostname;
+  const func = SITES_MAP[origin];
   const state = func();
 
   if (!state) return;
@@ -28,6 +32,7 @@ function handleVideoStateChanges() {
     position: currentTime * 1000,
     duration: duration * 1000,
     watching_state: 1 + !paused,
+    origin,
   };
 
   // duration can be null

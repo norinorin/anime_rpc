@@ -20,9 +20,9 @@ event: asyncio.Event
 async def poll_mpc(event: asyncio.Event, queue: asyncio.Queue[State]):
     async with aiohttp.ClientSession() as session:
         config: Config | None = None
+        state: State = State(origin="mpc")
 
         while not event.is_set():
-            state: State = State()
             vars: Vars | None
             try:
                 if (vars := await wait(get_vars(session), event)) and (
@@ -41,12 +41,31 @@ async def poll_mpc(event: asyncio.Event, queue: asyncio.Queue[State]):
 async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
     last_state: State = {}
     last_pos: int = 0
+    last_origin: str | None = None
 
     while not event.is_set():
         try:
             state = await wait(queue.get(), event)
         except Bail:
             return
+
+        origin = state.pop("origin", None)
+
+        # since mpc polls every second
+        # an origin can only occupy the rich presence if state is not empty
+        if state and not last_origin:
+            last_origin = origin
+        # if state is empty and the origin matches the last origin
+        # it's given up control
+        elif not state and last_origin == origin:
+            last_origin = None
+        # rich presence is occupied
+        # ignore current state
+        elif last_origin != origin:
+            continue
+
+        if state:
+            print(state)
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
