@@ -42,7 +42,7 @@ def quote(text: str) -> str:
 
 
 def ms2timestamp(ms: int) -> str:
-    seconds = ms // 1_000
+    seconds = int(ms // 1_000)
     return ":".join(
         f"{(seconds // 60**i) % 60:02}"
         for i in range(2 if seconds >= 3600 else 1, -1, -1)

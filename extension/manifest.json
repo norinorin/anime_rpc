@@ -1,0 +1,16 @@
+{
+    "manifest_version": 3,
+    "name": "Anime RPC",
+    "version": "1.0",
+    "description": "Connects to Discord RPC and shows rich presence.",
+    "content_scripts": [
+      {
+        "matches": ["*://*.bilibili.tv/*"],
+        "js": ["sites/bilibili.js", "content.js"]
+      }
+    ],
+    "host_permissions": [
+        "ws://localhost:56727/ws"
+    ]
+  }
+  

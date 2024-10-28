@@ -10,6 +10,7 @@ from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.mpc import Vars, get_state, get_vars
 from anime_rpc.presence import update_activity
 from anime_rpc.states import State
+from anime_rpc.webserver import get_app, start_app
 
 TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
 MPC_POLLING_INTERVAL = 1.0  # fetch vars every 1 second
@@ -62,7 +63,11 @@ async def main():
 
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
     mpc_task = asyncio.create_task(poll_mpc(event, queue), name="mpc")
+
+    app = await get_app(queue)
+    webserver = await start_app(app)
     await asyncio.gather(consumer_task, mpc_task)
+    await webserver.stop()
 
 
 def _sigint_callback(*_):
