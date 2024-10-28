@@ -23,11 +23,11 @@ jobs:
           - name: Zip the module
             run: |
               mv LICENSE ./dist/
-              zip -r ./anime_rpc.zip ./dist
+              Compress-Archive -Path dist/* -Destination anime_rpc_win.zip
           - name: Create release
             id: create_release
             uses: ncipollo/release-action@v1
             with:
-                tag: ${{ steps.get_version.outputs.new_version }}
-                artifacts: "./dist/anime_rpc.exe"
+                tag: ${{ steps.get_version.outputs.version }}
+                artifacts: "./anime_rpc_win.zip"
                 replacesArtifacts: true
