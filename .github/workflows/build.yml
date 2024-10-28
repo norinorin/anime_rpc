@@ -15,13 +15,19 @@ jobs:
               python_ver: '3.10'
               spec: 'launcher.py'
               requirements: 'requirements.txt'
-              options: --onefile, --name anime_rpc
+              options: --onefile, --name anime_rpc, --optimize 2, --additional-hooks-dir=.
               clean_checkout: false
+          - name: Get version
+            id: get_version
+            run: echo "version=$(python -c 'import anime_rpc; print(anime_rpc.__version__)')" >> $GITHUB_OUTPUT
+          - name: Zip the module
+            run: |
+              mv LICENSE ./dist/
+              zip -r ./anime_rpc.zip ./dist
           - name: Create release
             id: create_release
             uses: ncipollo/release-action@v1
             with:
-                tag: latest
-                allowUpdates: true
+                tag: ${{ steps.get_version.outputs.new_version }}
                 artifacts: "./dist/anime_rpc.exe"
                 replacesArtifacts: true
