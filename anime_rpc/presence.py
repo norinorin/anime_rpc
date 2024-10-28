@@ -1,13 +1,13 @@
-import re
-from typing import Any
 import time
+from typing import Any
 
-from anime_rpc.config import Config, APPLICATION_ID
-from anime_rpc.mpc import Vars, WatchingState
-from anime_rpc.formatting import quote
-
+# TODO: async pipes
 from discordrpc import RPC  # type: ignore
 
+from anime_rpc.config import APPLICATION_ID
+from anime_rpc.formatting import ms2timestamp, quote
+from anime_rpc.mpc import WatchingState
+from anime_rpc.states import State, compare_states  # type: ignore
 
 RPC_CLIENT = RPC(APPLICATION_ID)
 
@@ -16,99 +16,66 @@ def now() -> int:
     return int(time.mktime(time.localtime()))
 
 
-def get_ep_title(
-    pattern: str, file: str, title_fallback: str
-) -> tuple[int, str | None] | None:
-    if not (match := re.search(pattern, file)):
-        return
-
-    groups = match.groupdict()
-    ep = groups["ep"]
-    title = groups.get("title")
-    return int(ep), title.strip() if title else None
-
-
-def _maybe_strip_leading_zeros(timestamp: str) -> str:
-    parts = timestamp.split(":")
-    if not int(parts[0]):
-        return ":".join(parts[1:])
-
-    return timestamp
-
-
-def _compare_states(a: dict[str, Any], b: dict[str, Any]) -> bool:
-    KEYS_TO_IGNORE: tuple[str, ...] = ("ts_end", "ts_start")
-    a = {**a}
-    b = {**b}
-
-    for key in KEYS_TO_IGNORE:
-        a.pop(key, None)
-        b.pop(key, None)
-
-    return a == b
-
-
-def clear(state: dict[str, Any]) -> dict[str, Any]:
-    if not _compare_states(state, {}):
+def clear(last_state: State) -> State:
+    # only clear activity if last state is not empty
+    if last_state:
         RPC_CLIENT.set_activity(act_type=None)  # type: ignore
 
-    return {}
+    return State()
 
 
 def update_activity(
-    vars: Vars | None,
-    config: Config | None,
-    state: dict[str, Any],
+    state: State,
+    last_state: State,
     force: bool = False,
-) -> dict[str, Any]:
-    if not vars or not config:
-        return clear(state)
+) -> State:
+    if not state:
+        return clear(last_state)
 
+    if not force and compare_states(state, last_state):
+        return state
+
+    assert "title" in state
+    title = state["title"]
     kwargs: dict[str, Any] = {
-        "large_image": config["image_url"],
-        "large_text": f"{'Rewatching '*config['rewatching']}{config['title']}",
-        "buttons": [
-            {"label": "View Anime", "url": config["url"]},
-        ],
+        "large_text": f"{'Rewatching '*state.get('rewatching', 0)}{title}",
         "act_type": 3,
     }
 
-    ep_title = get_ep_title(config["match"], vars["file"], config["title"])
-    if not ep_title:
-        return clear(state)
+    if image_url := state.get("image_url"):
+        kwargs["large_image"] = image_url
 
-    ep: int
-    title: str | None
-    ep, title = ep_title
+    if url := state.get("url"):
+        kwargs["buttons"] = [{"label": "View Anime", "url": url}]
+
+    assert "episode" in state
+    assert "position" in state
+    assert "duration" in state
+
     _now = now()
+    watching_state = state.get("watching_state", WatchingState.NOT_AVAILABLE)
+    ep = state["episode"]
+    ep_title = state.get("episode_title")
+    pos = state["position"]
+    dur = state["duration"]
 
-    if vars["state"] == WatchingState.PLAYING:
-        kwargs["details"] = config["title"]
-        kwargs["state"] = f"Episode {ep} {quote(title) if title else ''}"
-        kwargs["ts_start"] = _now - vars["position"] // 1_000
-        kwargs["ts_end"] = _now + (vars["duration"] - vars["position"]) // 1_000
+    if watching_state == WatchingState.PLAYING:
+        kwargs["details"] = state["title"]
+        kwargs["state"] = f"Episode {ep} {quote(ep_title) if ep_title else ''}"
+        kwargs["ts_start"] = _now - pos // 1_000
+        kwargs["ts_end"] = _now + (dur - pos) // 1_000
         kwargs["small_text"] = "Playing"
         kwargs["small_image"] = "new-playing"
-    elif vars["state"] == WatchingState.PAUSED:
+    elif watching_state == WatchingState.PAUSED:
         kwargs["details"] = (
-            f"Episode {ep} {quote(title)}"
-            if title
-            else f"{quote(config['title'])} E{ep}"
+            f"Episode {ep} {quote(ep_title)}" if ep_title else f"{quote(title)} E{ep}"
         )
-        kwargs["state"] = "/".join(
-            [
-                _maybe_strip_leading_zeros(vars[i])
-                for i in ("positionstring", "durationstring")
-            ]
-        )
+        kwargs["state"] = "/".join([ms2timestamp(i) for i in (pos, dur)])
         kwargs["ts_start"] = _now
         kwargs["small_text"] = "Paused"
         kwargs["small_image"] = "new-paused"
     else:
         return clear(state)
 
-    if not force and _compare_states(kwargs, state):
-        return state
-
     RPC_CLIENT.set_activity(**kwargs)  # type: ignore
-    return kwargs
+    return state
