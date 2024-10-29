@@ -1,6 +1,7 @@
 name: Build artifacts
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths: [anime_rpc/__init__.py]
