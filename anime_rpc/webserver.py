@@ -40,6 +40,7 @@ def ws_handler(
             else:
                 return resp
 
+        # clear presence
         await queue.put(State(origin=origin))
         return resp
 

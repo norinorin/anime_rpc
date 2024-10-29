@@ -19,11 +19,14 @@ class State(TypedDict, total=False):
     url: str
     rewatching: bool
     watching_state: WatchingState
-    origin: str  # keep setting 'origin' with the active source so that no other source can take control (mpc feeds states every 1 second)
+
+    # keep setting 'origin' with the active source so that no other source can take control (mpc feeds states every 1 second)
+    # we don't want our web rpc to be cleared because mpc isn't playing
+    origin: str
 
 
 def compare_states(a: State, b: State) -> bool:
-    KEYS_TO_IGNORE: tuple[str, ...] = ("position",)
+    KEYS_TO_IGNORE: tuple[str, ...] = ("position", "origin")
     a = {**a}
     b = {**b}
 

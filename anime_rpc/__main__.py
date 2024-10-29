@@ -20,9 +20,9 @@ event: asyncio.Event
 async def poll_mpc(event: asyncio.Event, queue: asyncio.Queue[State]):
     async with aiohttp.ClientSession() as session:
         config: Config | None = None
-        state: State = State(origin="mpc")
 
         while not event.is_set():
+            state: State = State(origin="mpc")
             vars: Vars | None
             try:
                 if (vars := await wait(get_vars(session), event)) and (
@@ -41,7 +41,7 @@ async def poll_mpc(event: asyncio.Event, queue: asyncio.Queue[State]):
 async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
     last_state: State = {}
     last_pos: int = 0
-    last_origin: str | None = None
+    last_origin: str = ""
 
     while not event.is_set():
         try:
@@ -49,20 +49,27 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         except Bail:
             return
 
-        origin = state.pop("origin", None)
+        # state fed should always contain origin
+        # last_state is the product after popping, so it doesn't have origin
+        if "origin" not in state:
+            continue
+
+        origin = state.pop("origin")
 
         # since mpc polls every second
         # an origin can only occupy the rich presence if state is not empty
         if state and not last_origin:
             last_origin = origin
-        # if state is empty and the origin matches the last origin
-        # it's given up control
-        elif not state and last_origin == origin:
-            last_origin = None
+
         # rich presence is occupied
         # ignore current state
-        elif last_origin != origin:
+        if last_origin != origin:
             continue
+
+        # if state is empty and the origin matches the last origin
+        # it's given up control
+        if not state and last_origin == origin:
+            last_origin = ""
 
         if state:
             print(state)
@@ -70,7 +77,10 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
         last_state = update_activity(
-            state, last_state, abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS
+            state,
+            last_state,
+            origin,
+            abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS,
         )
         last_pos = pos
 

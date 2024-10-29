@@ -10,6 +10,7 @@ from anime_rpc.mpc import WatchingState
 from anime_rpc.states import State, compare_states  # type: ignore
 
 RPC_CLIENT = RPC(APPLICATION_ID)
+ORIGIN2SERVICE = {"mpc": "MPC-HC", "www.bilibili.tv": "BiliBili (Bstation)"}
 
 
 def now() -> int:
@@ -27,6 +28,7 @@ def clear(last_state: State) -> State:
 def update_activity(
     state: State,
     last_state: State,
+    origin: str,
     force: bool = False,
 ) -> State:
     if not state:
@@ -38,7 +40,7 @@ def update_activity(
     assert "title" in state
     title = state["title"]
     kwargs: dict[str, Any] = {
-        "large_text": f"{'Rewatching '*state.get('rewatching', 0)}{title}",
+        "large_text": f"{('re'*state.get('rewatching', 0) + 'watching').title()} on {ORIGIN2SERVICE.get(origin, origin)}",
         "act_type": 3,
     }
 

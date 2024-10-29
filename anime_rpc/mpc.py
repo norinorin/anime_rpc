@@ -7,6 +7,7 @@ from anime_rpc.config import Config
 from anime_rpc.states import State, WatchingState
 
 P_TAG_PATTERN = re.compile(r'<p id="(file|filedir|state|position|duration)">(.+)<\/p>')
+ORIGIN = "mpc"
 
 
 class Vars(TypedDict):
@@ -48,7 +49,7 @@ async def get_vars(client: aiohttp.ClientSession, port: int = 13579) -> Vars | N
 
 
 def get_state(vars: Vars, config: Config) -> State:
-    state: State = State(origin="mpc")
+    state: State = State(origin=ORIGIN)
     state["title"] = config["title"]
     state["rewatching"] = config["rewatching"]
     state["position"] = vars["position"]
@@ -57,7 +58,7 @@ def get_state(vars: Vars, config: Config) -> State:
 
     # if nothing matches, return an empty state as to clear the activity
     if not maybe_ep_title:
-        return State(origin="mpc")
+        return State(origin=ORIGIN)
 
     state["episode"], ep_title = maybe_ep_title
 
