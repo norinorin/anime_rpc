@@ -1,4 +1,5 @@
-from os.path import join
+import time
+from os.path import getmtime, join
 from typing import TypedDict
 
 
@@ -9,6 +10,7 @@ class Config(TypedDict):
     image_url: str
     rewatching: bool
     path: str
+    read_at: float
 
 
 def read_rpc_config(
@@ -17,9 +19,18 @@ def read_rpc_config(
     config: Config = {}  # type: ignore
     path = join(filedir, file)
 
+    try:
+        modified_at = getmtime(path)
+    except FileNotFoundError:
+        return None
+
     # config is cached
-    # don't reread
-    if last_config and path == last_config["path"]:
+    # don't reread unless modified time is greater than read time
+    if (
+        last_config
+        and path == last_config["path"]
+        and last_config["read_at"] > modified_at
+    ):
         return last_config
 
     try:
@@ -32,6 +43,7 @@ def read_rpc_config(
 
     config["path"] = path
     config["rewatching"] = bool(int(config["rewatching"]))
+    config["read_at"] = time.time()
     return config
 
 
