@@ -3,6 +3,11 @@
     "name": "Anime RPC",
     "version": "1.0",
     "description": "Connects to Discord RPC and shows rich presence.",
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "anime_rpc@norinorin"
+      }
+    },
     "content_scripts": [
       {
         "matches": ["*://*.bilibili.tv/*"],
