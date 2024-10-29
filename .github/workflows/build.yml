@@ -34,4 +34,4 @@ jobs:
         with:
           tag: v${{ steps.get_version.outputs.version }}
           name: Release v${{ steps.get_version.outputs.version }}
-          artifacts: ["./anime_rpc_win.zip", "./extension.zip"]
+          artifacts: "./anime_rpc_win.zip,./extension.zip"
