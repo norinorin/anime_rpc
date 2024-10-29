@@ -12,7 +12,7 @@ from aiohttp.web import (
     WebSocketResponse,
 )
 
-from anime_rpc.states import State
+from anime_rpc.states import State, WatchingState
 
 
 def ws_handler(
@@ -32,6 +32,8 @@ def ws_handler(
                     continue
 
                 data: State = json.loads(msg.data)
+                assert "watching_state" in data
+                data["watching_state"] = WatchingState(data["watching_state"])
                 assert "origin" in data
                 origin = data["origin"]
                 await queue.put(data)
