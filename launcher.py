@@ -1,3 +1,1 @@
-from anime_rpc.__main__ import main
-
-main()
+from anime_rpc import __main__
