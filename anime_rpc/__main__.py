@@ -9,7 +9,7 @@ from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.mpc import Vars, get_state, get_vars
 from anime_rpc.presence import update_activity
-from anime_rpc.states import State
+from anime_rpc.states import State, states_logger
 from anime_rpc.webserver import get_app, start_app
 
 TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
@@ -42,6 +42,8 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
     last_state: State = {}
     last_pos: int = 0
     last_origin: str = ""
+    logger = states_logger()
+    next(logger)
 
     while not event.is_set():
         try:
@@ -71,8 +73,7 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         if not state and last_origin == origin:
             last_origin = ""
 
-        if state:
-            print(state)
+        logger.send(state)
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)

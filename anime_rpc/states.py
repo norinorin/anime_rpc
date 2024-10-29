@@ -1,5 +1,5 @@
 from enum import IntEnum
-from typing import TypedDict
+from typing import Generator, TypedDict
 
 
 class WatchingState(IntEnum):
@@ -35,3 +35,24 @@ def compare_states(a: State, b: State) -> bool:
         b.pop(key, None)
 
     return a == b
+
+
+def states_logger(verbose: bool = False) -> Generator[None, State, None]:
+    last_state: State = State()
+    KEYS_TO_IGNORE = ("position", "duration")
+
+    while 1:
+        state = yield
+        state = State(**state)
+
+        if not verbose:
+            for key in KEYS_TO_IGNORE:
+                state.pop(key, None)
+
+            if not state:
+                continue
+
+        if state != last_state or verbose:
+            print(state)
+
+        last_state = state
