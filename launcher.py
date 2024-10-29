@@ -1,1 +1,1 @@
-from anime_rpc import __main__
+import anime_rpc.__main__  # type: ignore
