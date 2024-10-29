@@ -8,11 +8,18 @@ ws.onopen = () => {
 const SITES_MAP = { "www.bilibili.tv": getStateFromBilibili };
 let lastUrl = window.location.href;
 let interval;
+let state;
 
-function handleVideoStateChanges() {
+browser.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.cmd === "requestState") {
+    sendResponse(state);
+  }
+});
+
+async function handleVideoStateChanges() {
   const origin = window.location.hostname;
   const func = SITES_MAP[origin];
-  const state = func();
+  state = func();
 
   if (!state) return;
 
@@ -25,6 +32,14 @@ function handleVideoStateChanges() {
   videoElement.onseeked = () => handleVideoStateChanges(videoElement);
   videoElement.onplay = () => handleVideoStateChanges(videoElement);
   videoElement.onpause = () => handleVideoStateChanges(videoElement);
+
+  data = (await browser.storage.local.get(state.title))[state.title];
+  if (data) {
+    console.log("Getting cached", data);
+    state.image_url = data.imageUrl || "";
+    state.url = data.url || "";
+    state.rewatching = data.rewatching || false;
+  }
 
   const { currentTime, duration, paused } = videoElement;
   const payload = {

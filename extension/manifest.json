@@ -9,8 +9,10 @@
         "js": ["sites/bilibili.js", "content.js"]
       }
     ],
+    "action": {"default_title": "Anime RPC", "default_popup": "action/popup.html"},
     "host_permissions": [
         "ws://localhost:56727/ws"
-    ]
+    ],
+    "permissions": ["storage"]
   }
   
