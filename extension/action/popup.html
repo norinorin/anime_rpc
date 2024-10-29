@@ -7,15 +7,25 @@
   </head>
 
 <body>
-  <label for="animeName">Anime</label>
-  <div id="animeName" contenteditable="false"></div>
-  <label for="imageUrl">Image URL</label>
-  <div id="imageUrl" contenteditable="true"></div>
-  <label for="url">Anime URL</label>
-  <div id="url" contenteditable="true"></div>
-  <label for="rewatching">Rewatching?</label>
-  <input type="checkbox" id="rewatching">
-  <div id="error-content" class="hidden">Anime not detected!</div>
+  <div id="content" class="hidden">
+    <div class="config-entry">
+      <label for="animeName">Title:</label>
+      <div id="animeName" contenteditable="false" class="labeled"></div>
+    </div>
+    <div class="config-entry">
+      <label for="imageUrl">Image URL:</label>
+      <div id="imageUrl" contenteditable="true" class="labeled input" data-placeholder="URL to anime poster"></div>
+    </div>
+    <div class="config-entry">
+      <label for="url">Anime URL:</label>
+      <div id="url" contenteditable="true" class="labeled input" data-placeholder="URL to MAL/AL"></div>
+    </div>
+    <div class="config-entry">
+      <label for="rewatching">Rewatching?</label>
+      <input type="checkbox" id="rewatching" class="labaled">
+    </div>
+  </div>
+  <div id="error-content">Anime not detected!</div>
   <script src="popup.js"></script>
 </body>
 
