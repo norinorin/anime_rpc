@@ -36,6 +36,9 @@ def read_rpc_config(
     try:
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
+                if not line or line.startswith("#"):
+                    continue
+
                 key, value = line.split("=", maxsplit=1)
                 config[key] = value.strip()
     except FileNotFoundError:
