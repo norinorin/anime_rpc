@@ -34,9 +34,6 @@ def update_activity(
     if not state:
         return clear(last_state)
 
-    if not force and compare_states(state, last_state):
-        return state
-
     assert "title" in state
     title = state["title"]
     kwargs: dict[str, Any] = {
@@ -77,7 +74,11 @@ def update_activity(
         kwargs["small_text"] = "Paused"
         kwargs["small_image"] = "new-paused"
     else:
-        return clear(state)
+        return clear(last_state)
+
+    # only compare states after validating watching state
+    if not force and compare_states(state, last_state):
+        return state
 
     RPC_CLIENT.set_activity(**kwargs)  # type: ignore
     return state
