@@ -4,6 +4,7 @@ from typing import Any
 # TODO: async pipes
 from discordrpc import RPC  # type: ignore
 
+from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
 from anime_rpc.mpc import WatchingState
@@ -65,7 +66,7 @@ def update_activity(
         kwargs["ts_end"] = _now + (dur - pos) // 1_000
         kwargs["small_text"] = "Playing"
         kwargs["small_image"] = "new-playing"
-    elif watching_state == WatchingState.PAUSED:
+    elif watching_state == WatchingState.PAUSED and not CLI_ARGS.clear_on_pause:
         kwargs["details"] = (
             f"Episode {ep} {quote(ep_title)}" if ep_title else f"{quote(title)} E{ep}"
         )
