@@ -7,6 +7,7 @@ import aiohttp
 import anime_rpc.monkey_patch  # type: ignore
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.config import Config, read_rpc_config
+from anime_rpc.formatting import ms2timestamp
 from anime_rpc.mpc import Vars, get_state, get_vars
 from anime_rpc.presence import update_activity
 from anime_rpc.states import State, states_logger
@@ -77,11 +78,16 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
+        seeking = abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS
+
+        if seeking:
+            print("Seeked from", ms2timestamp(last_pos), "to", ms2timestamp(pos))
+
         last_state = update_activity(
             state,
             last_state,
             origin,
-            abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS,
+            seeking,
         )
         last_pos = pos
 
