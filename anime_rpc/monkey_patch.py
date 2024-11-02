@@ -20,6 +20,5 @@ patched = re.sub(
 )
 
 loc = {}
-exec(compile(ast.parse(patched), "<string>", "exec"), discordrpc.presence.__dict__, loc)  # type: ignore
-
+exec(compile(ast.parse(patched), "presence", "exec"), discordrpc.presence.__dict__, loc)  # type: ignore
 discordrpc.RPC.set_activity = loc["set_activity"]
