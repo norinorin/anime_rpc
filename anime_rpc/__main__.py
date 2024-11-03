@@ -52,14 +52,14 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
             return
 
         # state fed should always contain origin
-        # last_state is the product after popping, so it doesn't have origin
         if "origin" not in state:
             continue
 
         origin = state.pop("origin")
 
-        # since mpc polls every second
-        # an origin can only occupy the rich presence if state is not empty
+        # since mpc polls every second and may return empty states
+        # make it so that an origin can only occupy the rich presence if state is not empty
+        # this will allow other origins to be active while mpc is returning empty states
         if state and not last_origin:
             last_origin = origin
 

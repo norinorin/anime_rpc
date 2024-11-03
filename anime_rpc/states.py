@@ -20,7 +20,7 @@ class State(TypedDict, total=False):
     rewatching: bool
     watching_state: WatchingState
 
-    # keep setting 'origin' with the active source so that no other source can take control (mpc feeds states every 1 second)
+    # keep setting 'origin' to the current active source so that no other source can take control (mpc feeds states every 1 second)
     # we don't want our web rpc to be cleared because mpc isn't playing
     origin: str
 
