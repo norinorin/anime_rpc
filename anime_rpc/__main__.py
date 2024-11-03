@@ -83,9 +83,9 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
             seeking,
         )
 
-        # if last_state is empty and the origin matches the last origin
+        # if last_state is empty
         # it's given up control
-        if not last_state and last_origin == origin:
+        if not last_state:
             last_origin = ""
         last_pos = pos
 
