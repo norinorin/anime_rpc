@@ -26,22 +26,27 @@ def ws_handler(
 
         origin: str = "web"
 
-        async for msg in resp:
-            if msg.type is WSMsgType.TEXT:
-                if msg.data == "keepalive":
+        try:
+            async for msg in resp:
+                if msg.type is WSMsgType.TEXT:
+                    if msg.data == "keepalive":
+                        continue
+
+                    data: State = json.loads(msg.data)
+                    assert "watching_state" in data
+                    data["watching_state"] = WatchingState(data["watching_state"])
+                    assert "origin" in data
+                    origin = data["origin"]
+                    await queue.put(data)
                     continue
 
-                data: State = json.loads(msg.data)
-                assert "watching_state" in data
-                data["watching_state"] = WatchingState(data["watching_state"])
-                assert "origin" in data
-                origin = data["origin"]
-                await queue.put(data)
-            else:
-                return resp
+                break
+        except:
+            raise
+        finally:
+            # clear presence
+            await queue.put(State(origin=origin))
 
-        # clear presence
-        await queue.put(State(origin=origin))
         return resp
 
     return wrapper

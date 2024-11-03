@@ -15,7 +15,6 @@ from anime_rpc.webserver import get_app, start_app
 
 TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
 MPC_POLLING_INTERVAL = 1.0  # fetch vars every 1 second
-event: asyncio.Event
 
 
 async def poll_mpc(event: asyncio.Event, queue: asyncio.Queue[State]):
@@ -73,9 +72,8 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
-        seeking = abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS
 
-        if seeking:
+        if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             print("Seeked from", ms2timestamp(last_pos), "to", ms2timestamp(pos))
 
         last_state = update_activity(
@@ -93,9 +91,9 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
 
 
 async def main():
-    global event
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
+    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore
 
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
     mpc_task = asyncio.create_task(poll_mpc(event, queue), name="mpc")
@@ -106,10 +104,9 @@ async def main():
     await webserver.stop()
 
 
-def _sigint_callback(*_):
+def _sigint_callback(event: asyncio.Event):
     print("Received CTRL+C")
     asyncio.get_running_loop().call_soon_threadsafe(lambda: event.set())
 
 
-signal.signal(signal.SIGINT, _sigint_callback)  # type: ignore
 asyncio.run(main())
