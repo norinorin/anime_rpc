@@ -69,11 +69,6 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         if last_origin != origin:
             continue
 
-        # if state is empty and the origin matches the last origin
-        # it's given up control
-        if not state and last_origin == origin:
-            last_origin = ""
-
         logger.send(state)
 
         # only force update if the position seems off (seeking)
@@ -89,6 +84,11 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
             origin,
             seeking,
         )
+
+        # if last_state is empty and the origin matches the last origin
+        # it's given up control
+        if not last_state and last_origin == origin:
+            last_origin = ""
         last_pos = pos
 
 
