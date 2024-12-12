@@ -76,7 +76,7 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             print("Seeked from", ms2timestamp(last_pos), "to", ms2timestamp(pos))
 
-        last_state = update_activity(
+        last_state = await update_activity(
             state,
             last_state,
             origin,

@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Any
 
@@ -14,26 +15,43 @@ RPC_CLIENT = RPC(APPLICATION_ID)
 ORIGIN2SERVICE = {"mpc": "MPC-HC", "www.bilibili.tv": "BiliBili (Bstation)"}
 
 
+async def _set_activity(*args, **kwargs):
+    global RPC_CLIENT
+
+    while 1:
+        try:
+            return RPC_CLIENT.set_activity(*args, **kwargs)
+        except OSError:
+            # discord is probably closed/restarted
+            # reconnect in 30 seconds
+            print("Disconnected, reconnecting in 30 seconds...")
+            await asyncio.sleep(30)
+            RPC_CLIENT = RPC(APPLICATION_ID)
+            continue
+
+
 def now() -> int:
     return int(time.mktime(time.localtime()))
 
 
-def clear(last_state: State) -> State:
+async def clear(last_state: State) -> State:
     # only clear activity if last state is not empty
     if last_state:
-        RPC_CLIENT.set_activity(act_type=None)  # type: ignore
+        await _set_activity(act_type=None)  # type: ignore
 
     return State()
 
 
-def update_activity(
+# async interface
+# but pipes are still sync
+async def update_activity(
     state: State,
     last_state: State,
     origin: str,
     force: bool = False,
 ) -> State:
     if not state:
-        return clear(last_state)
+        return await clear(last_state)
 
     assert "title" in state
     title = state["title"]
@@ -81,5 +99,5 @@ def update_activity(
     if not force and compare_states(state, last_state):
         return state
 
-    RPC_CLIENT.set_activity(**kwargs)  # type: ignore
+    await _set_activity(**kwargs)  # type: ignore
     return state
