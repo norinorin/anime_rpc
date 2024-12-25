@@ -93,7 +93,7 @@ async def update_activity(
         kwargs["small_text"] = "Paused"
         kwargs["small_image"] = "new-paused"
     else:
-        return clear(last_state)
+        return await clear(last_state)
 
     # only compare states after validating watching state
     if not force and compare_states(state, last_state):
