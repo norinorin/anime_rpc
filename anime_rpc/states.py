@@ -25,6 +25,9 @@ class State(TypedDict, total=False):
     # we don't want our web rpc to be cleared because mpc isn't playing
     origin: str
 
+    # allow str for browser extensions (js)
+    application_id: int | str
+
 
 def compare_states(a: State, b: State) -> bool:
     KEYS_TO_IGNORE: tuple[str, ...] = ("position", "origin")
