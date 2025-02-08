@@ -99,6 +99,8 @@ async def main():
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
     mpc_task = asyncio.create_task(poll_mpc(event, queue), name="mpc")
 
+    print("Waiting for activity feed updates...")
+
     webserver = None
     if not CLI_ARGS.no_webserver:
         app = await get_app(queue)

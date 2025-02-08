@@ -14,6 +14,8 @@ from aiohttp.web import (
 
 from anime_rpc.states import State, WatchingState
 
+PORT = 56727
+
 
 def ws_handler(
     queue: asyncio.Queue[State],
@@ -61,6 +63,7 @@ async def get_app(queue: asyncio.Queue[State]) -> Application:
 async def start_app(app: Application) -> TCPSite:
     runner = AppRunner(app)
     await runner.setup()
-    webserver = TCPSite(runner, "0.0.0.0", 56727)
+    webserver = TCPSite(runner, "0.0.0.0", PORT)
     await webserver.start()
+    print("Serving WS on", PORT)
     return webserver
