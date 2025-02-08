@@ -2,13 +2,19 @@ import time
 from os.path import getmtime, join
 from typing import TypedDict
 
+DEFAULT_APPLICATION_ID = 1088900742523392133
+
 
 class Config(TypedDict):
+    # USER SETTINGS
     title: str
     match: str
     url: str
     image_url: str
     rewatching: bool
+    application_id: int
+
+    # CONTEXT
     path: str
     read_at: float
 
@@ -47,6 +53,7 @@ def read_rpc_config(
     config["path"] = path
     config["rewatching"] = bool(int(config["rewatching"]))
     config["read_at"] = time.time()
+    config["application_id"] = int(config.get("application_id", DEFAULT_APPLICATION_ID))
     return config
 
 

@@ -72,4 +72,5 @@ def get_state(vars: Vars, config: Config) -> State:
     state["image_url"] = config["image_url"]
     state["url"] = config["url"]
     state["watching_state"] = vars["state"]
+    state["application_id"] = config["application_id"]
     return state

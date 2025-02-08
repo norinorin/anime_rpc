@@ -6,13 +6,21 @@ from typing import Any
 from discordrpc import RPC  # type: ignore
 
 from anime_rpc.cli import CLI_ARGS
-from anime_rpc.config import APPLICATION_ID
+from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
 from anime_rpc.mpc import WatchingState
 from anime_rpc.states import State, compare_states  # type: ignore
 
-RPC_CLIENT = RPC(APPLICATION_ID)
+RPC_CLIENT, last_application_id = None, None
 ORIGIN2SERVICE = {"mpc": "MPC-HC", "www.bilibili.tv": "BiliBili (Bstation)"}
+
+
+def _ensure_application_id(application_id):
+    global RPC_CLIENT, last_application_id
+
+    if RPC_CLIENT is None or application_id != last_application_id:
+        RPC_CLIENT = RPC(application_id)
+        last_application_id = application_id
 
 
 async def _set_activity(*args, **kwargs):
@@ -26,7 +34,7 @@ async def _set_activity(*args, **kwargs):
             # reconnect in 30 seconds
             print("Disconnected, reconnecting in 30 seconds...")
             await asyncio.sleep(30)
-            RPC_CLIENT = RPC(APPLICATION_ID)
+            RPC_CLIENT = RPC(last_application_id)
             continue
 
 
@@ -52,6 +60,9 @@ async def update_activity(
 ) -> State:
     if not state:
         return await clear(last_state)
+
+    application_id = state.get("application_id", DEFAULT_APPLICATION_ID)
+    _ensure_application_id(application_id)
 
     assert "title" in state
     title = state["title"]
