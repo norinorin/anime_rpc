@@ -55,6 +55,3 @@ def read_rpc_config(
     config["read_at"] = time.time()
     config["application_id"] = int(config.get("application_id", DEFAULT_APPLICATION_ID))
     return config
-
-
-APPLICATION_ID = 1088900742523392133
