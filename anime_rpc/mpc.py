@@ -19,6 +19,9 @@ class Vars(TypedDict):
 
 
 def get_ep_title(pattern: str, file: str) -> tuple[int, str | None] | None:
+    if pattern.lower() == "movie":
+        return "Movie", None
+
     if not (match := re.search(pattern, file)):
         return
 

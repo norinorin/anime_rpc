@@ -76,17 +76,26 @@ async def update_activity(
     ep_title = state.get("episode_title")
     pos = state["position"]
     dur = state["duration"]
+    is_movie = ep == "Movie"
 
     if watching_state == WatchingState.PLAYING:
         kwargs["details"] = state["title"]
-        kwargs["state"] = f"Episode {ep} {quote(ep_title) if ep_title else ''}"
+        kwargs["state"] = (
+            f"{'Episode ' * (not is_movie)}{ep} {quote(ep_title) if ep_title else ''}"
+        )
         kwargs["ts_start"] = _now - pos // 1_000
         kwargs["ts_end"] = _now + (dur - pos) // 1_000
         kwargs["small_text"] = "Playing"
         kwargs["small_image"] = "new-playing"
     elif watching_state == WatchingState.PAUSED and not CLI_ARGS.clear_on_pause:
         kwargs["details"] = (
-            f"Episode {ep} {quote(ep_title)}" if ep_title else f"{quote(title)} E{ep}"
+            title
+            if is_movie
+            else (
+                f"Episode {ep} {quote(ep_title)}"
+                if ep_title
+                else f"{quote(title)} E{ep}"
+            )
         )
         kwargs["state"] = "/".join([ms2timestamp(i) for i in (pos, dur)])
         kwargs["ts_start"] = _now
