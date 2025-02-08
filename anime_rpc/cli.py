@@ -13,4 +13,10 @@ _parser.add_argument(
     action="store_true",
     help="clear rich presence on media pause",
 )
+_parser.add_argument(
+    "--no-webserver",
+    action="store_true",
+    help="disable webserver (extension integration)",
+    default=False,
+)
 CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)

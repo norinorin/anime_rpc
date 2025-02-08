@@ -6,6 +6,7 @@ import aiohttp
 
 import anime_rpc.monkey_patch  # type: ignore
 from anime_rpc.asyncio_helper import Bail, wait
+from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.mpc import Vars, get_state, get_vars
@@ -98,10 +99,15 @@ async def main():
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
     mpc_task = asyncio.create_task(poll_mpc(event, queue), name="mpc")
 
-    app = await get_app(queue)
-    webserver = await start_app(app)
+    webserver = None
+    if not CLI_ARGS.no_webserver:
+        app = await get_app(queue)
+        webserver = await start_app(app)
+
     await asyncio.gather(consumer_task, mpc_task)
-    await webserver.stop()
+
+    if webserver is not None:
+        await webserver.stop()
 
 
 def _sigint_callback(event: asyncio.Event):
