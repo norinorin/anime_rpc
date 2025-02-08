@@ -11,7 +11,7 @@ class WatchingState(IntEnum):
 
 class State(TypedDict, total=False):
     title: str
-    episode: int
+    episode: int | str  # str for "Movie"
     episode_title: str
     position: int  # in ms
     duration: int  # in ms
