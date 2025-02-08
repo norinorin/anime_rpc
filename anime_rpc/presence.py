@@ -99,7 +99,7 @@ async def update_activity(
         kwargs["ts_start"] = _now - pos // 1_000
         kwargs["ts_end"] = _now + (dur - pos) // 1_000
         kwargs["small_text"] = "Playing"
-        kwargs["small_image"] = "new-playing"
+        kwargs["small_image"] = "play"
     elif watching_state == WatchingState.PAUSED and not CLI_ARGS.clear_on_pause:
         kwargs["details"] = (
             title
@@ -113,7 +113,7 @@ async def update_activity(
         kwargs["state"] = "/".join([ms2timestamp(i) for i in (pos, dur)])
         kwargs["ts_start"] = _now
         kwargs["small_text"] = "Paused"
-        kwargs["small_image"] = "new-paused"
+        kwargs["small_image"] = "pause"
     else:
         return await clear(last_state)
 
