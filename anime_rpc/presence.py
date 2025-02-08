@@ -67,7 +67,7 @@ async def update_activity(
     assert "title" in state
     title = state["title"]
     kwargs: dict[str, Any] = {
-        "large_text": f"{('re'*state.get('rewatching', 0) + 'watching').title()} on {ORIGIN2SERVICE.get(origin, origin)}",
+        "large_text": f"{('re' * state.get('rewatching', 0) + 'watching').title()} on {ORIGIN2SERVICE.get(origin, origin)}",
         "act_type": 3,
     }
 
@@ -75,7 +75,9 @@ async def update_activity(
         kwargs["large_image"] = image_url
 
     if url := state.get("url"):
-        kwargs["buttons"] = [{"label": "View Anime", "url": url}]
+        kwargs["buttons"] = [
+            {"label": state.get("url_text") or "View Anime", "url": url}
+        ]
 
     assert "episode" in state
     assert "position" in state

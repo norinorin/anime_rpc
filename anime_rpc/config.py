@@ -10,6 +10,7 @@ class Config(TypedDict):
     title: str
     match: str
     url: str
+    url_text: str
     image_url: str
     rewatching: bool
     application_id: int
@@ -54,4 +55,5 @@ def read_rpc_config(
     config["rewatching"] = bool(int(config["rewatching"]))
     config["read_at"] = time.time()
     config["application_id"] = int(config.get("application_id", DEFAULT_APPLICATION_ID))
+    config["url_text"] = config.get("url_text", "View Anime")
     return config

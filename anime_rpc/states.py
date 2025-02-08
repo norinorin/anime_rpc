@@ -17,6 +17,7 @@ class State(TypedDict, total=False):
     duration: int  # in ms
     image_url: str
     url: str
+    url_text: str
     rewatching: bool
     watching_state: WatchingState
 
