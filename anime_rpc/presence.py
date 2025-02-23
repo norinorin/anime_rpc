@@ -19,7 +19,7 @@ ASSETS = {
 }
 
 
-def _ensure_application_id(application_id):
+async def _ensure_application_id(application_id):
     global RPC_CLIENT, last_application_id
 
     if RPC_CLIENT is None or application_id != last_application_id:
@@ -27,18 +27,19 @@ def _ensure_application_id(application_id):
         last_application_id = application_id
 
 
-async def _set_activity(*args, **kwargs):
+async def _set_activity(application_id, *args, **kwargs):
     global RPC_CLIENT
 
     while 1:
         try:
+            await _ensure_application_id(application_id)
             return RPC_CLIENT.set_activity(*args, **kwargs)
-        except OSError:
+        except (OSError, ConnectionRefusedError):
             # discord is probably closed/restarted
             # reconnect in 30 seconds
             print("Disconnected, reconnecting in 30 seconds...")
             await asyncio.sleep(30)
-            RPC_CLIENT = RPC(last_application_id)
+            RPC_CLIENT = None
             continue
 
 
@@ -46,10 +47,10 @@ def now() -> int:
     return int(time.mktime(time.localtime()))
 
 
-async def clear(last_state: State) -> State:
+async def clear(application_id, last_state: State) -> State:
     # only clear activity if last state is not empty
     if last_state:
-        await _set_activity(act_type=None)  # type: ignore
+        await _set_activity(application_id, act_type=None)  # type: ignore
 
     return State()
 
@@ -62,11 +63,10 @@ async def update_activity(
     origin: str,
     force: bool = False,
 ) -> State:
-    if not state:
-        return await clear(last_state)
-
     application_id = state.get("application_id", DEFAULT_APPLICATION_ID)
-    _ensure_application_id(application_id)
+
+    if not state:
+        return await clear(application_id, last_state)
 
     assert "title" in state
     title = state["title"]
@@ -119,11 +119,11 @@ async def update_activity(
         kwargs["small_text"] = "Paused"
         kwargs["small_image"] = ASSETS["PAUSED"]
     else:
-        return await clear(last_state)
+        return await clear(application_id, last_state)
 
     # only compare states after validating watching state
     if not force and compare_states(state, last_state):
         return state
 
-    await _set_activity(**kwargs)  # type: ignore
+    await _set_activity(application_id, **kwargs)  # type: ignore
     return state
