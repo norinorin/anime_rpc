@@ -8,8 +8,7 @@ from discordrpc import RPC  # type: ignore
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
-from anime_rpc.mpc import WatchingState
-from anime_rpc.states import State, compare_states  # type: ignore
+from anime_rpc.states import State, WatchingState, compare_states  # type: ignore
 
 RPC_CLIENT, last_application_id = None, None
 ORIGIN2SERVICE = {"mpc": "MPC-HC", "www.bilibili.tv": "BiliBili (Bstation)"}

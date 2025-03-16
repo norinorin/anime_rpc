@@ -1,5 +1,7 @@
 import argparse
 
+from anime_rpc.pollers import BasePoller
+
 
 class CLIArgs(argparse.Namespace):
     clear_on_pause: bool
@@ -18,5 +20,13 @@ _parser.add_argument(
     action="store_true",
     help="disable webserver (extension integration)",
     default=False,
+)
+POLLERS = BasePoller.get_pollers()
+_parser.add_argument(
+    "--poller",
+    help="list of pollers to use (comma-separated). Options: mpv, mpc.",
+    default=None,
+    type=lambda a: [POLLERS[p]() for p in a.split(",")],
+    dest="pollers",
 )
 CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)

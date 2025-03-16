@@ -9,7 +9,7 @@ from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.formatting import ms2timestamp
-from anime_rpc.mpc import Vars, get_state, get_vars
+from anime_rpc.pollers import BasePoller, Vars
 from anime_rpc.presence import update_activity
 from anime_rpc.states import State, states_logger
 from anime_rpc.webserver import get_app, start_app
@@ -18,18 +18,20 @@ TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
 MPC_POLLING_INTERVAL = 1.0  # fetch vars every 1 second
 
 
-async def poll_mpc(event: asyncio.Event, queue: asyncio.Queue[State]):
+async def poll_player(
+    poller: BasePoller, event: asyncio.Event, queue: asyncio.Queue[State]
+):
     async with aiohttp.ClientSession() as session:
         config: Config | None = None
 
         while not event.is_set():
-            state: State = State(origin="mpc")
+            state: State = poller.get_empty_state()
             vars: Vars | None
             try:
-                if (vars := await wait(get_vars(session), event)) and (
+                if (vars := await wait(poller.get_vars(session), event)) and (
                     config := read_rpc_config(vars["filedir"], last_config=config)
                 ):
-                    state = get_state(vars, config)
+                    state = poller.get_state(vars, config)
             except Bail:
                 return
 
@@ -97,7 +99,14 @@ async def main():
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore
 
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
-    mpc_task = asyncio.create_task(poll_mpc(event, queue), name="mpc")
+
+    print("Pollers used:", [i.origin for i in CLI_ARGS.pollers])
+    poller_tasks = [
+        asyncio.create_task(
+            poll_player(poller, event, queue), name=poller.__class__.__name__
+        )
+        for poller in CLI_ARGS.pollers
+    ]
 
     print("Waiting for activity feed updates...")
 
@@ -106,7 +115,7 @@ async def main():
         app = await get_app(queue)
         webserver = await start_app(app)
 
-    await asyncio.gather(consumer_task, mpc_task)
+    await asyncio.gather(consumer_task, *poller_tasks)
 
     if webserver is not None:
         await webserver.stop()
