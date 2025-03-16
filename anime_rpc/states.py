@@ -57,6 +57,6 @@ def states_logger(verbose: bool = False) -> Generator[None, State, None]:
                 continue
 
         if state != last_state or verbose:
-            print(state)
+            print("Received state:", state)
 
         last_state = state
