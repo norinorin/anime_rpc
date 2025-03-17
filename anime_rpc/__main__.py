@@ -15,7 +15,7 @@ from anime_rpc.states import State, states_logger
 from anime_rpc.webserver import get_app, start_app
 
 TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
-MPC_POLLING_INTERVAL = 1.0  # fetch vars every 1 second
+POLLING_INTERVAL = 1.0  # fetch vars every 1 second
 
 
 async def poll_player(
@@ -38,7 +38,7 @@ async def poll_player(
             await queue.put(state)
 
             with suppress(asyncio.TimeoutError):
-                await asyncio.wait_for(event.wait(), timeout=MPC_POLLING_INTERVAL)
+                await asyncio.wait_for(event.wait(), timeout=POLLING_INTERVAL)
 
 
 async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
