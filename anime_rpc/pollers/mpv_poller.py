@@ -77,6 +77,7 @@ class MPVWebUIPoller(BasePoller):
             return
 
 
+# TODO: maybe consider switching to a hook-based approach
 class MPVIPCPoller(BasePoller):
     # TODO: allow for custom paths
     ipc_path = "\\\\.\\pipe\\mpv-pipe" if os.name == "nt" else "/tmp/mpvsocket"
