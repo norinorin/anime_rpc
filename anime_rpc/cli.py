@@ -24,7 +24,7 @@ _parser.add_argument(
 POLLERS = BasePoller.get_pollers()
 _parser.add_argument(
     "--poller",
-    help="list of pollers to use (comma-separated). Options: mpv, mpc.",
+    help=f"list of pollers to use (comma-separated). Options: {', '.join(POLLERS.keys())}",
     default=None,
     type=lambda a: [POLLERS[p]() for p in a.split(",")],
     dest="pollers",

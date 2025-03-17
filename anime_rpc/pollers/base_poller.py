@@ -17,9 +17,9 @@ class Vars(TypedDict):
 
 
 class BasePoller(ABC):
-    @property
+    @classmethod
     @abstractmethod
-    def origin(self) -> str: ...
+    def origin(cls) -> str: ...
 
     @staticmethod
     @abstractmethod
@@ -38,20 +38,22 @@ class BasePoller(ABC):
         title = groups.get("title")
         return int(ep), title.strip() if title else None
 
-    def get_empty_state(self):
-        return State(origin=self.origin)
+    @classmethod
+    def get_empty_state(cls):
+        return State(origin=cls.origin())
 
-    def get_state(self, vars: Vars, config: Config) -> State:
-        state: State = self.get_empty_state()
+    @classmethod
+    def get_state(cls, vars: Vars, config: Config) -> State:
+        state: State = cls.get_empty_state()
         state["title"] = config["title"]
         state["rewatching"] = config["rewatching"]
         state["position"] = vars["position"]
         state["duration"] = vars["duration"]
-        maybe_ep_title = self.get_ep_title(config["match"], vars["file"])
+        maybe_ep_title = cls.get_ep_title(config["match"], vars["file"])
 
         # if nothing matches, return an empty state as to clear the activity
         if not maybe_ep_title:
-            return self.get_empty_state()
+            return cls.get_empty_state()
 
         state["episode"], ep_title = maybe_ep_title
 
@@ -68,4 +70,4 @@ class BasePoller(ABC):
 
     @staticmethod
     def get_pollers():
-        return {s().origin: s for s in BasePoller.__subclasses__()}
+        return {s.origin(): s for s in BasePoller.__subclasses__()}

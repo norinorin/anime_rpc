@@ -100,7 +100,7 @@ async def main():
 
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
 
-    print("Pollers used:", [i.origin for i in CLI_ARGS.pollers])
+    print("Pollers used:", [i.origin() for i in CLI_ARGS.pollers])
     poller_tasks = [
         asyncio.create_task(
             poll_player(poller, event, queue), name=poller.__class__.__name__

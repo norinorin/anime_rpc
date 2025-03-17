@@ -11,8 +11,8 @@ P_TAG_PATTERN = re.compile(r'<p id="(file|filedir|state|position|duration)">(.+)
 class MPCPoller(BasePoller):
     port = 13579  # TODO: allow for custom ports via cli
 
-    @property
-    def origin(self) -> str:
+    @classmethod
+    def origin(cls) -> str:
         return "mpc"
 
     @staticmethod
