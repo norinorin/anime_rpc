@@ -1,6 +1,7 @@
 import asyncio
 import signal
 from contextlib import suppress
+from typing import Type
 
 import aiohttp
 
@@ -19,7 +20,7 @@ POLLING_INTERVAL = 1.0  # fetch vars every 1 second
 
 
 async def poll_player(
-    poller: BasePoller, event: asyncio.Event, queue: asyncio.Queue[State]
+    poller: Type[BasePoller], event: asyncio.Event, queue: asyncio.Queue[State]
 ):
     async with aiohttp.ClientSession() as session:
         config: Config | None = None

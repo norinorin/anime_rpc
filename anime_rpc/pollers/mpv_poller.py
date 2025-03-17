@@ -1,15 +1,29 @@
 import asyncio
 import json
 import os
-from typing import Callable, Type
+from typing import Callable, TypedDict, TypeVar
 
 import aiohttp
 
 from anime_rpc.pollers.base_poller import BasePoller, Vars
 from anime_rpc.states import WatchingState
 
+T = TypeVar("T")
 
-def _get_mpv_vars(filename, working_dir, paused, position, duration):
+
+class MPVCommand(TypedDict):
+    command: list[str]
+
+
+class MPVResponse(TypedDict):
+    error: str
+    data: str | None
+    request_id: int
+
+
+def _get_mpv_vars(
+    filename: str, working_dir: str, paused: bool, position: float, duration: float
+):
     # depending on how you spawn mpv, the filename may be relative or absolute
     # filename is absolute if you activate a video file in thunar for example.
     full_path = filename
@@ -101,16 +115,16 @@ class MPVIPCPoller(BasePoller):
         return "mpv-ipc"
 
     @staticmethod
-    async def send_command(command: dict) -> dict:
+    async def send_command(command: MPVCommand) -> MPVResponse:
         cmd_json = json.dumps(command) + "\n"
         response = await MPVIPCPoller._send_command(cmd_json.encode("utf-8"))
         return json.loads(response.decode("utf-8"))
 
     @staticmethod
     async def get_property(
-        property: str, typecast: Type | Callable = str
-    ) -> str | None:
-        command = {"command": ["get_property_string", property]}
+        property: str, typecast: Callable[[str], T] = str
+    ) -> T | None:
+        command: MPVCommand = {"command": ["get_property_string", property]}
         response = await MPVIPCPoller.send_command(command)
         if not response:
             return
@@ -119,6 +133,7 @@ class MPVIPCPoller(BasePoller):
 
     @staticmethod
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
+        # is there a way to do this in batch?
         filename = await MPVIPCPoller.get_property("filename", str)
         working_dir = await MPVIPCPoller.get_property("working-directory", str)
         paused = await MPVIPCPoller.get_property("pause", lambda x: x == "yes")

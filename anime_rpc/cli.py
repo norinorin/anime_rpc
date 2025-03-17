@@ -1,10 +1,13 @@
 import argparse
+from typing import Type
 
 from anime_rpc.pollers import BasePoller
 
 
 class CLIArgs(argparse.Namespace):
     clear_on_pause: bool
+    no_webserver: bool
+    pollers: list[Type[BasePoller]]
 
 
 _parser = argparse.ArgumentParser(
@@ -26,7 +29,7 @@ _parser.add_argument(
     "--poller",
     help=f"list of pollers to use (comma-separated). Options: {', '.join(POLLERS.keys())}",
     default=None,
-    type=lambda a: [POLLERS[p]() for p in a.split(",")],
+    type=lambda a: [POLLERS[p] for p in a.split(",")],
     dest="pollers",
 )
 CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)

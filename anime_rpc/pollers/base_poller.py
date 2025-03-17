@@ -1,6 +1,6 @@
 import re
 from abc import ABC, abstractmethod
-from typing import TypedDict
+from typing import Literal, TypedDict
 
 import aiohttp
 
@@ -26,7 +26,9 @@ class BasePoller(ABC):
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None: ...
 
     @staticmethod
-    def get_ep_title(pattern: str, file: str) -> tuple[int, str | None] | None:
+    def get_ep_title(
+        pattern: str, file: str
+    ) -> tuple[int, str | None] | tuple[Literal["Movie"], None] | None:
         if pattern.lower() == "movie":
             return "Movie", None
 
