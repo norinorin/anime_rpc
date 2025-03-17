@@ -8,9 +8,11 @@ from discordrpc import RPC  # type: ignore
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
-from anime_rpc.states import State, WatchingState, compare_states  # type: ignore
+from anime_rpc.states import WatchingState  # type: ignore
+from anime_rpc.states import State, compare_states
 
-RPC_CLIENT, last_application_id = None, None
+rpc_client: RPC | None = None
+last_application_id: int | None = None
 ORIGIN2SERVICE = {"mpc": "MPC-HC", "www.bilibili.tv": "BiliBili (Bstation)"}
 ASSETS = {
     "PLAYING": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/play.png?raw=true",
@@ -18,27 +20,28 @@ ASSETS = {
 }
 
 
-async def _ensure_application_id(application_id):
-    global RPC_CLIENT, last_application_id
+async def _ensure_application_id(application_id: int):
+    global rpc_client, last_application_id
 
-    if RPC_CLIENT is None or application_id != last_application_id:
-        RPC_CLIENT = RPC(application_id)
+    if rpc_client is None or application_id != last_application_id:
+        rpc_client = RPC(application_id)
         last_application_id = application_id
 
 
-async def _set_activity(application_id, *args, **kwargs):
-    global RPC_CLIENT
+async def _set_activity(application_id: int, *args: Any, **kwargs: Any):
+    global rpc_client
 
     while 1:
         try:
             await _ensure_application_id(application_id)
-            return RPC_CLIENT.set_activity(*args, **kwargs)
+            # bad stubs, just type ignore it
+            return rpc_client.set_activity(*args, **kwargs)  # type: ignore
         except (OSError, ConnectionRefusedError):
             # discord is probably closed/restarted
             # reconnect in 30 seconds
             print("Disconnected, reconnecting in 30 seconds...")
             await asyncio.sleep(30)
-            RPC_CLIENT = None
+            rpc_client = None
             continue
 
 
@@ -46,7 +49,7 @@ def now() -> int:
     return int(time.mktime(time.localtime()))
 
 
-async def clear(application_id, last_state: State) -> State:
+async def clear(application_id: int, last_state: State) -> State:
     # only clear activity if last state is not empty
     if last_state:
         await _set_activity(application_id, act_type=None)  # type: ignore
@@ -62,7 +65,7 @@ async def update_activity(
     origin: str,
     force: bool = False,
 ) -> State:
-    application_id = state.get("application_id", DEFAULT_APPLICATION_ID)
+    application_id = int(state.get("application_id", DEFAULT_APPLICATION_ID))
 
     if not state:
         return await clear(application_id, last_state)
