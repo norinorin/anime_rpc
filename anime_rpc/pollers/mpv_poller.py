@@ -21,12 +21,28 @@ class MPVResponse(TypedDict):
     request_id: int
 
 
+class MPVPlaylistEntry(TypedDict):
+    current: bool
+    filename: str
+    playing: bool
+    id: int
+
+
 def _get_mpv_vars(
-    filename: str, working_dir: str, paused: bool, position: float, duration: float
+    playlist: list[MPVPlaylistEntry],
+    working_dir: str,
+    paused: bool,
+    position: float,
+    duration: float,
 ):
     # depending on how you spawn mpv, the filename may be relative or absolute
-    # filename is absolute if you activate a video file in thunar for example.
-    full_path = filename
+    # it's absolute if you activate a video file in thunar for example
+    # tho it's only absolute in the playlist field
+    current = ([i for i in playlist if i.get("current", False)] + [None])[0]
+    if not current:
+        return
+
+    full_path = current["filename"]
 
     if not os.path.isabs(full_path):
         full_path = os.path.join(working_dir, full_path)
@@ -67,7 +83,7 @@ class MPVWebUIPoller(BasePoller):
                     )
 
                 return _get_mpv_vars(
-                    data["filename"],
+                    data["playlist"],
                     data["working-dir"],
                     data["pause"],
                     data["position"],
@@ -133,16 +149,22 @@ class MPVIPCPoller(BasePoller):
         return typecast(data) if (data := response["data"]) is not None else None
 
     @staticmethod
+    def _typecast_playlist(data: str) -> list[MPVPlaylistEntry]:
+        return json.loads(data)
+
+    @staticmethod
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
         # is there a way to do this in batch?
-        filename = await MPVIPCPoller.get_property("filename", str)
+        playlist = await MPVIPCPoller.get_property(
+            "playlist", MPVIPCPoller._typecast_playlist
+        )
         working_dir = await MPVIPCPoller.get_property("working-directory", str)
         paused = await MPVIPCPoller.get_property("pause", lambda x: x == "yes")
         position = await MPVIPCPoller.get_property("time-pos", float)
         duration = await MPVIPCPoller.get_property("duration", float)
 
         if (
-            filename is None
+            playlist is None
             or working_dir is None
             or paused is None
             or position is None
@@ -150,4 +172,4 @@ class MPVIPCPoller(BasePoller):
         ):
             return
 
-        return _get_mpv_vars(filename, working_dir, paused, position, duration)
+        return _get_mpv_vars(playlist, working_dir, paused, position, duration)
