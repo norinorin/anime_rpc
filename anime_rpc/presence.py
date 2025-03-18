@@ -13,7 +13,12 @@ from anime_rpc.states import State, compare_states
 
 rpc_client: RPC | None = None
 last_application_id: int | None = None
-ORIGIN2SERVICE = {"mpc": "MPC-HC", "www.bilibili.tv": "BiliBili (Bstation)"}
+ORIGIN2SERVICE = {
+    "mpc": "MPC-HC",
+    "www.bilibili.tv": "BiliBili (Bstation)",
+    "mpv-ipc": "mpv",
+    "mpv-webui": "mpv",
+}
 ASSETS = {
     "PLAYING": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/play.png?raw=true",
     "PAUSED": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/pause.png?raw=true",
