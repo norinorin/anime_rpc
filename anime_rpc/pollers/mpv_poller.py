@@ -124,7 +124,7 @@ class MPVIPCPoller(BasePoller):
                 writer.close()
                 await writer.wait_closed()
                 return response
-            except (ConnectionRefusedError, ConnectionResetError):
+            except (ConnectionRefusedError, ConnectionResetError, FileNotFoundError):
                 return b"{}"
 
     @classmethod
