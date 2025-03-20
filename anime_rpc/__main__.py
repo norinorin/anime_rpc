@@ -127,4 +127,8 @@ def _sigint_callback(event: asyncio.Event):
     asyncio.get_running_loop().call_soon_threadsafe(lambda: event.set())
 
 
+if not CLI_ARGS.pollers and CLI_ARGS.no_webserver:
+    print("Nothing's running. Exiting...")
+    exit(1)
+
 asyncio.run(main())
