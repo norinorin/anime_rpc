@@ -120,7 +120,12 @@ class MPVIPCPoller(BasePoller):
                 writer.write(command)
                 await writer.drain()
 
-                response = await reader.readline()
+                while not (
+                    b"error" in (response := await reader.readline())
+                    or b'"request_id": 0' in response
+                ):
+                    continue
+
                 writer.close()
                 await writer.wait_closed()
                 return response
