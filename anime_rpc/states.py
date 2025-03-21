@@ -1,5 +1,8 @@
+import logging
 from enum import IntEnum
 from typing import Generator, TypedDict
+
+_LOGGER = logging.getLogger("states")
 
 
 class WatchingState(IntEnum):
@@ -57,6 +60,6 @@ def states_logger(verbose: bool = False) -> Generator[None, State, None]:
                 continue
 
         if state != last_state or verbose:
-            print("Received state:", state)
+            _LOGGER.debug("Received state: %s", state)
 
         last_state = state

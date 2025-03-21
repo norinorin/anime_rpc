@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import signal
 from contextlib import suppress
 from typing import Type
@@ -13,6 +14,7 @@ from anime_rpc.formatting import ms2timestamp
 from anime_rpc.pollers import BasePoller, Vars
 from anime_rpc.presence import update_activity
 from anime_rpc.states import State, states_logger
+from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
 
 TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
@@ -78,7 +80,9 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         pos: int = state.get("position", 0)
 
         if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
-            print("Seeked from", ms2timestamp(last_pos), "to", ms2timestamp(pos))
+            logging.debug(
+                "Seeking from %d to %d", ms2timestamp(last_pos), "to", ms2timestamp(pos)
+            )
 
         last_state = await update_activity(
             state,
@@ -101,7 +105,7 @@ async def main():
 
     consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
 
-    print("Pollers used:", [i.origin() for i in CLI_ARGS.pollers])
+    logging.info("Pollers used: %s", ", ".join([i.origin() for i in CLI_ARGS.pollers]))
     poller_tasks = [
         asyncio.create_task(
             poll_player(poller, event, queue), name=poller.__class__.__name__
@@ -109,7 +113,7 @@ async def main():
         for poller in CLI_ARGS.pollers
     ]
 
-    print("Waiting for activity feed updates...")
+    logging.info("Waiting for activity feed updates...")
 
     webserver = None
     if not CLI_ARGS.no_webserver:
@@ -123,12 +127,14 @@ async def main():
 
 
 def _sigint_callback(event: asyncio.Event):
-    print("Received CTRL+C")
+    logging.info("Received CTRL+C")
     asyncio.get_running_loop().call_soon_threadsafe(lambda: event.set())
 
 
+init_logging()
+
 if not CLI_ARGS.pollers and CLI_ARGS.no_webserver:
-    print("Nothing's running. Exiting...")
+    logging.error("Nothing's running. Exiting...")
     exit(1)
 
 asyncio.run(main())

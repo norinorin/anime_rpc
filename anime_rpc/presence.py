@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import time
 from typing import Any
 
@@ -23,6 +24,7 @@ ASSETS = {
     "PLAYING": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/play.png?raw=true",
     "PAUSED": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/pause.png?raw=true",
 }
+_LOGGER = logging.getLogger("presence")
 
 
 async def _ensure_application_id(application_id: int):
@@ -31,6 +33,13 @@ async def _ensure_application_id(application_id: int):
     if rpc_client is None or application_id != last_application_id:
         rpc_client = RPC(application_id)
         last_application_id = application_id
+
+        # stupid untyped library, type ignore it
+        _LOGGER.info(
+            "Connected to %s (%s)",
+            rpc_client.User.get("username", "unknown"),  # type: ignore
+            rpc_client.User.get("id", "<unknown id>"),  # type: ignore
+        )
 
 
 async def _set_activity(application_id: int, *args: Any, **kwargs: Any):
@@ -44,7 +53,7 @@ async def _set_activity(application_id: int, *args: Any, **kwargs: Any):
         except (OSError, ConnectionRefusedError):
             # discord is probably closed/restarted
             # reconnect in 30 seconds
-            print("Disconnected, reconnecting in 30 seconds...")
+            _LOGGER.info("Disconnected, reconnecting in 30 seconds...")
             await asyncio.sleep(30)
             rpc_client = None
             continue
@@ -57,6 +66,7 @@ def now() -> int:
 async def clear(application_id: int, last_state: State) -> State:
     # only clear activity if last state is not empty
     if last_state:
+        _LOGGER.info("Clearing presence...")
         await _set_activity(application_id, act_type=None)  # type: ignore
 
     return State()
@@ -132,5 +142,11 @@ async def update_activity(
     if not force and compare_states(state, last_state):
         return state
 
+    _LOGGER.info(
+        "Setting presence to [%s] %s @ %s",
+        watching_state.name,
+        f"{state['title']}" + f" E{ep}" * (not is_movie),
+        ms2timestamp(state["position"]),
+    )
     await _set_activity(application_id, **kwargs)  # type: ignore
     return state

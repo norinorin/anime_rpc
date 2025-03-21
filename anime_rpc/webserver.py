@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from typing import Any, Callable, Coroutine
 
 from aiohttp import WSMsgType
@@ -15,6 +16,7 @@ from aiohttp.web import (
 from anime_rpc.states import State, WatchingState
 
 PORT = 56727
+_LOGGER = logging.getLogger("webserver")
 
 
 def ws_handler(
@@ -65,5 +67,5 @@ async def start_app(app: Application) -> TCPSite:
     await runner.setup()
     webserver = TCPSite(runner, "0.0.0.0", PORT)
     await webserver.start()
-    print("Serving WS on", PORT)
+    _LOGGER.info("Serving WS on %d", PORT)
     return webserver
