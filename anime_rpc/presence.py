@@ -51,6 +51,7 @@ async def _set_activity(
 ):
     global rpc_client
 
+    i = 0
     while 1:
         try:
             await _ensure_application_id(application_id)
@@ -58,12 +59,18 @@ async def _set_activity(
             return rpc_client.set_activity(*args, **kwargs)  # type: ignore
         except (OSError, ConnectionRefusedError):
             # discord is probably closed/restarted
-            # reconnect in 30 seconds
-            _LOGGER.info("Disconnected, reconnecting in 30 seconds...")
+            # try to reconnect
+            delay = 5 * i
+            _LOGGER.info(
+                "Disconnected, reconnecting..."
+                if i == 0
+                else f"Failed to reconnect, retrying in {delay} seconds..."
+            )
             try:
-                await wait(asyncio.sleep(30), event)
+                await wait(asyncio.sleep(delay), event)
             except Bail:
                 return
+            i = min(i + 1, 6)
             rpc_client = None
             continue
 
