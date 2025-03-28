@@ -84,12 +84,7 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
                 "Seeking from %d to %d", ms2timestamp(last_pos), "to", ms2timestamp(pos)
             )
 
-        last_state = await update_activity(
-            state,
-            last_state,
-            origin,
-            seeking,
-        )
+        last_state = await update_activity(event, state, last_state, origin, seeking)
 
         # if last_state is empty
         # it's given up control
