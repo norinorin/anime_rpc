@@ -122,7 +122,8 @@ class MPVIPCPoller(BasePoller):
 
                 while not (
                     b"error" in (response := await reader.readline())
-                    or b'"request_id": 0' in response
+                    and b'"request_id":0' in response
+                    and b'"data"' in response
                 ):
                     continue
 
