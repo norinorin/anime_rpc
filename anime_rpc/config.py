@@ -1,19 +1,25 @@
+import logging
 import time
 from os.path import getmtime, join
 from typing import TypedDict
 
 DEFAULT_APPLICATION_ID = 1088900742523392133
+_LOGGER = logging.getLogger("config")
+_MISSING_LOG_MSG = "Missing %s in config file, ignoring..."
 
 
 class Config(TypedDict):
+    # fmt: off
     # USER SETTINGS
     title: str
     match: str
-    url: str
-    url_text: str
-    image_url: str
-    rewatching: bool
-    application_id: int
+
+    # OPTIONAL SETTINGS
+    image_url: str       # defaults to ""
+    url: str             # defaults to ""
+    url_text: str        # defaults to View Anime
+    rewatching: bool     # defaults to 0
+    application_id: int  # defaults to DEFAULT_APPLICATION_ID
 
     # CONTEXT
     path: str
@@ -35,8 +41,9 @@ def read_rpc_config(
     # don't reread unless modified time is greater than read time
     if (
         last_config
-        and path == last_config["path"]
-        and last_config["read_at"] > modified_at
+        and path == last_config.get("path")
+        and (read_at := last_config.get("read_at"))
+        and read_at > modified_at
     ):
         return last_config
 
@@ -51,9 +58,30 @@ def read_rpc_config(
     except FileNotFoundError:
         return None
 
-    config["path"] = path
-    config["rewatching"] = bool(int(config["rewatching"]))
-    config["read_at"] = time.time()
+    # required settings
+    if "title" not in config:
+        _LOGGER.debug(_MISSING_LOG_MSG, "title")
+        return None
+
+    if "match" not in config:
+        # TODO: automatically generate a regex for the directory
+        # based on the file names in it
+        _LOGGER.debug(_MISSING_LOG_MSG, "match")
+        return None
+
+    if "image_url" not in config:
+        _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
+        return None
+
+    # optional settings
+    config.setdefault("url", "")
+    config["url_text"] = (
+        config.get("url_text") or "View Anime"  # in case of empty string
+    )
+    config["rewatching"] = bool(int(config.get("rewatching", 0)))
     config["application_id"] = int(config.get("application_id", DEFAULT_APPLICATION_ID))
-    config["url_text"] = config.get("url_text", "View Anime")
+
+    # context
+    config["path"] = path
+    config["read_at"] = time.time()
     return config
