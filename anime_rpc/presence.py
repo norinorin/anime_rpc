@@ -10,11 +10,8 @@ from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
-from anime_rpc.states import (
-    State,
-    WatchingState,  # type: ignore
-    compare_states,
-)
+from anime_rpc.states import WatchingState  # type: ignore
+from anime_rpc.states import State, compare_states
 
 rpc_client: RPC | None = None
 last_application_id: int | None = None
@@ -147,8 +144,9 @@ async def update_activity(
                 else f"{quote(title)} E{ep}"
             )
         )
-        kwargs["state"] = "/".join([ms2timestamp(i) for i in (pos, dur)])
-        kwargs["ts_start"] = _now
+        kwargs["state"] = "Paused - " + " / ".join(
+            [ms2timestamp(i) for i in (pos, dur)]
+        )
         kwargs["small_text"] = "Paused"
         kwargs["small_image"] = ASSETS["PAUSED"]
     else:
