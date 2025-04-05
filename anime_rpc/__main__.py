@@ -81,7 +81,7 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
 
         if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             logging.debug(
-                "Seeking from %d to %d", ms2timestamp(last_pos), "to", ms2timestamp(pos)
+                "Seeking from %s to %s", ms2timestamp(last_pos), ms2timestamp(pos)
             )
 
         last_state = await update_activity(event, state, last_state, origin, seeking)
