@@ -111,7 +111,7 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]) -> No
 async def main() -> None:
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
-    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknwonArgumentType]
+    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
 
     consumer_task = asyncio.create_task(
         consumer_loop(event, queue),
