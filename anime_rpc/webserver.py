@@ -1,7 +1,12 @@
-import asyncio
+from __future__ import annotations
+
 import json
 import logging
-from typing import Any, Callable, Coroutine
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    import asyncio
+    from collections.abc import Coroutine
 
 from aiohttp import WSMsgType
 from aiohttp.web import (
@@ -38,15 +43,15 @@ def ws_handler(
 
                     data: State = json.loads(msg.data)
                     assert "watching_state" in data
-                    data["watching_state"] = WatchingState(data["watching_state"])
+                    data["watching_state"] = WatchingState(
+                        data["watching_state"],
+                    )
                     assert "origin" in data
                     origin = data["origin"]
                     await queue.put(data)
                     continue
 
                 break
-        except:
-            raise
         finally:
             # clear presence
             await queue.put(State(origin=origin))
@@ -65,7 +70,7 @@ async def get_app(queue: asyncio.Queue[State]) -> Application:
 async def start_app(app: Application) -> TCPSite:
     runner = AppRunner(app)
     await runner.setup()
-    webserver = TCPSite(runner, "0.0.0.0", PORT)
+    webserver = TCPSite(runner, "127.0.0.1", PORT)
     await webserver.start()
     _LOGGER.info("Serving WS on %d", PORT)
     return webserver

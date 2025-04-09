@@ -1,5 +1,4 @@
 import argparse
-from typing import Type
 
 from anime_rpc.pollers import BasePoller
 
@@ -7,11 +6,12 @@ from anime_rpc.pollers import BasePoller
 class CLIArgs(argparse.Namespace):
     clear_on_pause: bool
     no_webserver: bool
-    pollers: list[Type[BasePoller]]
+    pollers: list[type[BasePoller]]
 
 
 _parser = argparse.ArgumentParser(
-    "anime-rpc", description="Discord anime integration (rich presence)"
+    "anime-rpc",
+    description="Discord anime integration (rich presence)",
 )
 _parser.add_argument(
     "--clear-on-pause",
@@ -27,7 +27,10 @@ _parser.add_argument(
 POLLERS = BasePoller.get_pollers()
 _parser.add_argument(
     "--poller",
-    help=f"list of pollers to use (comma-separated). Options: {', '.join(POLLERS.keys())}",
+    help=(
+        "list of pollers to use"
+        f" (comma-separated) Options: {', '.join(POLLERS.keys())}"
+    ),
     default=[],
     type=lambda a: [POLLERS[p] for p in a.split(",")],
     dest="pollers",

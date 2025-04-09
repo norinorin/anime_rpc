@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import logging
 import time
-from os.path import getmtime, join
+from pathlib import Path
 from typing import TypedDict
 
 DEFAULT_APPLICATION_ID = 1088900742523392133
@@ -22,18 +24,21 @@ class Config(TypedDict):
     application_id: int  # defaults to DEFAULT_APPLICATION_ID
 
     # CONTEXT
-    path: str
+    path: Path
     read_at: float
 
 
 def read_rpc_config(
-    filedir: str, file: str = "rpc.config", *, last_config: Config | None
+    filedir: str,
+    file: str = "rpc.config",
+    *,
+    last_config: Config | None,
 ) -> Config | None:
-    config: Config = {}  # type: ignore
-    path = join(filedir, file)
+    config: Config = {}  # type: ignore[reportGeneralTypeIssues]
+    path = Path(filedir) / file
 
     try:
-        modified_at = getmtime(path)
+        modified_at = path.stat().st_mtime
     except FileNotFoundError:
         return None
 
@@ -48,7 +53,7 @@ def read_rpc_config(
         return last_config
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with path.open(encoding="utf-8") as f:
             for line in f:
                 if not line or line.startswith("#"):
                     continue
@@ -75,11 +80,12 @@ def read_rpc_config(
 
     # optional settings
     config.setdefault("url", "")
-    config["url_text"] = (
-        config.get("url_text") or "View Anime"  # in case of empty string
-    )
+    # use or in case of empty string
+    config["url_text"] = config.get("url_text") or "View Anime"
     config["rewatching"] = bool(int(config.get("rewatching", 0)))
-    config["application_id"] = int(config.get("application_id", DEFAULT_APPLICATION_ID))
+    config["application_id"] = int(
+        config.get("application_id", DEFAULT_APPLICATION_ID),
+    )
 
     # context
     config["path"] = path

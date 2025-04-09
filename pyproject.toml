@@ -1,0 +1,6 @@
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["S101"]
+
+[tool.pyright]
+typeCheckingMode = "strict"

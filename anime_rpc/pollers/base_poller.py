@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Literal, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict
 
-import aiohttp
 from pymediainfo import MediaInfo
 
-from anime_rpc.config import Config
 from anime_rpc.states import State, WatchingState
+
+if TYPE_CHECKING:
+    import aiohttp
+
+    from anime_rpc.config import Config
 
 
 class Vars(TypedDict):
@@ -36,10 +41,7 @@ class BasePoller(ABC):
         if pattern.lower() == "movie":
             return "Movie", None
 
-        file = (
-            MediaInfo.parse(Path(filedir) / file).general_tracks[0].title
-            or file
-        )
+        file = MediaInfo.parse(Path(filedir) / file).general_tracks[0].title or file
 
         if not (match := re.search(pattern, file)):
             return None
@@ -50,20 +52,20 @@ class BasePoller(ABC):
         return int(ep), title.strip() if title else None
 
     @classmethod
-    def get_empty_state(cls):
+    def get_empty_state(cls) -> State:
         return State(origin=cls.origin())
 
     @classmethod
-    def get_state(cls, vars: Vars, config: Config) -> State:
+    def get_state(cls, vars_: Vars, config: Config) -> State:
         state: State = cls.get_empty_state()
         state["title"] = config["title"]
         state["rewatching"] = config["rewatching"]
-        state["position"] = vars["position"]
-        state["duration"] = vars["duration"]
+        state["position"] = vars_["position"]
+        state["duration"] = vars_["duration"]
         maybe_ep_title = cls.get_ep_title(
             config["match"],
-            vars["file"],
-            vars["filedir"],
+            vars_["file"],
+            vars_["filedir"],
         )
 
         # if nothing matches, return an empty state as to clear the activity
@@ -78,11 +80,11 @@ class BasePoller(ABC):
 
         state["image_url"] = config["image_url"]
         state["url"] = config["url"]
-        state["watching_state"] = vars["state"]
+        state["watching_state"] = vars_["state"]
         state["application_id"] = config["application_id"]
         state["url_text"] = config["url_text"]
         return state
 
     @staticmethod
-    def get_pollers():
+    def get_pollers() -> dict[str, type[BasePoller]]:
         return {s.origin(): s for s in BasePoller.__subclasses__()}

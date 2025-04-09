@@ -26,6 +26,6 @@ async def wait(coro: Coroutine[Any, Any, T], event: asyncio.Event) -> T:
         pass
 
     if task.get_name() == "event":
-        raise Bail()
+        raise Bail
 
-    return cast(T, task.result())
+    return cast("T", task.result())

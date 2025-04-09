@@ -2,17 +2,17 @@ import ast
 import inspect
 import re
 
-import discordrpc  # type: ignore
+import discordrpc  # type: ignore[reportMissingTypeStubs]
 
 
 # s: https://medium.com/@chipiga86/python-monkey-patching-like-a-boss-87d7ddb8098e
-def source(o):  # type: ignore
-    s = inspect.getsource(o).split("\n")  # type: ignore
+def source(o: object) -> str:
+    s = inspect.getsource(o).split("\n")  # type: ignore[reportUnknownArgumentType]
     indent = len(s[0]) - len(s[0].lstrip())
     return "\n".join(i[indent:] for i in s)
 
 
-source_ = source(discordrpc.RPC.set_activity)  # type: ignore
+source_ = source(discordrpc.RPC.set_activity)  # type: ignore[reportUnknownVariableType]
 patched = re.sub(
     r"(remove_none\(act\))",
     r"\1 or None",
@@ -20,5 +20,9 @@ patched = re.sub(
 )
 
 loc = {}
-exec(compile(ast.parse(patched), "presence", "exec"), discordrpc.presence.__dict__, loc)  # type: ignore
+exec(  # noqa: S102
+    compile(ast.parse(patched), "presence", "exec"),
+    discordrpc.presence.__dict__,
+    loc,  # type: ignore[reportUnknownArgumentType]
+)
 discordrpc.RPC.set_activity = loc["set_activity"]

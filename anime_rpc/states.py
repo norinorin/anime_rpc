@@ -1,6 +1,11 @@
+from __future__ import annotations
+
 import logging
 from enum import IntEnum
-from typing import Generator, TypedDict
+from typing import TYPE_CHECKING, TypedDict
+
+if TYPE_CHECKING:
+    from typing import Generator  # noqa: UP035
 
 _LOGGER = logging.getLogger("states")
 
@@ -24,7 +29,8 @@ class State(TypedDict, total=False):
     rewatching: bool
     watching_state: WatchingState
 
-    # keep setting 'origin' to the current active source so that no other source can take control (mpc feeds states every 1 second)
+    # keep setting 'origin' to the current active source
+    # so that no other source can take control (mpc feeds states every 1 second)
     # we don't want our web rpc to be cleared because mpc isn't playing
     origin: str
 
@@ -32,28 +38,30 @@ class State(TypedDict, total=False):
     application_id: int | str
 
 
+_KEYS_TO_IGNORE_CMP: tuple[str, ...] = ("position", "origin")
+_KEYS_TO_IGNORE_LOG: tuple[str, ...] = ("position", "duration")
+
+
 def compare_states(a: State, b: State) -> bool:
-    KEYS_TO_IGNORE: tuple[str, ...] = ("position", "origin")
     a = {**a}
     b = {**b}
 
-    for key in KEYS_TO_IGNORE:
+    for key in _KEYS_TO_IGNORE_CMP:
         a.pop(key, None)
         b.pop(key, None)
 
     return a == b
 
 
-def states_logger(verbose: bool = False) -> Generator[None, State, None]:
+def states_logger(*, verbose: bool = False) -> Generator[None, State, None]:
     last_state: State = State()
-    KEYS_TO_IGNORE = ("position", "duration")
 
     while 1:
         state = yield
         state = State(**state)
 
         if not verbose:
-            for key in KEYS_TO_IGNORE:
+            for key in _KEYS_TO_IGNORE_LOG:
                 state.pop(key, None)
 
             if not state:

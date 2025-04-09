@@ -1,12 +1,11 @@
 import asyncio
 import logging
 import signal
+import sys
 from contextlib import suppress
-from typing import Type
 
 import aiohttp
 
-import anime_rpc.monkey_patch  # type: ignore
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import Config, read_rpc_config
@@ -20,21 +19,28 @@ from anime_rpc.webserver import get_app, start_app
 TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
 POLLING_INTERVAL = 1.0  # fetch vars every 1 second
 
+_LOGGER = logging.getLogger("main")
+
 
 async def poll_player(
-    poller: Type[BasePoller], event: asyncio.Event, queue: asyncio.Queue[State]
-):
+    poller: type[BasePoller],
+    event: asyncio.Event,
+    queue: asyncio.Queue[State],
+) -> None:
     async with aiohttp.ClientSession() as session:
         config: Config | None = None
 
         while not event.is_set():
             state: State = poller.get_empty_state()
-            vars: Vars | None
+            vars_: Vars | None
             try:
-                if (vars := await wait(poller.get_vars(session), event)) and (
-                    config := read_rpc_config(vars["filedir"], last_config=config)
+                if (vars_ := await wait(poller.get_vars(session), event)) and (
+                    config := read_rpc_config(
+                        vars_["filedir"],
+                        last_config=config,
+                    )
                 ):
-                    state = poller.get_state(vars, config)
+                    state = poller.get_state(vars_, config)
             except Bail:
                 return
 
@@ -44,7 +50,7 @@ async def poll_player(
                 await asyncio.wait_for(event.wait(), timeout=POLLING_INTERVAL)
 
 
-async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
+async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]) -> None:
     last_state: State = {}
     last_pos: int = 0
     last_origin: str = ""
@@ -63,9 +69,10 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
 
         origin = state.pop("origin")
 
-        # since mpc polls every second and may return empty states
-        # make it so that an origin can only occupy the rich presence if state is not empty
-        # this will allow other origins to be active while mpc is returning empty states
+        # since mpc polls every second and may return empty states,
+        # make it so that an origin can only occupy the rich presence
+        # if state is not empty. this will allow other origins to be active
+        # while mpc is returning empty states.
         if state and not last_origin:
             last_origin = origin
 
@@ -80,11 +87,19 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         pos: int = state.get("position", 0)
 
         if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
-            logging.debug(
-                "Seeking from %s to %s", ms2timestamp(last_pos), ms2timestamp(pos)
+            _LOGGER.debug(
+                "Seeking from %s to %s",
+                ms2timestamp(last_pos),
+                ms2timestamp(pos),
             )
 
-        last_state = await update_activity(event, state, last_state, origin, seeking)
+        last_state = await update_activity(
+            event,
+            state,
+            last_state,
+            origin,
+            force=seeking,
+        )
 
         # if last_state is empty
         # it's given up control
@@ -93,22 +108,29 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]):
         last_pos = pos
 
 
-async def main():
+async def main() -> None:
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
-    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore
+    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknwonArgumentType]
 
-    consumer_task = asyncio.create_task(consumer_loop(event, queue), name="consumer")
+    consumer_task = asyncio.create_task(
+        consumer_loop(event, queue),
+        name="consumer",
+    )
 
-    logging.info("Pollers used: %s", ", ".join([i.origin() for i in CLI_ARGS.pollers]))
+    _LOGGER.info(
+        "Pollers used: %s",
+        ", ".join([i.origin() for i in CLI_ARGS.pollers]),
+    )
     poller_tasks = [
         asyncio.create_task(
-            poll_player(poller, event, queue), name=poller.__class__.__name__
+            poll_player(poller, event, queue),
+            name=poller.__class__.__name__,
         )
         for poller in CLI_ARGS.pollers
     ]
 
-    logging.info("Waiting for activity feed updates...")
+    _LOGGER.info("Waiting for activity feed updates...")
 
     webserver = None
     if not CLI_ARGS.no_webserver:
@@ -121,15 +143,15 @@ async def main():
         await webserver.stop()
 
 
-def _sigint_callback(event: asyncio.Event):
-    logging.info("Received CTRL+C")
+def _sigint_callback(event: asyncio.Event) -> None:
+    _LOGGER.info("Received CTRL+C")
     asyncio.get_running_loop().call_soon_threadsafe(lambda: event.set())
 
 
 init_logging()
 
 if not CLI_ARGS.pollers and CLI_ARGS.no_webserver:
-    logging.error("Nothing's running. Exiting...")
-    exit(1)
+    _LOGGER.error("Nothing's running. Exiting...")
+    sys.exit(1)
 
 asyncio.run(main())

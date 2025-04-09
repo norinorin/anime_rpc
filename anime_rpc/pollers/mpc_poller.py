@@ -1,11 +1,17 @@
+from __future__ import annotations
+
 import re
+from http import HTTPStatus
 
 import aiohttp
 
 from anime_rpc.pollers.base_poller import BasePoller, Vars
 from anime_rpc.states import WatchingState
 
-P_TAG_PATTERN = re.compile(r'<p id="(file|filedir|state|position|duration)">(.+)<\/p>')
+P_TAG_PATTERN = re.compile(
+    r'<p id="(file|filedir|state|position|duration)"'
+    r">(.+)<\/p>",
+)
 
 
 class MPCPoller(BasePoller):
@@ -17,7 +23,7 @@ class MPCPoller(BasePoller):
 
     @staticmethod
     def _get_vars_html(html: str) -> Vars:
-        ret: Vars = Vars(**{k: v for k, v in P_TAG_PATTERN.findall(html)})
+        ret: Vars = Vars(**dict(P_TAG_PATTERN.findall(html)))
         ret["state"] = WatchingState(int(ret["state"]))
         ret["position"] = int(ret["position"])
         ret["duration"] = int(ret["duration"])
@@ -27,12 +33,12 @@ class MPCPoller(BasePoller):
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
         try:
             async with client.get(
-                f"http://127.0.0.1:{MPCPoller.port}/variables.html"
+                f"http://127.0.0.1:{MPCPoller.port}/variables.html",
             ) as response:
-                if response.status != 200:
+                if response.status != HTTPStatus.OK:
                     return None
 
                 data = await response.text()
                 return MPCPoller._get_vars_html(data)
         except aiohttp.ClientConnectionError:
-            return
+            return None

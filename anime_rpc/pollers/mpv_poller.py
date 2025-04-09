@@ -1,6 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import os
+from http import HTTPStatus
+from pathlib import Path
 from typing import Callable, TypedDict, TypeVar
 
 import aiohttp
@@ -9,6 +13,13 @@ from anime_rpc.pollers.base_poller import BasePoller, Vars
 from anime_rpc.states import WatchingState
 
 T = TypeVar("T")
+MISSING_WORKING_DIR_MSG = (
+    "Missing working-dir entry in mpv-webui response.\n"
+    "Please add the following line to your simple-mpv-webui/main.lua's"
+    " `build_status_response()` function:\n\n"
+    "[\"working-dir\"] = mp.get_property('working-directory') or '',\n\n"
+    "Then restart mpv and try again.",
+)
 
 
 class MPVCommand(TypedDict):
@@ -29,27 +40,28 @@ class MPVPlaylistEntry(TypedDict):
 
 
 def _get_mpv_vars(
+    *,
     playlist: list[MPVPlaylistEntry],
     working_dir: str,
     paused: bool,
     position: float,
     duration: float,
-):
+) -> Vars | None:
     # depending on how you spawn mpv, the filename may be relative or absolute
     # it's absolute if you activate a video file in thunar for example
     # tho it's only absolute in the playlist field
     current = ([i for i in playlist if i.get("current", False)] + [None])[0]
     if not current:
-        return
+        return None
 
-    full_path = current["filename"]
+    full_path = Path(current["filename"])
 
-    if not os.path.isabs(full_path):
-        full_path = os.path.join(working_dir, full_path)
+    if not full_path.is_absolute():
+        full_path = Path(working_dir) / full_path
 
     return Vars(
-        file=os.path.basename(full_path),
-        filedir=os.path.dirname(full_path),
+        file=full_path.name,
+        filedir=str(full_path.parent),
         state=WatchingState.PLAYING if not paused else WatchingState.PAUSED,
         position=int(position * 1000),
         duration=int(duration * 1000),
@@ -67,36 +79,33 @@ class MPVWebUIPoller(BasePoller):
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
         try:
             async with client.get(
-                f"http://127.0.0.1:{MPVWebUIPoller.port}/api/status"
+                f"http://127.0.0.1:{MPVWebUIPoller.port}/api/status",
             ) as response:
-                if response.status != 200:
+                if response.status != HTTPStatus.OK:
                     return None
 
                 data = await response.json()
 
                 if "working-dir" not in data:
-                    raise RuntimeError(
-                        "Missing working-dir entry in mpv-webui response.\n"
-                        "Please add the following line to your simple-mpv-webui/main.lua's `build_status_response()` function:\n\n"
-                        "[\"working-dir\"] = mp.get_property('working-directory') or '',\n\n"
-                        "Then restart mpv and try again."
-                    )
+                    raise RuntimeError(MISSING_WORKING_DIR_MSG)
 
                 return _get_mpv_vars(
-                    data["playlist"],
-                    data["working-dir"],
-                    data["pause"],
-                    data["position"],
-                    data["duration"],
+                    playlist=data["playlist"],
+                    working_dir=data["working-dir"],
+                    paused=data["pause"],
+                    position=data["position"],
+                    duration=data["duration"],
                 )
         except aiohttp.ClientConnectionError:
-            return
+            return None
 
 
 # TODO: maybe consider switching to a hook-based approach
 class MPVIPCPoller(BasePoller):
     # TODO: allow for custom paths
-    ipc_path = "\\\\.\\pipe\\mpv-pipe" if os.name == "nt" else "/tmp/mpvsocket"
+    ipc_path = (
+        "\\\\.\\pipe\\mpv-pipe" if os.name == "nt" else "/tmp/mpvsocket"
+    )  # noqa: S108
 
     if os.name == "nt":
 
@@ -109,13 +118,14 @@ class MPVIPCPoller(BasePoller):
                     return pipe.readline()
             except FileNotFoundError:
                 return b"{}"
+
     else:
 
         @staticmethod
         async def _send_command(command: bytes) -> bytes:
             try:
                 reader, writer = await asyncio.open_unix_connection(
-                    MPVIPCPoller.ipc_path
+                    MPVIPCPoller.ipc_path,
                 )
                 writer.write(command)
                 await writer.drain()
@@ -129,9 +139,14 @@ class MPVIPCPoller(BasePoller):
 
                 writer.close()
                 await writer.wait_closed()
-                return response
-            except (ConnectionRefusedError, ConnectionResetError, FileNotFoundError):
+            except (
+                ConnectionRefusedError,
+                ConnectionResetError,
+                FileNotFoundError,
+            ):
                 return b"{}"
+            else:
+                return response
 
     @classmethod
     def origin(cls) -> str:
@@ -145,12 +160,14 @@ class MPVIPCPoller(BasePoller):
 
     @staticmethod
     async def get_property(
-        property: str, typecast: Callable[[str], T] = str
+        property_: str,
+        /,
+        typecast: Callable[[str], T] = str,
     ) -> T | None:
-        command: MPVCommand = {"command": ["get_property_string", property]}
+        command: MPVCommand = {"command": ["get_property_string", property_]}
         response = await MPVIPCPoller.send_command(command)
         if not response:
-            return
+            return None
 
         return typecast(data) if (data := response["data"]) is not None else None
 
@@ -162,7 +179,8 @@ class MPVIPCPoller(BasePoller):
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
         # is there a way to do this in batch?
         playlist = await MPVIPCPoller.get_property(
-            "playlist", MPVIPCPoller._typecast_playlist
+            "playlist",
+            MPVIPCPoller._typecast_playlist,
         )
         working_dir = await MPVIPCPoller.get_property("working-directory", str)
         paused = await MPVIPCPoller.get_property("pause", lambda x: x == "yes")
@@ -176,6 +194,12 @@ class MPVIPCPoller(BasePoller):
             or position is None
             or duration is None
         ):
-            return
+            return None
 
-        return _get_mpv_vars(playlist, working_dir, paused, position, duration)
+        return _get_mpv_vars(
+            playlist=playlist,
+            working_dir=working_dir,
+            paused=paused,
+            position=position,
+            duration=duration,
+        )
