@@ -41,9 +41,13 @@ class BasePoller(ABC):
         if pattern.lower() == "movie":
             return "Movie", None
 
-        file = MediaInfo.parse(Path(filedir) / file).general_tracks[0].title or file
+        for f in (MediaInfo.parse(Path(filedir) / file).general_tracks[0].title, file):
+            if f is None:
+                continue
 
-        if not (match := re.search(pattern, file)):
+            if match := re.search(pattern, f):
+                break
+        else:
             return None
 
         groups = match.groupdict()
