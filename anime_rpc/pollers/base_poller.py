@@ -1,8 +1,10 @@
 import re
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Literal, TypedDict
 
 import aiohttp
+from pymediainfo import MediaInfo
 
 from anime_rpc.config import Config
 from anime_rpc.states import State, WatchingState
@@ -27,13 +29,20 @@ class BasePoller(ABC):
 
     @staticmethod
     def get_ep_title(
-        pattern: str, file: str
+        pattern: str,
+        file: str,
+        filedir: str,
     ) -> tuple[int, str | None] | tuple[Literal["Movie"], None] | None:
         if pattern.lower() == "movie":
             return "Movie", None
 
+        file = (
+            MediaInfo.parse(Path(filedir) / file).general_tracks[0].title
+            or file
+        )
+
         if not (match := re.search(pattern, file)):
-            return
+            return None
 
         groups = match.groupdict()
         ep = groups["ep"]
@@ -51,7 +60,11 @@ class BasePoller(ABC):
         state["rewatching"] = config["rewatching"]
         state["position"] = vars["position"]
         state["duration"] = vars["duration"]
-        maybe_ep_title = cls.get_ep_title(config["match"], vars["file"])
+        maybe_ep_title = cls.get_ep_title(
+            config["match"],
+            vars["file"],
+            vars["filedir"],
+        )
 
         # if nothing matches, return an empty state as to clear the activity
         if not maybe_ep_title:
