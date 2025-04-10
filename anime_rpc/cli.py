@@ -66,5 +66,8 @@ def print_cli_args() -> None:
         "Pollers used: %s",
         ", ".join(p.origin() for p in CLI_ARGS.pollers) or "none",
     )
-    _LOGGER.info("Webserver: %s", CLI_ARGS.enable_webserver and "enabled" or "disabled")
+    _LOGGER.info(
+        "Webserver: %s",
+        (CLI_ARGS.enable_webserver and "enabled") or "disabled",
+    )
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
