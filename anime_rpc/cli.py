@@ -1,5 +1,6 @@
 import argparse
 import logging
+import shlex
 
 from anime_rpc import __version__
 from anime_rpc.pollers import BasePoller
@@ -56,7 +57,7 @@ _parser.add_argument(
     version=f"%(prog)s {__version__}",
     help="show program's version number and exit",
 )
-CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)
+CLI_ARGS, _unknown_args = _parser.parse_known_args(namespace=CLIArgs)
 
 
 def print_cli_args() -> None:
@@ -70,3 +71,6 @@ def print_cli_args() -> None:
         (CLI_ARGS.enable_webserver and "enabled") or "disabled",
     )
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
+
+    if _unknown_args:
+        _LOGGER.warning("Unknown arguments: %s", shlex.join(_unknown_args))
