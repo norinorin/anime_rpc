@@ -80,8 +80,7 @@ def read_rpc_config(
 
     # optional settings
     config.setdefault("url", "")
-    # use or in case of empty string
-    config["url_text"] = config.get("url_text") or "View Anime"
+    config["url_text"] = config.get("url_text", "View Anime")
     config["rewatching"] = bool(int(config.get("rewatching", 0)))
     config["application_id"] = int(
         config.get("application_id", DEFAULT_APPLICATION_ID),

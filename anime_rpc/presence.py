@@ -147,9 +147,9 @@ async def update_activity(
         "large_image": state["image_url"],
     }
 
-    if url := state.get("url"):
+    if (url := state.get("url")) and (url_text := state.get("url_text")):
         assert "url_text" in state
-        kwargs["buttons"] = [{"label": state["url_text"], "url": url}]
+        kwargs["buttons"] = [{"label": url_text, "url": url}]
 
     assert "episode" in state
     assert "position" in state
