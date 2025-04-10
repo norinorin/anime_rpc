@@ -38,6 +38,7 @@ And more coming!
 - [ ] Add a formatting template for `rpc.config.match` (`{{ep}}`, `{{ep_title}}`).
 - [ ] Rework browser extension.
 - [ ] Add more support for anime sites and media players.
+- [ ] Implement a customizable formatting.
 
 ## License
 MIT
