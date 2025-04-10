@@ -32,14 +32,13 @@ _parser.add_argument(
 )
 POLLERS = BasePoller.get_pollers()
 _parser.add_argument(
-    "--poller",
+    "--pollers",
     help=(
         "list of pollers to use"
         f" (comma-separated) Options: {', '.join(POLLERS.keys())}"
     ),
     default=[],
     type=lambda a: [POLLERS[p] for p in a.split(",")],
-    dest="pollers",
 )
 _parser.add_argument(
     "--fetch-episode-titles",
