@@ -29,9 +29,10 @@ class State(TypedDict, total=False):
     rewatching: bool
     watching_state: WatchingState
 
-    # keep setting 'origin' to the current active source
-    # so that no other source can take control (mpc feeds states every 1 second)
-    # we don't want our web rpc to be cleared because mpc isn't playing
+    # origin must always be set so we know where it's coming from,
+    # i.e., if multiple pollers are used, we know if the clear presence request
+    # is coming from the active poller.
+    # essentially an identity for pollers.
     origin: str
 
     # allow str for browser extensions (js)

@@ -74,10 +74,9 @@ async def consumer_loop(
 
         origin = state.pop("origin")
 
-        # since mpc polls every second and may return empty states,
-        # make it so that an origin can only occupy the rich presence
-        # if state is not empty. this will allow other origins to be active
-        # while mpc is returning empty states.
+        # since multiple pollers can be used, one of them may return empty states,
+        # which will interrupt an "active" poller, i.e., clear its presence.
+        # ensure that exactly only one origin can occupy the rich presence at a time.
         if state and not last_origin:
             last_origin = origin
 
