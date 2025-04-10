@@ -6,13 +6,13 @@ from contextlib import suppress
 
 import aiohttp
 
-from anime_rpc import monkey_patch  # type: ignore[reportUnusedImport] # noqa: F401
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
 from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.formatting import ms2timestamp
+from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller, Vars
-from anime_rpc.presence import update_activity
+from anime_rpc.presence import Presence
 from anime_rpc.scraper import update_episode_title_in
 from anime_rpc.states import State, states_logger
 from anime_rpc.ux import init_logging
@@ -55,6 +55,7 @@ async def poll_player(
 async def consumer_loop(
     event: asyncio.Event, queue: asyncio.Queue[State], session: aiohttp.ClientSession
 ) -> None:
+    presence = Presence(event)
     last_state: State = {}
     last_pos: int = 0
     last_origin: str = ""
@@ -100,13 +101,18 @@ async def consumer_loop(
                 ms2timestamp(pos),
             )
 
-        last_state = await update_activity(
-            event,
-            state,
-            last_state,
-            origin,
-            force=seeking,
-        )
+        try:
+            last_state = await wait(
+                presence.update(
+                    state,
+                    last_state,
+                    origin,
+                    force=seeking,
+                ),
+                event,
+            )
+        except Bail:
+            return
 
         # if last_state is empty
         # it's given up control
@@ -160,5 +166,7 @@ init_logging()
 if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
     _LOGGER.error("Nothing's running. Exiting...")
     sys.exit(1)
+
+patch_pypresence()
 
 asyncio.run(main())

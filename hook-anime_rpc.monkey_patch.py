@@ -1,1 +1,1 @@
-module_collection_mode = {"discordrpc.presence": "pyz+py"}
+module_collection_mode = {"pypresence.presence": "pyz+py", "pypresence.baseclient": "pyz+py"}

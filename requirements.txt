@@ -1,4 +1,4 @@
-discord_rpc==5.1
+git+https://github.com/qwertyquerty/pypresence.git@4e882c3#egg=pypresence
 aiohttp>=3.10.11
 pymediainfo==7.0.1
 beautifulsoup4==4.13.3
