@@ -1,6 +1,7 @@
 import logging
 import os
-import sys
+
+import coloredlogs  # type: ignore[reportMissingTypeStubs]
 
 
 def init_logging():
@@ -9,9 +10,5 @@ def init_logging():
         logging.root.removeHandler(handler)
 
     logging.getLogger("Discord RPC").disabled = True
-
-    logging.basicConfig(
-        level=os.getenv("ANIME_RPC_LOG_LEVEL", "INFO"),
-        format="%(levelname)-1.1s %(asctime)23.23s %(name)s: %(message)s",
-        stream=sys.stderr,
-    )
+    level = os.getenv("ANIME_RPC_LOG_LEVEL", "INFO").upper()
+    coloredlogs.install(level=level)  # type: ignore[reposrtUnknownMemberType]
