@@ -1,6 +1,6 @@
 import asyncio
-from collections.abc import Coroutine
-from typing import Any, TypeVar, cast
+from collections.abc import Awaitable
+from typing import TypeVar, cast
 
 T = TypeVar("T")
 
@@ -8,10 +8,13 @@ T = TypeVar("T")
 class Bail(Exception): ...
 
 
-async def wait(coro: Coroutine[Any, Any, T], event: asyncio.Event) -> T:
+async def wait(awaitable: Awaitable[T], event: asyncio.Event) -> T:
+    async def _wrap(awaitable: Awaitable[T]) -> T:
+        return await awaitable
+
     done, pending = await asyncio.wait(
         [
-            asyncio.Task(coro, name="queue"),
+            asyncio.Task(_wrap(awaitable), name="coro"),
             asyncio.Task(event.wait(), name="event"),
         ],
         return_when=asyncio.FIRST_COMPLETED,
