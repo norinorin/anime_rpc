@@ -6,6 +6,7 @@ from contextlib import suppress
 
 import aiohttp
 
+from anime_rpc import monkey_patch  # type: ignore[reportUnusedImport] # noqa: F401
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import Config, read_rpc_config
