@@ -13,6 +13,7 @@ from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.pollers import BasePoller, Vars
 from anime_rpc.presence import update_activity
+from anime_rpc.scraper import update_episode_title_in
 from anime_rpc.states import State, states_logger
 from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
@@ -27,31 +28,33 @@ async def poll_player(
     poller: type[BasePoller],
     event: asyncio.Event,
     queue: asyncio.Queue[State],
+    session: aiohttp.ClientSession,
 ) -> None:
-    async with aiohttp.ClientSession() as session:
-        config: Config | None = None
+    config: Config | None = None
 
-        while not event.is_set():
-            state: State = poller.get_empty_state()
-            vars_: Vars | None
-            try:
-                if (vars_ := await wait(poller.get_vars(session), event)) and (
-                    config := read_rpc_config(
-                        vars_["filedir"],
-                        last_config=config,
-                    )
-                ):
-                    state = poller.get_state(vars_, config)
-            except Bail:
-                return
+    while not event.is_set():
+        state: State = poller.get_empty_state()
+        vars_: Vars | None
+        try:
+            if (vars_ := await wait(poller.get_vars(session), event)) and (
+                config := read_rpc_config(
+                    vars_["filedir"],
+                    last_config=config,
+                )
+            ):
+                state = poller.get_state(vars_, config)
+        except Bail:
+            return
 
-            await queue.put(state)
+        await queue.put(state)
 
-            with suppress(asyncio.TimeoutError):
-                await asyncio.wait_for(event.wait(), timeout=POLLING_INTERVAL)
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(event.wait(), timeout=POLLING_INTERVAL)
 
 
-async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]) -> None:
+async def consumer_loop(
+    event: asyncio.Event, queue: asyncio.Queue[State], session: aiohttp.ClientSession
+) -> None:
     last_state: State = {}
     last_pos: int = 0
     last_origin: str = ""
@@ -87,6 +90,9 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]) -> No
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
 
+        if CLI_ARGS.fetch_episode_titles:
+            state = await update_episode_title_in(state, session)
+
         if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             _LOGGER.debug(
                 "Seeking from %s to %s",
@@ -112,10 +118,11 @@ async def consumer_loop(event: asyncio.Event, queue: asyncio.Queue[State]) -> No
 async def main() -> None:
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
+    session = aiohttp.ClientSession()
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
 
     consumer_task = asyncio.create_task(
-        consumer_loop(event, queue),
+        consumer_loop(event, queue, session),
         name="consumer",
     )
 
@@ -125,7 +132,7 @@ async def main() -> None:
     )
     poller_tasks = [
         asyncio.create_task(
-            poll_player(poller, event, queue),
+            poll_player(poller, event, queue, session),
             name=poller.__class__.__name__,
         )
         for poller in CLI_ARGS.pollers
@@ -142,6 +149,8 @@ async def main() -> None:
 
     if webserver is not None:
         await webserver.stop()
+
+    await session.close()
 
 
 def _sigint_callback(event: asyncio.Event) -> None:

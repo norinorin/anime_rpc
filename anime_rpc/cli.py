@@ -7,6 +7,7 @@ class CLIArgs(argparse.Namespace):
     clear_on_pause: bool
     no_webserver: bool
     pollers: list[type[BasePoller]]
+    fetch_episode_titles: bool
 
 
 _parser = argparse.ArgumentParser(
@@ -34,5 +35,14 @@ _parser.add_argument(
     default=[],
     type=lambda a: [POLLERS[p] for p in a.split(",")],
     dest="pollers",
+)
+_parser.add_argument(
+    "--fetch-episode-titles",
+    action="store_true",
+    help=(
+        "automatically fetch episode titles if ep_title "
+        "is not present/captured by the match expression"
+    ),
+    default=False,
 )
 CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)

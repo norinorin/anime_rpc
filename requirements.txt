@@ -1,3 +1,4 @@
 discord_rpc==5.1
 aiohttp>=3.10.11
 pymediainfo==7.0.1
+beautifulsoup4==4.13.3
