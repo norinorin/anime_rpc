@@ -138,7 +138,7 @@ async def main() -> None:
     _LOGGER.info("Waiting for activity feed updates...")
 
     webserver = None
-    if not CLI_ARGS.no_webserver:
+    if CLI_ARGS.enable_webserver:
         app = await get_app(queue)
         webserver = await start_app(app)
 
@@ -157,7 +157,7 @@ def _sigint_callback(event: asyncio.Event) -> None:
 
 init_logging()
 
-if not CLI_ARGS.pollers and CLI_ARGS.no_webserver:
+if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
     _LOGGER.error("Nothing's running. Exiting...")
     sys.exit(1)
 
