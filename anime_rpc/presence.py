@@ -49,6 +49,21 @@ class ActivityOptions(TypedDict, total=False):
     buttons: list[dict[str, str]] | None
 
 
+class StateOptions(TypedDict):
+    """Basically validated State."""
+
+    title: str
+    episode: int | str
+    ep_title: str | None
+    position: int
+    duration: int
+    now: int
+    is_movie: bool
+    watching_state: WatchingState
+    rewatching: bool
+    origin: str
+
+
 class Presence:
     def __init__(self, event: asyncio.Event) -> None:
         self._rpc: AioPresence | None = None
@@ -125,6 +140,77 @@ class Presence:
     def _now() -> int:
         return int(time.mktime(time.localtime()))
 
+    def _get_large_text(self, **kwargs: Unpack[StateOptions]) -> str:
+        watching_state = kwargs["watching_state"]
+        ep_title = kwargs["ep_title"]
+        rewatching = kwargs["rewatching"]
+        title = kwargs["title"]
+        origin = kwargs["origin"]
+        show_title_in_large_text = (
+            watching_state == WatchingState.PAUSED and ep_title is not None
+        )
+        return (
+            f"{('re' * rewatching + 'watching').title()} "
+            f"{(quote(title)+' ') * show_title_in_large_text}"
+            f"on {ORIGIN2SERVICE.get(origin, origin)}"
+        )
+
+    def _get_playing_state_kwargs(
+        self,
+        **kwargs: Unpack[StateOptions],
+    ) -> ActivityOptions:
+        title = kwargs["title"]
+        now = kwargs["now"]
+        pos = kwargs["position"]
+        dur = kwargs["duration"]
+        ep = kwargs["episode"]
+        is_movie = kwargs["is_movie"]
+        ep_title = kwargs["ep_title"]
+        return cast(
+            "ActivityOptions",
+            {
+                "details": title,
+                "state": (
+                    f"{'Episode ' * (not is_movie)}{ep}"
+                    f" {quote(ep_title) if ep_title else ''}"
+                ),
+                "start": now - pos // 1_000,
+                "end": now + (dur - pos) // 1_000,
+                "small_text": "Playing",
+                "small_image": ASSETS["PLAYING"],
+            },
+        )
+
+    def _get_paused_state_kwargs(
+        self,
+        **kwargs: Unpack[StateOptions],
+    ) -> ActivityOptions:
+        title = kwargs["title"]
+        pos = kwargs["position"]
+        dur = kwargs["duration"]
+        ep = kwargs["episode"]
+        is_movie = kwargs["is_movie"]
+        ep_title = kwargs["ep_title"]
+        details = (
+            title
+            if is_movie
+            else (
+                f"Episode {ep} {quote(ep_title)}"
+                if ep_title
+                else f"{quote(title)} E{ep}"
+            )
+        )
+        return cast(
+            "ActivityOptions",
+            {
+                "details": details,
+                "state": "Paused - "
+                + " / ".join([ms2timestamp(i) for i in (pos, dur)]),
+                "small_text": "Paused",
+                "small_image": ASSETS["PAUSED"],
+            },
+        )
+
     async def update(
         self,
         state: State,
@@ -133,26 +219,34 @@ class Presence:
         *,
         force: bool = False,
     ) -> State:
-        application_id = int(state.get("application_id", DEFAULT_APPLICATION_ID))
-
         if not state:
             return await self._clear(last_state)
 
         assert "title" in state
-        assert "rewatching" in state
+        assert "episode" in state
+        assert "position" in state
+        assert "duration" in state
         assert "image_url" in state
-        title = state["title"]
+        assert "rewatching" in state
+
+        application_id = int(state.get("application_id", DEFAULT_APPLICATION_ID))
         watching_state = state.get("watching_state", WatchingState.NOT_AVAILABLE)
-        ep_title = state.get("episode_title")
-        show_title_in_large_text = (
-            watching_state == WatchingState.PAUSED and ep_title is not None
-        )
+
+        state_opts: StateOptions = {
+            "now": self._now(),
+            "title": state["title"],
+            "episode": state["episode"],
+            "ep_title": state.get("episode_title"),
+            "position": state["position"],
+            "duration": state["duration"],
+            "is_movie": state["episode"] == "Movie",
+            "rewatching": state["rewatching"],
+            "watching_state": state.get("watching_state", WatchingState.NOT_AVAILABLE),
+            "origin": origin,
+        }
+
         kwargs: dict[str, Any] = {
-            "large_text": (
-                f"{('re' * state['rewatching'] + 'watching').title()} "
-                f"{(quote(title)+' ') * show_title_in_large_text}"
-                f"on {ORIGIN2SERVICE.get(origin, origin)}"
-            ),
+            "large_text": self._get_large_text(**state_opts),
             "activity_type": 3,
             "large_image": state["image_url"],
         }
@@ -161,41 +255,10 @@ class Presence:
             assert "url_text" in state
             kwargs["buttons"] = [{"label": url_text, "url": url}]
 
-        assert "episode" in state
-        assert "position" in state
-        assert "duration" in state
-
-        _now = self._now()
-        ep = state["episode"]
-        pos = state["position"]
-        dur = state["duration"]
-        is_movie = ep == "Movie"
-
         if watching_state == WatchingState.PLAYING:
-            kwargs["details"] = state["title"]
-            kwargs["state"] = (
-                f"{'Episode ' * (not is_movie)}{ep}"
-                f" {quote(ep_title) if ep_title else ''}"
-            )
-            kwargs["start"] = _now - pos // 1_000
-            kwargs["end"] = _now + (dur - pos) // 1_000
-            kwargs["small_text"] = "Playing"
-            kwargs["small_image"] = ASSETS["PLAYING"]
+            kwargs.update(self._get_playing_state_kwargs(**state_opts))
         elif watching_state == WatchingState.PAUSED and not CLI_ARGS.clear_on_pause:
-            kwargs["details"] = (
-                title
-                if is_movie
-                else (
-                    f"Episode {ep} {quote(ep_title)}"
-                    if ep_title
-                    else f"{quote(title)} E{ep}"
-                )
-            )
-            kwargs["state"] = "Paused - " + " / ".join(
-                [ms2timestamp(i) for i in (pos, dur)],
-            )
-            kwargs["small_text"] = "Paused"
-            kwargs["small_image"] = ASSETS["PAUSED"]
+            kwargs.update(self._get_paused_state_kwargs(**state_opts))
         else:
             return await self._clear(last_state)
 
@@ -206,7 +269,8 @@ class Presence:
         _LOGGER.info(
             "Setting presence to [%s] %s @ %s",
             watching_state.name,
-            f"{state['title']}" + f" E{ep}" * (not is_movie),
+            f"{state['title']}"
+            + f" E{state['episode']}" * (not state_opts["is_movie"]),
             ms2timestamp(state["position"]),
         )
         await self._update(application_id, **kwargs)
