@@ -1,6 +1,16 @@
-# Anime RPC [![Licence](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+<h1 align="center">
+  Anime RPC
+  <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+</h1>
 
-A Rich Presence integration for Discord to show what anime you are watching.
+<p align="center">
+  A Rich Presence integration for Discord to show what (anime) you are watching.
+</p>
+
+<p align="center">
+  <img alt="anime rich presence" src="assets/docs/anime.png" />
+  <img alt="generic stream rich presence" src="assets/docs/generic.png">
+</p>
 
 --- 
 
@@ -38,7 +48,7 @@ And more coming!
 - [ ] Add a formatting template for `rpc.config.match` (`{{ep}}`, `{{ep_title}}`).
 - [ ] Rework browser extension.
 - [ ] Add more support for anime sites and media players.
-- [ ] Implement a customizable formatting.
+- [ ] Implement a customisable formatting.
 
 ## License
 MIT
