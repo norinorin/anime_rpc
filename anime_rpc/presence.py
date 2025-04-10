@@ -132,10 +132,12 @@ async def update_activity(
     assert "rewatching" in state
     assert "image_url" in state
     title = state["title"]
+    watching_state = state.get("watching_state", WatchingState.NOT_AVAILABLE)
     kwargs: dict[str, Any] = {
         "large_text": (
-            f"{('re' * state['rewatching'] + 'watching').title()}"
-            f" on {ORIGIN2SERVICE.get(origin, origin)}"
+            f"{('re' * state['rewatching'] + 'watching').title()} "
+            f"{(quote(title)+' ') * (watching_state == WatchingState.PAUSED)}"
+            f"on {ORIGIN2SERVICE.get(origin, origin)}"
         ),
         "act_type": 3,
         "large_image": state["image_url"],
@@ -150,7 +152,6 @@ async def update_activity(
     assert "duration" in state
 
     _now = now()
-    watching_state = state.get("watching_state", WatchingState.NOT_AVAILABLE)
     ep = state["episode"]
     ep_title = state.get("episode_title")
     pos = state["position"]
