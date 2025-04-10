@@ -1,6 +1,9 @@
 import argparse
+import logging
 
 from anime_rpc.pollers import BasePoller
+
+_LOGGER = logging.getLogger("cli")
 
 
 class CLIArgs(argparse.Namespace):
@@ -46,3 +49,10 @@ _parser.add_argument(
     default=False,
 )
 CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)
+
+
+def print_cli_args() -> None:
+    _LOGGER.info("Clear presence on pause: %s", CLI_ARGS.clear_on_pause)
+    _LOGGER.info("Pollers used: %s", ", ".join(p.origin() for p in CLI_ARGS.pollers))
+    _LOGGER.info("Webserver: %s", CLI_ARGS.no_webserver and "disabled" or "enabled")
+    _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)

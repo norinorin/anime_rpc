@@ -8,7 +8,7 @@ import aiohttp
 
 from anime_rpc import monkey_patch  # type: ignore[reportUnusedImport] # noqa: F401
 from anime_rpc.asyncio_helper import Bail, wait
-from anime_rpc.cli import CLI_ARGS
+from anime_rpc.cli import CLI_ARGS, print_cli_args
 from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.pollers import BasePoller, Vars
@@ -116,6 +116,8 @@ async def consumer_loop(
 
 
 async def main() -> None:
+    print_cli_args()
+
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
     session = aiohttp.ClientSession()
@@ -124,11 +126,6 @@ async def main() -> None:
     consumer_task = asyncio.create_task(
         consumer_loop(event, queue, session),
         name="consumer",
-    )
-
-    _LOGGER.info(
-        "Pollers used: %s",
-        ", ".join([i.origin() for i in CLI_ARGS.pollers]),
     )
     poller_tasks = [
         asyncio.create_task(
