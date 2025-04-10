@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from anime_rpc import __version__
 from anime_rpc.pollers import BasePoller
 
 _LOGGER = logging.getLogger("cli")
@@ -48,6 +49,13 @@ _parser.add_argument(
         "is not present/captured by the match expression"
     ),
     default=False,
+)
+_parser.add_argument(
+    "-v",
+    "--version",
+    action="version",
+    version=f"%(prog)s {__version__}",
+    help="show program's version number and exit",
 )
 CLI_ARGS, *_ = _parser.parse_known_args(namespace=CLIArgs)
 
