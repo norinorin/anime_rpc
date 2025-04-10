@@ -31,6 +31,8 @@ anime_rpc looks for a configuration file called `rpc.config` in the anime folder
 | mpc              | poller     | polls MPC via its web api. |
 | BiliBili         | websocket  | support for [Bstation](https://www.bilibili.tv/anime). |
 
+And more coming!
+
 ## Plans
 - [ ] Automatically generate a regex given filenames in a folder.
 - [ ] Add a formatting template for `rpc.config.match` (`{{ep}}`, `{{ep_title}}`).
