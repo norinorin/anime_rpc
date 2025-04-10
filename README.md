@@ -39,7 +39,7 @@ anime_rpc looks for a configuration file called `rpc.config` in the anime folder
 |------------------|------------|---------------------------------------------------|
 | mpv              | poller     | polls mpv via native ipc socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). |
 | mpc              | poller     | polls MPC via its web api. |
-| BiliBili         | websocket  | support for [Bstation](https://www.bilibili.tv/anime). |
+| bilibili.tv      | websocket  | support for [Bstation](https://www.bilibili.tv/anime). |
 
 And more coming!
 
