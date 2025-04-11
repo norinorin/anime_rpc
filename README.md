@@ -1,6 +1,7 @@
 <h1 align="center">
   Anime RPC
   <a href="LICENSE"><img alt="license" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <a><img alt="latest commit" src="https://img.shields.io/github/last-commit/norinorin/anime_rpc/main"></a>
 </h1>
 
 <p align="center">
