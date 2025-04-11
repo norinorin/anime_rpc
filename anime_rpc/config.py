@@ -55,10 +55,12 @@ def read_rpc_config(
     try:
         with path.open(encoding="utf-8") as f:
             for line in f:
-                if not line or line.startswith("#"):
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
                     continue
 
-                key, value = line.split("=", maxsplit=1)
+                _LOGGER.debug("Parsing line %s", stripped)
+                key, value = stripped.split("=", maxsplit=1)
                 config[key] = value.strip()
     except FileNotFoundError:
         return None
