@@ -16,7 +16,7 @@ class CLIArgs(argparse.Namespace):
 
 
 _parser = argparse.ArgumentParser(
-    "anime-rpc",
+    "anime_rpc",
     description="Discord anime integration (rich presence)",
     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=40),
 )
