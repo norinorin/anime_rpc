@@ -46,7 +46,7 @@ And more coming!
 
 ## Plans
 - [ ] Automatically generate a regex given filenames in a folder.
-- [ ] Add formatting templates for `rpc.config.match` (`{{ep}}`, `{{ep_title}}`).
+- [x] Add formatting templates for `rpc.config.match` (`%ep%`, `%title%`).
 - [ ] Rework browser extension.
 - [ ] Add more support for anime sites and media players.
 - [ ] Implement a customisable formatting.

@@ -15,6 +15,10 @@ if TYPE_CHECKING:
     from anime_rpc.config import Config
 
 
+EP_TEMPLATE = ("%ep%", r"(?P<ep>\d+)")
+EP_TITLE_TEMPLATE = ("%title%", r"(?P<title>.+)")
+
+
 class Vars(TypedDict):
     file: str
     filedir: str
@@ -40,6 +44,8 @@ class BasePoller(ABC):
     ) -> tuple[int, str | None] | tuple[Literal["Movie"], None] | None:
         if pattern.lower() == "movie":
             return "Movie", None
+
+        pattern = pattern.replace(*EP_TEMPLATE, 1).replace(*EP_TITLE_TEMPLATE, 1)
 
         for f in (MediaInfo.parse(Path(filedir) / file).general_tracks[0].title, file):
             if f is None:
