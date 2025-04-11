@@ -29,7 +29,7 @@ pip install -r requirements.txt
 
 3. Run the app:
 ```sh
-python -OOm anime_rpc
+python -OOm anime_rpc -h
 ```
 
 ## Configuration
@@ -42,7 +42,7 @@ anime_rpc looks for a configuration file called `rpc.config` in the anime folder
 | mpc              | poller     | polls MPC via its web api. |
 | bilibili.tv      | websocket  | support for [Bstation](https://www.bilibili.tv/anime). |
 
-And more coming!
+and more coming!
 
 ## Plans
 - [ ] Automatically generate a regex given filenames in a folder.
