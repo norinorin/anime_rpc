@@ -100,7 +100,8 @@ async def scrape_episodes(
 
 
 async def update_episode_title_in(
-    state: State, session: aiohttp.ClientSession
+    state: State,
+    session: aiohttp.ClientSession,
 ) -> State:
     episodes = await scrape_episodes(session, state)
     # scraping fails, no need to mutate
