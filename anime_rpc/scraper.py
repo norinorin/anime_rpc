@@ -21,20 +21,37 @@ CACHE_DIR = Path("~/.cache/anime_rpc").expanduser()
 _LOGGER = logging.getLogger("scraper")
 
 
-async def _get_episodes_url(session: aiohttp.ClientSession, url: str) -> str | None:
-    _LOGGER.info("Getting episodes url from %s", url)
+class PossibleInvalidURLError(Exception):
+    """A signal if the URL is invalid (returns 403 or 404).
+
+    The caller should handle this error by caching an empty dict
+    so we don't spam calls to this URL.
+    """
+
+
+async def _get_text(session: aiohttp.ClientSession, url: str) -> str | None:
     async with session.get(url) as response:
         if response.status != HTTPStatus.OK:
             _LOGGER.error("Failed to fetch %s. Code: %d", url, response.status)
+            if response.status in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN):
+                raise PossibleInvalidURLError
             return None
 
-        html = await response.text()
-        soup = BeautifulSoup(html, "html.parser")
-        for a in soup.select("#horiznav_nav ul li a"):
-            if a.string == "Episodes":
-                url = str(a["href"])
-                _LOGGER.info("Found episodes url: %s", url)
-                return str(a["href"])
+        return await response.text()
+
+
+async def _get_episodes_url(session: aiohttp.ClientSession, url: str) -> str | None:
+    _LOGGER.info("Getting episodes url from %s", url)
+
+    if (html := await _get_text(session, url)) is None:
+        return None
+
+    soup = BeautifulSoup(html, "html.parser")
+    for a in soup.select("#horiznav_nav ul li a"):
+        if a.string == "Episodes":
+            url = str(a["href"])
+            _LOGGER.info("Found episodes url: %s", url)
+            return str(a["href"])
 
     return None
 
@@ -46,25 +63,22 @@ async def _get_episodes(
     sort: bool = True,
 ) -> dict[str, str]:
     _LOGGER.info("Getting episodes from %s", url)
+
     ret: dict[str, str] = {}
+    if (html := await _get_text(session, url)) is None:
+        return ret
 
-    async with session.get(url) as response:
-        if response.status != HTTPStatus.OK:
-            _LOGGER.error("Failed to fetch %s. Code: %d", url, response.status)
-            return ret
+    soup = BeautifulSoup(html, "html.parser")
+    for row in soup.select("tr.episode-list-data"):
+        number_cell = row.select_one("td.episode-number")
+        title_cell = row.select_one("td.episode-title a")
 
-        html = await response.text()
-        soup = BeautifulSoup(html, "html.parser")
-        for row in soup.select("tr.episode-list-data"):
-            number_cell = row.select_one("td.episode-number")
-            title_cell = row.select_one("td.episode-title a")
+        if not (number_cell and title_cell):
+            continue
 
-            if not (number_cell and title_cell):
-                continue
-
-            episode_number = number_cell.get_text(strip=True)
-            episode_title = title_cell.get_text(strip=True)
-            ret[episode_number] = episode_title
+        episode_number = number_cell.get_text(strip=True)
+        episode_title = title_cell.get_text(strip=True)
+        ret[episode_number] = episode_title
 
     if sort:
         ret = dict(
@@ -101,11 +115,18 @@ async def scrape_episodes(
         _LOGGER.debug("Episode title already present, skipping scraping")
         return None
 
-    if not (episodes_url := await _get_episodes_url(session, url)):
-        return None
+    episodes: dict[str, str] = {}
 
-    episodes = await _get_episodes(session, episodes_url)
-    _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
+    try:
+        if not (episodes_url := await _get_episodes_url(session, url)):
+            return None
+
+        episodes = await _get_episodes(session, episodes_url)
+    except PossibleInvalidURLError:
+        _LOGGER.error("Caching %s as an invalid URL", url)  # noqa: TRY400
+    else:
+        _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
+
     with cached.open("w", encoding="utf-8") as f:
         _LOGGER.info(
             "Dumping episodes:\n%s to %s",
