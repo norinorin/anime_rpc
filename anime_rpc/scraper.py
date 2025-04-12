@@ -74,8 +74,8 @@ async def scrape_episodes(
 
     cache_path = Path("~/.anime_rpc/.cache").expanduser()
     cache_path.mkdir(parents=True, exist_ok=True)
-    id = int(match.group("id"))
-    if (cached := (cache_path / f"{id}.json")).exists():
+    id_ = int(match.group("id"))
+    if (cached := (cache_path / f"{id_}.json")).exists():
         # TODO: handle case where the cache is outdated
         # i.e., the user is watching a new episode of an ongoing anime
         _LOGGER.debug("Using cached episodes for %s", url)
