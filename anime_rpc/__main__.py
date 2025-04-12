@@ -88,7 +88,10 @@ async def consumer_loop(
         logger.send(state)
 
         if CLI_ARGS.fetch_episode_titles:
-            state = await update_episode_title_in(state, session)
+            try:
+                state = await wait(update_episode_title_in(state, session), event)
+            except Bail:
+                return
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
