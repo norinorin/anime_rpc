@@ -21,28 +21,30 @@ _LOGGER = logging.getLogger("scraper")
 
 
 async def _get_episodes_url(session: aiohttp.ClientSession, url: str) -> str | None:
-    _LOGGER.debug("Getting episodes url from %s", url)
+    _LOGGER.info("Getting episodes url from %s", url)
     async with session.get(url) as response:
         if response.status != HTTPStatus.OK:
-            _LOGGER.info("Failed to fetch %s. Code: %d", url, response.status)
+            _LOGGER.error("Failed to fetch %s. Code: %d", url, response.status)
             return None
 
         html = await response.text()
         soup = BeautifulSoup(html, "html.parser")
         for a in soup.select("#horiznav_nav ul li a"):
             if a.string == "Episodes":
+                url = str(a["href"])
+                _LOGGER.info("Found episodes url: %s", url)
                 return str(a["href"])
 
     return None
 
 
 async def _get_episodes(session: aiohttp.ClientSession, url: str) -> dict[str, str]:
-    _LOGGER.debug("Getting episodes from %s", url)
+    _LOGGER.info("Getting episodes from %s", url)
     ret: dict[str, str] = {}
 
     async with session.get(url) as response:
         if response.status != HTTPStatus.OK:
-            _LOGGER.info("Failed to fetch %s. Code: %d", url, response.status)
+            _LOGGER.error("Failed to fetch %s. Code: %d", url, response.status)
             return ret
 
         html = await response.text()
@@ -92,9 +94,9 @@ async def scrape_episodes(
         return None
 
     episodes = await _get_episodes(session, episodes_url)
-    _LOGGER.debug("Scraped %d episodes from %s", len(episodes), episodes_url)
+    _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
     with cached.open("w", encoding="utf-8") as f:
-        _LOGGER.debug("Dumping %s to %s", episodes, cached)
+        _LOGGER.info("Dumping %s to %s", episodes, cached)
         json.dump(episodes, f)
 
     return episodes
