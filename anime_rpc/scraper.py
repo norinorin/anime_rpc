@@ -89,8 +89,8 @@ async def _get_episodes(
 
 
 async def scrape_episodes(
-    session: aiohttp.ClientSession,
     state: State,
+    session: aiohttp.ClientSession,
 ) -> dict[str, str] | None:
     # no url is provided
     if not (url := state.get("url")):
@@ -142,7 +142,7 @@ async def update_episode_title_in(
     state: State,
     session: aiohttp.ClientSession,
 ) -> State:
-    episodes = await scrape_episodes(session, state)
+    episodes = await scrape_episodes(state, session)
     # scraping fails, no need to mutate
     if not episodes:
         return state
