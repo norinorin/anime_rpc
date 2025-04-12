@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import pprint
 import re
 from http import HTTPStatus
 from pathlib import Path
@@ -38,7 +39,12 @@ async def _get_episodes_url(session: aiohttp.ClientSession, url: str) -> str | N
     return None
 
 
-async def _get_episodes(session: aiohttp.ClientSession, url: str) -> dict[str, str]:
+async def _get_episodes(
+    session: aiohttp.ClientSession,
+    url: str,
+    *,
+    sort: bool = True,
+) -> dict[str, str]:
     _LOGGER.info("Getting episodes from %s", url)
     ret: dict[str, str] = {}
 
@@ -59,6 +65,11 @@ async def _get_episodes(session: aiohttp.ClientSession, url: str) -> dict[str, s
             episode_number = number_cell.get_text(strip=True)
             episode_title = title_cell.get_text(strip=True)
             ret[episode_number] = episode_title
+
+    if sort:
+        ret = dict(
+            sorted(ret.items(), key=lambda i: (i[0].isdigit() and int(i[0])) or i[0]),
+        )
 
     return ret
 
@@ -96,7 +107,11 @@ async def scrape_episodes(
     episodes = await _get_episodes(session, episodes_url)
     _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
     with cached.open("w", encoding="utf-8") as f:
-        _LOGGER.info("Dumping %s to %s", episodes, cached)
+        _LOGGER.info(
+            "Dumping episodes:\n%s to %s",
+            pprint.pformat(episodes, indent=4, sort_dicts=False),
+            cached,
+        )
         json.dump(episodes, f)
 
     return episodes
