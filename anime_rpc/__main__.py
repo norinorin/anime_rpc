@@ -120,8 +120,6 @@ async def consumer_loop(
 
 
 async def main() -> None:
-    print_cli_args()
-
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
     session = aiohttp.ClientSession()
@@ -160,6 +158,7 @@ def _sigint_callback(event: asyncio.Event) -> None:
 
 
 init_logging()
+print_cli_args()
 
 if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
     _LOGGER.error("Nothing's running. Exiting...")
