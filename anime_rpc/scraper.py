@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from anime_rpc.states import State
 
 MAL_PATTERN = re.compile(r"https?://myanimelist\.net/anime/(?P<id>\d+)")
+CACHE_DIR = Path("~/.cache/anime_rpc").expanduser()
+
 _LOGGER = logging.getLogger("scraper")
 
 
@@ -72,10 +74,9 @@ async def scrape_episodes(
         _LOGGER.debug("URL %s does not match MAL pattern", url)
         return None
 
-    cache_path = Path("~/.anime_rpc/.cache").expanduser()
-    cache_path.mkdir(parents=True, exist_ok=True)
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
     id_ = int(match.group("id"))
-    if (cached := (cache_path / f"{id_}.json")).exists():
+    if (cached := (CACHE_DIR / f"{id_}.json")).exists():
         # TODO: handle case where the cache is outdated
         # i.e., the user is watching a new episode of an ongoing anime
         _LOGGER.debug("Using cached episodes for %s", url)
