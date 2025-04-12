@@ -45,7 +45,7 @@ _parser.add_argument(
     "--fetch-episode-titles",
     action="store_true",
     help=(
-        "automatically fetch episode titles from MyAnimeList"
+        "automatically fetch episode titles from MyAnimeList "
         "if ep_title is not present/captured by the match expression. "
         "Requires `url` to be set to the corresponding MyAnimeList URL"
     ),
