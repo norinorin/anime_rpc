@@ -87,12 +87,11 @@ async def consumer_loop(
 
         logger.send(state)
 
-        # only force update if the position seems off (seeking)
-        pos: int = state.get("position", 0)
-
         if CLI_ARGS.fetch_episode_titles:
             state = await update_episode_title_in(state, session)
 
+        # only force update if the position seems off (seeking)
+        pos: int = state.get("position", 0)
         if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             _LOGGER.debug(
                 "Seeking from %s to %s",
