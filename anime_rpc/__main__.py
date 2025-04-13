@@ -2,7 +2,10 @@ import asyncio
 import logging
 import signal
 import sys
+from collections.abc import Coroutine
 from contextlib import suppress
+from time import perf_counter
+from typing import Any
 
 import aiohttp
 
@@ -12,14 +15,15 @@ from anime_rpc.config import Config, read_rpc_config
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller, Vars
-from anime_rpc.presence import Presence
+from anime_rpc.presence import Presence, UpdateFlags
 from anime_rpc.scraper import update_episode_title_in
 from anime_rpc.states import State, states_logger
 from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
 
-TIME_DISCREPANCY_TOLERANCE_MS = 3_000  # 3 seconds
-POLLING_INTERVAL = 1.0  # fetch vars every 1 second
+TIME_DISCREPANCY_TOLERANCE_MS = 3_000
+# fetch vars every 1 second
+POLLING_INTERVAL = 1.0
 
 _LOGGER = logging.getLogger("main")
 
@@ -50,17 +54,54 @@ async def poll_player(
 
 
 async def consumer_loop(
-    event: asyncio.Event, queue: asyncio.Queue[State], session: aiohttp.ClientSession
+    event: asyncio.Event,
+    queue: asyncio.Queue[State],
+    session: aiohttp.ClientSession,
 ) -> None:
     presence = Presence(event)
+    flags: UpdateFlags | None = None
+
     last_state: State = {}
     last_pos: int = 0
     last_origin: str = ""
+
+    # periodic updates are updates that occur without any state changes.
+    periodic_updates = CLI_ARGS.interval >= 1
+    t0 = perf_counter()
+    last_log_time = 0.0
+
+    def _queue_get_with_timeout() -> Coroutine[Any, Any, State]:
+        return asyncio.wait_for(queue.get(), timeout=1)
+
+    queue_get = _queue_get_with_timeout if periodic_updates else queue.get
     logger = states_logger()
     next(logger)
 
     while not event.is_set():
-        state = await wait(queue.get(), event)
+        try:
+            state = await wait(queue_get(), event)
+        except asyncio.TimeoutError:
+            state = last_state
+
+        t1 = perf_counter()
+        delta = t1 - t0
+        periodic_update_in = CLI_ARGS.interval - delta
+        if periodic_updates and last_log_time + 1 < t1 and periodic_update_in > 0:
+            _LOGGER.debug(
+                "%ds onto the next periodic update",
+                max(periodic_update_in, 0),
+            )
+            last_log_time = t1
+
+        # store this to a variable outside of the while loop
+        # so it only gets consumed when the origin check passes
+        # otherwise inactive pollers will consume this.
+        if periodic_updates and periodic_update_in <= 0:
+            _LOGGER.debug("Interval reached, resetting the clock...")
+            t0 = perf_counter()
+            flags = (
+                flags and flags | UpdateFlags.PERIODIC_UPDATE
+            ) or UpdateFlags.PERIODIC_UPDATE
 
         # state fed should always contain origin
         if "origin" not in state:
@@ -86,22 +127,20 @@ async def consumer_loop(
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
-        if seeking := abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
+        if abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             _LOGGER.debug(
                 "Seeking from %s to %s",
                 ms2timestamp(last_pos),
                 ms2timestamp(pos),
             )
+            flags = (flags and flags | UpdateFlags.SEEKING) or UpdateFlags.SEEKING
 
         last_state = await wait(
-            presence.update(
-                state,
-                last_state,
-                origin,
-                force=seeking,
-            ),
+            presence.update(state, last_state, origin, flags=flags),
             event,
         )
+
+        flags = None
 
         # if last_state is empty
         # it's given up control
