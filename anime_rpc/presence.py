@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import logging
 import struct
 import time
-from typing import Any, TypedDict, cast
+from enum import Flag, auto
+from typing import TYPE_CHECKING, Any, TypedDict, cast
 
 from pypresence import (  # type: ignore[reportMissingTypeStubs]
     ActivityType,
     AioPresence,
+    DiscordError,
     PipeClosed,
     ResponseTimeout,
 )
 from typing_extensions import Unpack
 
-from anime_rpc.asyncio_helper import wait
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
@@ -24,6 +24,9 @@ from anime_rpc.states import (
     WatchingState,
     compare_states,
 )
+
+if TYPE_CHECKING:
+    import asyncio
 
 ORIGIN2SERVICE = {
     "mpc": "MPC-HC",
@@ -64,16 +67,27 @@ class StateOptions(TypedDict):
     origin: str
 
 
+class UpdateFlags(Flag):
+    SEEKING = auto()
+    PERIODIC_UPDATE = auto()
+
+
 class Presence:
     def __init__(self, event: asyncio.Event) -> None:
         self._rpc: AioPresence | None = None
         self._last_application_id: int | None = None
         self.event = event
+        self._disconnected = False
+        self._last_kwargs: dict[str, Any] = {}
 
     async def _ensure_application_id(self, application_id: int) -> None:
         if self._rpc is None or application_id != self._last_application_id:
             _ = self._rpc and self._rpc.close()
-            self._rpc = AioPresence(application_id)
+            self._rpc = AioPresence(
+                application_id,
+                connection_timeout=5,
+                response_timeout=5,
+            )
             self._last_application_id = application_id
             data = cast("dict[str, Any]", await self._rpc.handshake())
             user = data["data"]["user"]
@@ -88,34 +102,41 @@ class Presence:
         application_id: int,
         *args: tuple[Any, ...],
         **kwargs: Unpack[ActivityOptions],
-    ) -> None:
-        i = 0
+    ) -> bool:
         try:
-            while not self.event.is_set():
-                await self._ensure_application_id(application_id)
-                assert self._rpc is not None
-                await self._rpc.update(*args, **kwargs)  # type: ignore[reportCallIssue]
-                return
+            await self._ensure_application_id(application_id)
+            assert self._rpc is not None
+            await self._rpc.update(*args, **kwargs)  # type: ignore[reportCallIssue]
         except (
             OSError,
             ConnectionRefusedError,
             PipeClosed,
             ResponseTimeout,
             struct.error,
+            DiscordError,
         ):
-            # discord is probably closed/restarted
-            # try to reconnect
-            delay = 5 * i
-            _LOGGER.info(
-                (
-                    "Disconnected, reconnecting..."
-                    if i == 0
-                    else f"Failed to reconnect, retrying in {delay} seconds..."
-                ),
-            )
-            await wait(asyncio.sleep(delay), self.event)
-            i = min(i + 1, 6)
+            if not self._disconnected:
+                _LOGGER.error(  # noqa: TRY400
+                    "Failed to connect to Discord. Is Discord running?",
+                )
+                if CLI_ARGS.interval < 1:
+                    _LOGGER.warning(
+                        "--interval is not set or is less than 1 second, "
+                        "will only try to reconnect on state changes, "
+                        "meaning you have to trigger the state changes "
+                        "by play/pausing the media",
+                    )
+                else:
+                    _LOGGER.info(
+                        "--interval is set, will retry to reconnect every %.2fs",
+                        CLI_ARGS.interval,
+                    )
             self._rpc = None
+            self._disconnected = True
+            return False
+
+        self._disconnected = False
+        return True
 
     async def _clear(self, last_state: State) -> State:
         # only clear activity if last state is not empty
@@ -128,6 +149,7 @@ class Presence:
                 PipeClosed,
                 ResponseTimeout,
                 struct.error,
+                DiscordError,
             ):
                 await self._rpc.clear()
 
@@ -214,7 +236,7 @@ class Presence:
         last_state: State,
         origin: str,
         *,
-        force: bool = False,
+        flags: UpdateFlags | None = None,
     ) -> State:
         if not state:
             return await self._clear(last_state)
@@ -260,15 +282,41 @@ class Presence:
             return await self._clear(last_state)
 
         # only compare states after validating watching state
-        if not force and compare_states(state, last_state):
-            return state
+        if compare_states(state, last_state):
+            # if the two are the same
+            # ignore update request unless flags are set
+            if flags is None:
+                return state
 
-        _LOGGER.info(
+            if UpdateFlags.PERIODIC_UPDATE in flags:
+                # if it's a periodic update just use the previous kwargs
+                # as to prevent the rich presence time to get bugged
+                # for a split second
+                _LOGGER.debug(
+                    "Periodic update triggered, reusing the previous kwargs...",
+                )
+                kwargs = self._last_kwargs
+
+        _LOGGER.debug(
             "Setting presence to [%s] %s @ %s",
             watching_state.name,
             f"{state['title']}"
             + f" E{state['episode']}" * (not state_opts["is_movie"]),
             ms2timestamp(state["position"]),
         )
-        await self._update(application_id, **kwargs)
+
+        self._last_kwargs = kwargs
+
+        # only log on state changes or seeking
+        if await self._update(application_id, **kwargs) and not (
+            flags and UpdateFlags.PERIODIC_UPDATE in flags
+        ):
+            _LOGGER.info(
+                "Presence set to [%s] %s @ %s",
+                watching_state.name,
+                f"{state['title']}"
+                + f" E{state['episode']}" * (not state_opts["is_movie"]),
+                ms2timestamp(state["position"]),
+            )
+
         return state
