@@ -35,16 +35,13 @@ async def poll_player(
     while not event.is_set():
         state: State = poller.get_empty_state()
         vars_: Vars | None
-        try:
-            if (vars_ := await wait(poller.get_vars(session), event)) and (
-                config := read_rpc_config(
-                    vars_["filedir"],
-                    last_config=config,
-                )
-            ):
-                state = poller.get_state(vars_, config)
-        except Bail:
-            return
+        if (vars_ := await wait(poller.get_vars(session), event)) and (
+            config := read_rpc_config(
+                vars_["filedir"],
+                last_config=config,
+            )
+        ):
+            state = poller.get_state(vars_, config)
 
         await queue.put(state)
 
@@ -63,10 +60,7 @@ async def consumer_loop(
     next(logger)
 
     while not event.is_set():
-        try:
-            state = await wait(queue.get(), event)
-        except Bail:
-            return
+        state = await wait(queue.get(), event)
 
         # state fed should always contain origin
         if "origin" not in state:
@@ -88,10 +82,7 @@ async def consumer_loop(
         logger.send(state)
 
         if CLI_ARGS.fetch_episode_titles:
-            try:
-                state = await wait(update_episode_title_in(state, session), event)
-            except Bail:
-                return
+            state = await wait(update_episode_title_in(state, session), event)
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
@@ -102,18 +93,15 @@ async def consumer_loop(
                 ms2timestamp(pos),
             )
 
-        try:
-            last_state = await wait(
-                presence.update(
-                    state,
-                    last_state,
-                    origin,
-                    force=seeking,
-                ),
-                event,
-            )
-        except Bail:
-            return
+        last_state = await wait(
+            presence.update(
+                state,
+                last_state,
+                origin,
+                force=seeking,
+            ),
+            event,
+        )
 
         # if last_state is empty
         # it's given up control
@@ -147,7 +135,8 @@ async def main() -> None:
         app = await get_app(queue)
         webserver = await start_app(app)
 
-    await asyncio.gather(consumer_task, *poller_tasks)
+    with suppress(Bail):
+        await asyncio.gather(consumer_task, *poller_tasks)
 
     if webserver is not None:
         await webserver.stop()

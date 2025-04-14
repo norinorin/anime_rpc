@@ -15,7 +15,7 @@ from pypresence import (  # type: ignore[reportMissingTypeStubs]
 )
 from typing_extensions import Unpack
 
-from anime_rpc.asyncio_helper import Bail, wait
+from anime_rpc.asyncio_helper import wait
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
@@ -113,10 +113,7 @@ class Presence:
                     else f"Failed to reconnect, retrying in {delay} seconds..."
                 ),
             )
-            try:
-                await wait(asyncio.sleep(delay), self.event)
-            except Bail:
-                return
+            await wait(asyncio.sleep(delay), self.event)
             i = min(i + 1, 6)
             self._rpc = None
 
