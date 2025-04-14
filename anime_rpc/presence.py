@@ -77,7 +77,7 @@ class Presence:
         self._rpc: AioPresence | None = None
         self._last_application_id: int | None = None
         self.event = event
-        self._disconnected = False
+        self._reconnecting = False
         self._last_kwargs: dict[str, Any] = {}
 
     async def _ensure_application_id(self, application_id: int) -> None:
@@ -115,7 +115,7 @@ class Presence:
             struct.error,
             DiscordError,
         ):
-            if not self._disconnected:
+            if not self._reconnecting:
                 _LOGGER.error(  # noqa: TRY400
                     "Failed to connect to Discord. Is Discord running?",
                 )
@@ -132,10 +132,10 @@ class Presence:
                         CLI_ARGS.interval,
                     )
             self._rpc = None
-            self._disconnected = True
+            self._reconnecting = True
             return False
 
-        self._disconnected = False
+        self._reconnecting = False
         return True
 
     async def _clear(self, last_state: State) -> State:
