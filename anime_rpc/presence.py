@@ -11,6 +11,7 @@ from pypresence import (  # type: ignore[reportMissingTypeStubs]
     ActivityType,
     AioPresence,
     DiscordError,
+    DiscordNotFound,
     PipeClosed,
     ResponseTimeout,
 )
@@ -114,6 +115,7 @@ class Presence:
             ResponseTimeout,
             struct.error,
             DiscordError,
+            DiscordNotFound,
         ):
             if not self._reconnecting:
                 _LOGGER.error(  # noqa: TRY400
