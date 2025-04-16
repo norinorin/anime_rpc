@@ -93,9 +93,9 @@ async def consumer_loop(
             )
             last_log_time = t1
 
-        # store this to a variable outside of the while loop
-        # so it only gets consumed when the origin check passes
-        # otherwise inactive pollers will consume this.
+        # store this in a variable outside of the while loop
+        # so it's only consumed when the origin check passes
+        # otherwise inactive pollers could consume this prematurely.
         if periodic_updates and periodic_update_in <= 0:
             _LOGGER.debug("Interval reached, resetting the clock...")
             t0 = perf_counter()
