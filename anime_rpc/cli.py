@@ -13,12 +13,20 @@ class CLIArgs(argparse.Namespace):
     enable_webserver: bool
     pollers: list[type[BasePoller]]
     fetch_episode_titles: bool
+    interval: int
 
 
 _parser = argparse.ArgumentParser(
     "anime_rpc",
     description="Discord anime integration (rich presence)",
     formatter_class=lambda prog: argparse.HelpFormatter(prog, max_help_position=40),
+)
+_parser.add_argument(
+    "-v",
+    "--version",
+    action="version",
+    version=f"%(prog)s {__version__}",
+    help="show program's version number and exit",
 )
 _parser.add_argument(
     "--clear-on-pause",
@@ -52,11 +60,15 @@ _parser.add_argument(
     default=False,
 )
 _parser.add_argument(
-    "-v",
-    "--version",
-    action="version",
-    version=f"%(prog)s {__version__}",
-    help="show program's version number and exit",
+    "-i",
+    "--interval",
+    type=int,
+    help="specify the interval in seconds for periodic updates. "
+    "Defaults to 0, meaning updates occur only on play/stop events. "
+    "Setting an interval ensures periodic updates in addition to play/stop events, "
+    "useful if you want to always override Spotify activity "
+    "if both are running at the same time",
+    default=0,
 )
 CLI_ARGS, _unknown_args = _parser.parse_known_args(namespace=CLIArgs)
 
@@ -72,6 +84,7 @@ def print_cli_args() -> None:
         (CLI_ARGS.enable_webserver and "enabled") or "disabled",
     )
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
+    _LOGGER.info("Update interval: %ds", CLI_ARGS.interval)
 
     if _unknown_args:
         _LOGGER.warning("Unknown arguments: %s", shlex.join(_unknown_args))
