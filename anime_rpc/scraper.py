@@ -148,7 +148,7 @@ async def update_episode_title_in(
         return state
 
     assert "episode" in state
-    if episode_title := episodes[str(state["episode"])]:
+    if episode_title := episodes.get(str(state["episode"])):
         state["episode_title"] = episode_title
 
     return state
