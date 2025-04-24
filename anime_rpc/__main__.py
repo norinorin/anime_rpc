@@ -58,7 +58,7 @@ async def consumer_loop(
     queue: asyncio.Queue[State],
     session: aiohttp.ClientSession,
 ) -> None:
-    presence = Presence(event)
+    presence = Presence()
     flags: UpdateFlags | None = None
 
     last_state: State = {}
