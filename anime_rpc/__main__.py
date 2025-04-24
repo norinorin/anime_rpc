@@ -9,6 +9,7 @@ from typing import Any
 
 import aiohttp
 
+from anime_rpc import __version__
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
 from anime_rpc.config import Config, read_rpc_config
@@ -189,6 +190,7 @@ def _sigint_callback(event: asyncio.Event) -> None:
 
 
 init_logging()
+_LOGGER.info("Starting anime_rpc ver: %s", __version__)
 print_cli_args()
 
 if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
