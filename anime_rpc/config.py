@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import TypedDict
+from typing import SupportsInt, TypedDict
 
 DEFAULT_APPLICATION_ID = 1088900742523392133
 _LOGGER = logging.getLogger("config")
@@ -26,6 +26,13 @@ class Config(TypedDict):
     # CONTEXT
     path: Path
     read_at: float
+
+
+def _parse_int(value: SupportsInt, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
 
 
 def read_rpc_config(
@@ -83,9 +90,10 @@ def read_rpc_config(
     # optional settings
     config.setdefault("url", "")
     config["url_text"] = config.get("url_text", "View Anime")
-    config["rewatching"] = bool(int(config.get("rewatching", 0)))
-    config["application_id"] = int(
-        config.get("application_id", DEFAULT_APPLICATION_ID),
+    config["rewatching"] = bool(_parse_int(config.get("rewatching")))
+    config["application_id"] = _parse_int(
+        config.get("application_id"),
+        DEFAULT_APPLICATION_ID,
     )
 
     # context
