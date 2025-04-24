@@ -8,7 +8,10 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import platformdirs
 from bs4 import BeautifulSoup
+
+import anime_rpc
 
 if TYPE_CHECKING:
     import aiohttp
@@ -16,8 +19,7 @@ if TYPE_CHECKING:
     from anime_rpc.states import State
 
 MAL_PATTERN = re.compile(r"https?://myanimelist\.net/anime/(?P<id>\d+)")
-CACHE_DIR = Path("~/.cache/anime_rpc").expanduser()
-
+CACHE_DIR = Path(platformdirs.user_cache_dir("anime_rpc", anime_rpc.__author__))
 _LOGGER = logging.getLogger("scraper")
 
 
