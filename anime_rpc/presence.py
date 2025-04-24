@@ -5,7 +5,7 @@ import logging
 import struct
 import time
 from enum import Flag, auto
-from typing import TYPE_CHECKING, Any, TypedDict, cast
+from typing import Any, TypedDict, cast
 
 from pypresence import (  # type: ignore[reportMissingTypeStubs]
     ActivityType,
@@ -25,9 +25,6 @@ from anime_rpc.states import (
     WatchingState,
     compare_states,
 )
-
-if TYPE_CHECKING:
-    import asyncio
 
 ORIGIN2SERVICE = {
     "mpc": "MPC-HC",
@@ -74,10 +71,9 @@ class UpdateFlags(Flag):
 
 
 class Presence:
-    def __init__(self, event: asyncio.Event) -> None:
+    def __init__(self) -> None:
         self._rpc: AioPresence | None = None
         self._last_application_id: int | None = None
-        self.event = event
         self._reconnecting = False
         self._last_kwargs: dict[str, Any] = {}
 
