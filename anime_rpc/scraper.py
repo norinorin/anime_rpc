@@ -34,7 +34,14 @@ class PossibleInvalidURLError(Exception):
 async def _get_text(session: aiohttp.ClientSession, url: str) -> str | None:
     async with session.get(url) as response:
         if response.status != HTTPStatus.OK:
-            _LOGGER.error("Failed to fetch %s. Code: %d", url, response.status)
+            status = HTTPStatus(response.status)
+            _LOGGER.error(
+                "Failed to fetch %s. Reason: %s. Code: %d (%s)",
+                url,
+                status.description,
+                status.value,
+                status.phrase,
+            )
             if response.status in (
                 HTTPStatus.NOT_FOUND,
                 HTTPStatus.FORBIDDEN,
