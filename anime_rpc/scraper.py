@@ -35,7 +35,11 @@ async def _get_text(session: aiohttp.ClientSession, url: str) -> str | None:
     async with session.get(url) as response:
         if response.status != HTTPStatus.OK:
             _LOGGER.error("Failed to fetch %s. Code: %d", url, response.status)
-            if response.status in (HTTPStatus.NOT_FOUND, HTTPStatus.FORBIDDEN):
+            if response.status in (
+                HTTPStatus.NOT_FOUND,
+                HTTPStatus.FORBIDDEN,
+                HTTPStatus.METHOD_NOT_ALLOWED,
+            ):
                 raise PossibleInvalidURLError
             return None
 
