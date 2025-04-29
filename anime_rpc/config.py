@@ -76,11 +76,11 @@ def read_rpc_config(
         return None
 
     # required settings
-    if "title" not in config:
+    if not config.get("title"):
         _LOGGER.debug(_MISSING_LOG_MSG, "title")
         return None
 
-    if "match" not in config:
+    if not config.get("match"):
         if not CLI_ARGS.auto_match:
             _LOGGER.debug(_MISSING_LOG_MSG, "match")
             return None
@@ -88,7 +88,7 @@ def read_rpc_config(
         if match := generate_regex_pattern(filedir):
             config["match"] = match
 
-    if "image_url" not in config:
+    if not config.get("image_url"):
         _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
         return None
 
