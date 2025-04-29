@@ -13,43 +13,51 @@
   <img alt="generic stream rich presence" src="assets/docs/generic.png">
 </p>
 
---- 
+---
 
 ## Installation
+
 1. Clone the repository:
+
 ```sh
 git clone https://github.com/norinorin/anime_rpc.git
 cd anime_rpc
 ```
 
 2. Install the dependencies:
+
 ```sh
 pip install -r requirements.txt
 ```
 
 3. Run the app:
+
 ```sh
 python -OOm anime_rpc -h
 ```
 
 ## Configuration
+
 anime_rpc looks for a configuration file called `rpc.config` in the anime folder you're watching. If none is found, it ignores the folder. Refer to [the example config](example.rpc.config) to get started.
 
 ## Supported platforms
-| poller name      | type       | description                                       |
-|------------------|------------|---------------------------------------------------|
-| mpv              | poller     | polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). |
-| mpc              | poller     | polls MPC via its web interface. |
-| bilibili.tv      | websocket  | support for [Bstation](https://www.bilibili.tv/anime). |
+
+| poller name | type      | description                                                                                              |
+| ----------- | --------- | -------------------------------------------------------------------------------------------------------- |
+| mpv         | poller    | polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). |
+| mpc         | poller    | polls MPC via its web interface.                                                                         |
+| bilibili.tv | websocket | support for [Bstation](https://www.bilibili.tv/anime).                                                   |
 
 and more coming!
 
 ## Plans
-- [ ] Automatically generate a regex given filenames in a folder.
+
+- [x] Automatically generate a regex given filenames in a folder.
 - [x] Add formatting templates for `rpc.config.match` (`%ep%`, `%title%`).
 - [ ] Rework browser extension.
 - [ ] Add more support for anime sites and media players.
 - [ ] Implement a customisable formatting.
 
 ## License
+
 MIT
