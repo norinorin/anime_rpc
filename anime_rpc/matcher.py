@@ -8,6 +8,7 @@ EP = "%ep%"
 MIN_N_SEQUENCE = 2
 _LOGGER = logging.getLogger("automatic_matcher")
 SPACE_NORMALIZER = re.compile(r"\\\s+")
+NUM_NORMALIZER = re.compile(r"\d+")
 
 
 def exclude_anomalies(filenames: list[str], threshold: float = 0.6) -> list[str]:
@@ -84,6 +85,7 @@ def generate_regex_pattern(filedir: str) -> str | None:
     generated_pattern = pattern_prefix if EP in pattern_prefix else pattern_suffix
     generated_pattern = re.escape(generated_pattern)
     generated_pattern = SPACE_NORMALIZER.sub(r"\\s+", generated_pattern)
+    generated_pattern = NUM_NORMALIZER.sub(r"\\d+", generated_pattern)
     _LOGGER.info("Generated pattern: %s", generated_pattern)
     _LOGGER.info("Appending generated pattern to rpc.config...")
 
