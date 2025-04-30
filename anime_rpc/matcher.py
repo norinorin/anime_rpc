@@ -87,6 +87,6 @@ def generate_regex_pattern(filedir: str) -> str | None:
     _LOGGER.info("Appending generated pattern to rpc.config...")
 
     with (dir_path / "rpc.config").open("a") as f:
-        f.write(f"\n# Automatically generated pattern:\nmatch={generated_pattern}\n")
+        f.write(f"\n# Automatically generated pattern\nmatch={generated_pattern}\n")
 
     return generated_pattern
