@@ -105,6 +105,12 @@ async def scrape_episodes(
     state: State,
     session: aiohttp.ClientSession,
 ) -> dict[str, str] | None:
+    # episode title is already present
+    # bail
+    if state.get("episode_title") is not None:
+        _LOGGER.debug("Episode title already present, skipping scraping")
+        return None
+
     # no url is provided
     if not (url := state.get("url")):
         _LOGGER.debug("No url provided, skipping scraping")
@@ -116,17 +122,18 @@ async def scrape_episodes(
 
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     id_ = int(match.group("id"))
-    if (cached := (CACHE_DIR / f"{id_}.json")).exists():
-        # TODO: handle case where the cache is outdated
-        # i.e., the user is watching a new episode of an ongoing anime
-        _LOGGER.debug("Using cached episodes for %s", url)
-        return json.loads(cached.read_text(encoding="utf-8"))
 
-    # episode title is already present
-    # bail
-    if state.get("episode_title") is not None:
-        _LOGGER.debug("Episode title already present, skipping scraping")
+    if not (episode := str(state.get("episode", ""))):
+        _LOGGER.warning("`episode` is missing in state")
         return None
+
+    if (cached := (CACHE_DIR / f"{id_}.json")).exists():
+        cached_json = json.loads(cached.read_text(encoding="utf-8"))
+        if episode in cached_json:
+            _LOGGER.debug("Using cached episodes for %s", url)
+            return cached_json
+
+        _LOGGER.info("Episode %s seems like a new episode, updating cache", episode)
 
     episodes: dict[str, str] = {}
 
@@ -139,6 +146,9 @@ async def scrape_episodes(
         _LOGGER.error("Caching %s as an invalid URL", url)  # noqa: TRY400
     else:
         _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
+
+    # this marks the episode as invalid
+    episodes.setdefault(episode, "")
 
     with cached.open("w", encoding="utf-8") as f:
         _LOGGER.info(
@@ -160,8 +170,17 @@ async def update_episode_title_in(
     if not episodes:
         return state
 
-    assert "episode" in state
-    if episode_title := episodes.get(str(state["episode"])):
+    if "episode" not in state:
+        _LOGGER.warning("`episode` is missing in state")
+        return state
+
+    if episode_title := episodes.get(episode := str(state["episode"])):
         state["episode_title"] = episode_title
+    else:
+        _LOGGER.warning(
+            "Episode %s isn't found in the most recent scrape, "
+            "is the episode valid?",
+            episode,
+        )
 
     return state
