@@ -145,7 +145,8 @@ async def scrape_episodes(
     else:
         _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
 
-    # this marks the episode as invalid
+    # this marks the episode as invalid if it
+    # doesn't exist after re-hitting the API
     episodes.setdefault(episode, "")
 
     with cached.open("w", encoding="utf-8") as f:
