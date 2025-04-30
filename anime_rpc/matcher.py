@@ -80,9 +80,9 @@ def generate_regex_pattern(filedir: str) -> str | None:
     _LOGGER.debug("Possible patterns: %s", patterns)
     pattern_prefix = common_prefix(patterns)
     pattern_suffix = common_prefix(patterns, reverse=True)
-    generated_pattern = re.escape(
-        pattern_prefix if EP in pattern_prefix else pattern_suffix,
-    )
+    generated_pattern = pattern_prefix if EP in pattern_prefix else pattern_suffix
+    generated_pattern = re.escape(generated_pattern)
+    generated_pattern = re.sub(r"\\\s+", r"\\s+", generated_pattern)
     _LOGGER.info("Generated pattern: %s", generated_pattern)
     _LOGGER.info("Appending generated pattern to rpc.config...")
 
