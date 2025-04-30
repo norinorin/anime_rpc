@@ -138,10 +138,8 @@ async def scrape_episodes(
     episodes: dict[str, str] = {}
 
     try:
-        if not (episodes_url := await _get_episodes_url(session, url)):
-            return None
-
-        episodes = await _get_episodes(session, episodes_url)
+        if episodes_url := await _get_episodes_url(session, url):
+            episodes = await _get_episodes(session, episodes_url)
     except PossibleInvalidURLError:
         _LOGGER.error("Caching %s as an invalid URL", url)  # noqa: TRY400
     else:
