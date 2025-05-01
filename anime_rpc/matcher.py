@@ -103,10 +103,14 @@ def build_filename_pattern(filenames: list[str]) -> str | None:
     patterns = [_escape_normalise_regex(p) for p in patterns]
     pattern_prefix = common_prefix(patterns)
     pattern_suffix = common_prefix(patterns, reverse=True)
-    return HANGING_BACKSLASH.sub(
-        "",
-        pattern_prefix if EP in pattern_prefix else pattern_suffix,
-    )
+    if EP in pattern_prefix:
+        pattern = pattern_prefix
+    elif EP in pattern_suffix:
+        pattern = pattern_suffix
+    else:
+        # assume the ep part is by the suffix
+        pattern = f"{EP}{pattern_suffix}"
+    return HANGING_BACKSLASH.sub("", pattern)
 
 
 def generate_regex_pattern(filedir: str) -> str | None:
