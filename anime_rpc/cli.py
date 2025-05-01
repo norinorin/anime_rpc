@@ -14,7 +14,6 @@ class CLIArgs(argparse.Namespace):
     pollers: list[type[BasePoller]]
     fetch_episode_titles: bool
     interval: int
-    auto_match: bool
 
 
 _parser = argparse.ArgumentParser(
@@ -71,13 +70,6 @@ _parser.add_argument(
     "if both are running at the same time",
     default=0,
 )
-_parser.add_argument(
-    "--auto-match",
-    action="store_true",
-    help="automatically generate a regex pattern and append it to rpc.config "
-    "if not present. Defaults to False",
-    default=False,
-)
 CLI_ARGS, _unknown_args = _parser.parse_known_args(namespace=CLIArgs)
 
 
@@ -93,7 +85,6 @@ def print_cli_args() -> None:
     )
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
     _LOGGER.info("Update interval: %ds", CLI_ARGS.interval)
-    _LOGGER.info("Auto generate regex: %s", CLI_ARGS.auto_match)
 
     if _unknown_args:
         _LOGGER.warning("Unknown arguments: %s", shlex.join(_unknown_args))

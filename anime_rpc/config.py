@@ -5,7 +5,6 @@ import time
 from pathlib import Path
 from typing import SupportsInt, TypedDict
 
-from anime_rpc.cli import CLI_ARGS
 from anime_rpc.matcher import generate_regex_pattern
 
 DEFAULT_APPLICATION_ID = 1088900742523392133
@@ -80,13 +79,8 @@ def read_rpc_config(
         _LOGGER.debug(_MISSING_LOG_MSG, "title")
         return None
 
-    if not config.get("match"):
-        if not CLI_ARGS.auto_match:
-            _LOGGER.debug(_MISSING_LOG_MSG, "match")
-            return None
-
-        if match := generate_regex_pattern(filedir):
-            config["match"] = match
+    if not config.get("match") and (match := generate_regex_pattern(filedir)):
+        config["match"] = match
 
     if not config.get("image_url"):
         _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
