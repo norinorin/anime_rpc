@@ -190,10 +190,10 @@ BOKUYABA = [
     "S02E12-I Want to Tell Her [8C566F06].mkv",
     "S02E13-I, We, Fell in Love [82C41DDF].mkv",
 ]
-SYNTHETIC = [
+SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES = [
     "Some random title - 1.mkv",
     "Some other random title - 2.mkv",
-    "Title - 3.mkv",
+    "Title - 3v2.mkv",  # 3v2 is a noise
     "Long titleeeeeeee - 4.mkv",
 ]
 
@@ -209,7 +209,7 @@ SYNTHETIC = [
         ("the_punisher", THE_PUNISHER, [*range(1, 14)]),
         ("dungeon_meshi", DUNGEON_MESHI, [*range(1, 25)]),
         ("bokuyaba", BOKUYABA, [1, *range(1, 14)]),
-        ("synthetic", SYNTHETIC, [1, 2, 3, 4]),
+        ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES, [1, 2, 3, 4]),
     ],
 )
 def test_generated_pattern_ordered(

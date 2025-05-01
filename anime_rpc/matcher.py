@@ -72,6 +72,27 @@ def find_most_variable_number_parts(
     return sorted_spans[0][0]
 
 
+def extract_ep_anchor(patterns: list[str]) -> str | None:
+    if not patterns:
+        return None
+
+    befores: list[str] = []
+    afters: list[str] = []
+
+    for p in patterns:
+        if EP not in p:
+            continue
+
+        before, _, after = p.partition(EP)
+        befores.append(before)
+        afters.append(after)
+
+    prefix = common_prefix(befores)
+    suffix = common_prefix(afters, reverse=False)
+    pattern = f"{prefix}{EP}{suffix}"
+    return HANGING_BACKSLASH.sub("", pattern)
+
+
 def build_filename_pattern(filenames: list[str]) -> str | None:
     filenames = exclude_non_media_files(filenames)
     if len(filenames) < MIN_N_SEQUENCE:
@@ -101,16 +122,7 @@ def build_filename_pattern(filenames: list[str]) -> str | None:
 
     _LOGGER.debug("Possible patterns: %s", patterns)
     patterns = [_escape_normalise_regex(p) for p in patterns]
-    pattern_prefix = common_prefix(patterns)
-    pattern_suffix = common_prefix(patterns, reverse=True)
-    if EP in pattern_prefix:
-        pattern = pattern_prefix
-    elif EP in pattern_suffix:
-        pattern = pattern_suffix
-    else:
-        # assume the ep part is by the suffix
-        pattern = f"{EP}{pattern_suffix}"
-    return HANGING_BACKSLASH.sub("", pattern)
+    return extract_ep_anchor(patterns)
 
 
 def generate_regex_pattern(filedir: str) -> str | None:
