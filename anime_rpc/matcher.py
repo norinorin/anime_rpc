@@ -50,9 +50,7 @@ def common_prefix(strings: list[str], *, reverse: bool = False) -> str:
     return ret
 
 
-def generate_regex_pattern(filedir: str) -> str | None:
-    dir_path = Path(filedir)
-    filenames = [f.name for f in dir_path.iterdir() if f.is_file()]
+def build_filename_pattern(filenames: list[str]) -> str | None:
     filenames = exclude_anomalies(filenames)
     if len(filenames) < MIN_N_SEQUENCE:
         return None
@@ -85,11 +83,19 @@ def generate_regex_pattern(filedir: str) -> str | None:
     generated_pattern = pattern_prefix if EP in pattern_prefix else pattern_suffix
     generated_pattern = re.escape(generated_pattern)
     generated_pattern = SPACE_NORMALIZER.sub(r"\\s+", generated_pattern)
-    generated_pattern = NUM_NORMALIZER.sub(r"\\d+", generated_pattern)
-    _LOGGER.info("Generated pattern: %s", generated_pattern)
+    return NUM_NORMALIZER.sub(r"\\d+", generated_pattern)
+
+
+def generate_regex_pattern(filedir: str) -> str | None:
+    dir_path = Path(filedir)
+    filenames: list[str] = [f.name for f in dir_path.iterdir() if f.is_file()]
+    if not (pattern := build_filename_pattern(filenames)):
+        return None
+
+    _LOGGER.debug("Generated pattern: %s", pattern)
     _LOGGER.info("Appending generated pattern to rpc.config...")
 
     with (dir_path / "rpc.config").open("a") as f:
-        f.write(f"\n# Automatically generated pattern\nmatch={generated_pattern}\n")
+        f.write(f"\n# Automatically generated pattern\nmatch={pattern}\n")
 
-    return generated_pattern
+    return pattern
