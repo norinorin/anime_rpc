@@ -183,14 +183,16 @@ class Presence:
         ep = kwargs["episode"]
         is_movie = kwargs["is_movie"]
         ep_title = kwargs["ep_title"]
+        if is_movie:
+            state = "Movie"
+        else:
+            prefix = "E" if ep_title else "Episode "
+            state = f"{prefix}{ep} {quote(ep_title) if ep_title else ''}"
         return cast(
             "ActivityOptions",
             {
                 "details": title,
-                "state": (
-                    f"{'Episode ' * (not is_movie)}{ep}"
-                    f" {quote(ep_title) if ep_title else ''}"
-                ),
+                "state": state,
                 "start": now - pos // 1_000,
                 "end": now + (dur - pos) // 1_000,
                 "small_text": "Playing",
@@ -211,11 +213,7 @@ class Presence:
         details = (
             title
             if is_movie
-            else (
-                f"Episode {ep} {quote(ep_title)}"
-                if ep_title
-                else f"{quote(title)} E{ep}"
-            )
+            else (f"E{ep} {quote(ep_title)}" if ep_title else f"{quote(title)} E{ep}")
         )
         return cast(
             "ActivityOptions",
