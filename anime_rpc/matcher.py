@@ -1,6 +1,9 @@
-import difflib
+from __future__ import annotations
+
 import logging
+import mimetypes
 import re
+from collections import defaultdict
 from os.path import commonprefix as os_commonprefix
 from pathlib import Path
 
@@ -9,27 +12,24 @@ MIN_N_SEQUENCE = 2
 _LOGGER = logging.getLogger("automatic_matcher")
 SPACE_NORMALIZER = re.compile(r"\\\s+")
 NUM_NORMALIZER = re.compile(r"\d+")
+HANGING_BACKSLASH = re.compile(r"(?<!\\)\\$")
 
 
-def exclude_anomalies(filenames: list[str], threshold: float = 0.6) -> list[str]:
+def _escape_normalise_regex(pattern: str) -> str:
+    pattern = re.escape(pattern)
+    pattern = SPACE_NORMALIZER.sub(r"\\s+", pattern)
+    return NUM_NORMALIZER.sub(r"\\d+", pattern)
+
+
+def exclude_non_media_files(filenames: list[str]) -> list[str]:
     if len(filenames) < MIN_N_SEQUENCE:
         return filenames
 
-    scores: list[tuple[str, float]] = []
-    seq_matcher = difflib.SequenceMatcher(None)
-    n_comparisons = len(filenames) - 1
-
-    for i, f in enumerate(filenames):
-        total = 0
-        for j, g in enumerate(filenames):
-            if i != j:
-                seq_matcher.set_seqs(f, g)
-                s = seq_matcher.ratio()
-                total += s
-        avg = total / n_comparisons
-        scores.append((f, avg))
-
-    return [f for f, score in scores if score >= threshold]
+    return [
+        f
+        for f in filenames
+        if (m := mimetypes.guess_type(f)[0]) and m.split("/", maxsplit=1)[0] == "video"
+    ]
 
 
 def strip_digits(text: str) -> str:
@@ -50,40 +50,63 @@ def common_prefix(strings: list[str], *, reverse: bool = False) -> str:
     return ret
 
 
+def find_most_variable_number_parts(
+    filenames: list[str],
+    prefix: str,
+    suffix: str,
+) -> tuple[int, int] | None:
+    number_positions: defaultdict[tuple[int, int], list[str]] = defaultdict(list)
+
+    for name in filenames:
+        middle = name[len(prefix) : len(name) - len(suffix) if suffix else None]
+        for match in re.finditer(r"\d+", middle):
+            number_positions[match.span()].append(match.group())
+
+    variability = {
+        span: len(set(numbers)) for span, numbers in number_positions.items()
+    }
+    if not variability:
+        return None
+
+    sorted_spans = sorted(variability.items(), key=lambda x: -x[1])
+    return sorted_spans[0][0]
+
+
 def build_filename_pattern(filenames: list[str]) -> str | None:
-    filenames = exclude_anomalies(filenames)
+    filenames = exclude_non_media_files(filenames)
     if len(filenames) < MIN_N_SEQUENCE:
         return None
 
     patterns: list[str] = []
     prefix = common_prefix(filenames)
     suffix = common_prefix(filenames, reverse=True)
+    ep_span = find_most_variable_number_parts(filenames, prefix, suffix)
 
     _LOGGER.debug("Detected common prefix: %s", prefix)
     _LOGGER.debug("Detected common suffix: %s", suffix)
+    _LOGGER.debug("Detected ep span: %s", ep_span)
+
+    if ep_span is None:
+        return None
 
     patterns = []
     for name in filenames:
         middle = name[len(prefix) : len(name) - len(suffix) if suffix else None]
-        match = re.search(r"\d+", middle)
-        _LOGGER.debug("Middle: %s", middle)
-        if not match:
-            # can't find ep number, might be rpc.config, ignore
-            continue
-        before = prefix + middle[: match.start()]
-        after = middle[match.end() :] + suffix
+        before = prefix + middle[: ep_span[0]]
+        after = middle[ep_span[1] :] + suffix
         patterns.append(rf"{before}{EP}{after}")
 
     if len(patterns) < MIN_N_SEQUENCE:
         return None
 
     _LOGGER.debug("Possible patterns: %s", patterns)
+    patterns = [_escape_normalise_regex(p) for p in patterns]
     pattern_prefix = common_prefix(patterns)
     pattern_suffix = common_prefix(patterns, reverse=True)
-    generated_pattern = pattern_prefix if EP in pattern_prefix else pattern_suffix
-    generated_pattern = re.escape(generated_pattern)
-    generated_pattern = SPACE_NORMALIZER.sub(r"\\s+", generated_pattern)
-    return NUM_NORMALIZER.sub(r"\\d+", generated_pattern)
+    return HANGING_BACKSLASH.sub(
+        "",
+        pattern_prefix if EP in pattern_prefix else pattern_suffix,
+    )
 
 
 def generate_regex_pattern(filedir: str) -> str | None:

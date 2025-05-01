@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from anime_rpc.matcher import build_filename_pattern
+from anime_rpc.matcher import build_filename_pattern, exclude_non_media_files
 
 # some random series to test against
 ARIFURETA = [
@@ -174,33 +174,51 @@ DUNGEON_MESHI = [
     "[MiniMTBB] Dungeon Meshi - 23 (BD 1080p) [BF6EE038].mkv",
     "[MiniMTBB] Dungeon Meshi - 24 (BD 1080p) [0EA543A4].mkv",
 ]
+BOKUYABA = [
+    "S00E01-Bonus Dangers [8B61A9B8].mkv",
+    "S02E01-We`re Searching [76B962E3].mkv",
+    "S02E02-I`m Growing Up [538DD068].mkv",
+    "S02E03-Yamada and Me [B8603C83].mkv",
+    "S02E04-Yamada Likes... [9B9328E5].mkv",
+    "S02E05-I Want to Know [449E880E].mkv",
+    "S02E06-Yamada Likes Me [6545A1FC].mkv",
+    "S02E07-We`re Overflowing [2948C996].mkv",
+    "S02E08-We Stayed Up All Night [80762B1D].mkv",
+    "S02E09-We Made a Promise [97A1860D].mkv",
+    "S02E10-I Want to Be Closer to Yamada [F0A26B86].mkv",
+    "S02E11-I Don`t Want to Lose [61F5526A].mkv",
+    "S02E12-I Want to Tell Her [8C566F06].mkv",
+    "S02E13-I, We, Fell in Love [82C41DDF].mkv",
+]
 
 
 @pytest.mark.parametrize(
-    ("name", "filenames", "n_episodes"),
+    ("name", "filenames", "expected_eps"),
     [
-        ("arifureta", ARIFURETA, 16),
-        ("dandadan", DANDADAN, 12),
-        ("salaryman", SALARYMAN, 12),
-        ("breaking_bad", BREAKING_BAD, 7),
-        ("house_md", HOUSE_MD, 22),
-        ("the_punisher", THE_PUNISHER, 13),
-        ("dungeon_meshi", DUNGEON_MESHI, 24),
+        ("arifureta", ARIFURETA, [*range(1, 17)]),
+        ("dandadan", DANDADAN, [*range(1, 13)]),
+        ("salaryman", SALARYMAN, [*range(1, 13)]),
+        ("breaking_bad", BREAKING_BAD, [*range(1, 8)]),
+        ("house_md", HOUSE_MD, [*range(1, 23)]),
+        ("the_punisher", THE_PUNISHER, [*range(1, 14)]),
+        ("dungeon_meshi", DUNGEON_MESHI, [*range(1, 25)]),
+        ("bokuyaba", BOKUYABA, [1, *range(1, 14)]),
     ],
 )
-def test_generated_pattern_ordered(name: str, filenames: list[str], n_episodes: int):
+def test_generated_pattern_ordered(
+    name: str,
+    filenames: list[str],
+    expected_eps: list[int],
+) -> None:
     pattern = build_filename_pattern(filenames)
 
     assert pattern is not None, f"Pattern should not be None for {name}"
 
     pattern = pattern.replace("%ep%", r"(?P<ep>\d+)")
     compiled_pattern = re.compile(pattern)
-    expected_eps = [*range(1, n_episodes + 1)][::-1]
+    expected_eps.reverse()
 
-    for filename in filenames:
-        # only test against playable media files
-        if not filename.endswith(".mkv"):
-            continue
+    for filename in exclude_non_media_files(filenames):
         if not (match := compiled_pattern.search(filename)):
             continue
         ep = int(match.group("ep"))
