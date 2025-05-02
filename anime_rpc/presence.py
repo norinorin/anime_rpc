@@ -286,7 +286,7 @@ class Presence:
 
             if UpdateFlags.PERIODIC_UPDATE in flags:
                 # if it's a periodic update just use the previous kwargs
-                # as to prevent the rich presence time to get bugged
+                # as to prevent the rich presence time from bugging
                 # for a split second
                 _LOGGER.debug(
                     "Periodic update triggered, reusing the previous kwargs...",
