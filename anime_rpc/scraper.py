@@ -149,6 +149,13 @@ async def scrape_episodes(
     # doesn't exist after re-hitting the API
     episodes.setdefault(episode, "")
 
+    if not episodes[episode]:
+        _LOGGER.warning(
+            "Episode %s isn't found in the most recent scrape, "
+            "is the episode valid?",
+            episode,
+        )
+
     with cached.open("w", encoding="utf-8") as f:
         _LOGGER.info(
             "Dumping episodes:\n%s to %s",
@@ -173,13 +180,7 @@ async def update_episode_title_in(
         _LOGGER.warning("`episode` is missing in state")
         return state
 
-    if episode_title := episodes.get(episode := str(state["episode"])):
+    if episode_title := episodes.get(str(state["episode"])):
         state["episode_title"] = episode_title
-    else:
-        _LOGGER.warning(
-            "Episode %s isn't found in the most recent scrape, "
-            "is the episode valid?",
-            episode,
-        )
 
     return state
