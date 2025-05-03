@@ -154,16 +154,15 @@ def infer_episode_pattern(
     return pattern
 
 
-def generate_regex_pattern(filedir: str) -> str | None:
-    dir_path = Path(filedir)
-    filenames: list[str] = [f.name for f in dir_path.iterdir() if f.is_file()]
+def generate_regex_pattern(filedir: Path) -> str | None:
+    filenames: list[str] = [f.name for f in filedir.iterdir() if f.is_file()]
     if not (pattern := build_filename_pattern(filenames)):
         return None
 
     _LOGGER.debug("Generated pattern: %s", pattern)
     _LOGGER.info("Appending generated pattern to rpc.config...")
 
-    with (dir_path / "rpc.config").open("a") as f:
+    with (filedir / "rpc.config").open("a") as f:
         f.write(f"\n# Automatically generated pattern\nmatch={pattern}\n")
 
     return pattern
