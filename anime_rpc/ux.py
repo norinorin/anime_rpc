@@ -15,9 +15,3 @@ def init_logging():
     level = os.getenv("ANIME_RPC_LOG_LEVEL", "INFO").upper()
 
     coloredlogs.install(level=level)  # type: ignore[reportUnknownMemberType]
-
-    # logging.basicConfig(
-    #     level=os.getenv("ANIME_RPC_LOG_LEVEL", "INFO"),
-    #     format="%(levelname)-1.1s %(asctime)23.23s %(name)s: %(message)s",
-    #     stream=sys.stderr,
-    # )
