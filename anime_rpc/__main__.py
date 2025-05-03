@@ -18,7 +18,7 @@ from anime_rpc.config import Config, fill_in_missing_data, parse_rpc_config
 from anime_rpc.file_watcher import FileWatcherManager, Subscription
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.monkey_patch import patch_pypresence
-from anime_rpc.pollers import BasePoller, Vars
+from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlags
 from anime_rpc.scraper import update_episode_title_in
 from anime_rpc.states import State, states_logger
