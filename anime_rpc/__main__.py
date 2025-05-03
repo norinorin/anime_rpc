@@ -48,14 +48,15 @@ async def poll_player(
         vars_ = await wait(poller.get_vars(session), event)
         new_filedir = vars_ and Path(vars_.get("filedir"))
 
-        if filedir != new_filedir and subscription:
-            file_watcher_manager.unsubscribe(subscription)
-            subscription = None
+        if filedir != new_filedir:
+            _ = subscription and file_watcher_manager.unsubscribe(subscription)
             filedir = new_filedir
-
-        if filedir:
-            subscription = file_watcher_manager.subscribe(
-                filedir / "rpc.config", parser=parse_rpc_config
+            subscription = (
+                file_watcher_manager.subscribe(
+                    filedir / "rpc.config", parser=parse_rpc_config
+                )
+                if filedir
+                else None
             )
 
         with suppress(QueueEmptyError):
