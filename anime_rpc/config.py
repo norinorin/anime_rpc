@@ -175,7 +175,7 @@ class ConfigStore:
     ) -> None:
         if filedir in self.dir_watchers:
             _LOGGER.debug(
-                "File %s already being watched, adding % to an existing watcher",
+                "File %s already being watched, adding %s to an existing watcher",
                 filedir,
                 origin,
             )
