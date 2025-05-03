@@ -12,7 +12,7 @@ import aiohttp
 from anime_rpc import __version__
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
-from anime_rpc.config import Config, read_rpc_config
+from anime_rpc.config import Config, get_rpc_config
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller, Vars
@@ -41,9 +41,10 @@ async def poll_player(
         state: State = poller.get_empty_state()
         vars_: Vars | None
         if (vars_ := await wait(poller.get_vars(session), event)) and (
-            config := read_rpc_config(
+            config := await get_rpc_config(
                 vars_["filedir"],
                 last_config=config,
+                session=session,
             )
         ):
             state = poller.get_state(vars_, config)

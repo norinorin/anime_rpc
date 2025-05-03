@@ -3,9 +3,13 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import SupportsInt, TypedDict
+from typing import TYPE_CHECKING, SupportsInt, TypedDict
 
 from anime_rpc.matcher import generate_regex_pattern
+from anime_rpc.scraper import update_missing_metadata_in
+
+if TYPE_CHECKING:
+    from aiohttp import ClientSession
 
 DEFAULT_APPLICATION_ID = 1088900742523392133
 _LOGGER = logging.getLogger("config")
@@ -14,16 +18,16 @@ _MISSING_LOG_MSG = "Missing %s in config file, ignoring..."
 
 class Config(TypedDict):
     # fmt: off
-    # USER SETTINGS
+    # REQUIRED SETTINGS unless url is set to MAL
     title: str
-    match: str
+    image_url: str       # defaults to ""
 
     # OPTIONAL SETTINGS
-    image_url: str       # defaults to ""
     url: str             # defaults to ""
     url_text: str        # defaults to View Anime
     rewatching: bool     # defaults to 0
     application_id: int  # defaults to DEFAULT_APPLICATION_ID
+    match: str           # will attempt to generate a regex pattern if not set
 
     # CONTEXT
     path: Path
@@ -37,10 +41,11 @@ def _parse_int(value: SupportsInt, default: int = 0) -> int:
         return default
 
 
-def read_rpc_config(
+async def get_rpc_config(
     filedir: str,
     file: str = "rpc.config",
     *,
+    session: ClientSession | None = None,
     last_config: Config | None,
 ) -> Config | None:
     config: Config = {}  # type: ignore[reportGeneralTypeIssues]
@@ -74,18 +79,6 @@ def read_rpc_config(
     except FileNotFoundError:
         return None
 
-    # required settings
-    if not config.get("title"):
-        _LOGGER.debug(_MISSING_LOG_MSG, "title")
-        return None
-
-    if not config.get("match") and (match := generate_regex_pattern(filedir)):
-        config["match"] = match
-
-    if not config.get("image_url"):
-        _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
-        return None
-
     # optional settings
     config.setdefault("url", "")
     config["url_text"] = config.get("url_text", "View Anime")
@@ -94,6 +87,21 @@ def read_rpc_config(
         config.get("application_id"),
         DEFAULT_APPLICATION_ID,
     )
+
+    if session and (diff := await update_missing_metadata_in(config, session)):
+        with (Path(filedir) / "rpc.config").open("a") as f:
+            f.write("\n# Fetched metadata\n" + "\n".join(diff) + "\n")
+
+    if not config.get("title"):
+        _LOGGER.debug(_MISSING_LOG_MSG, "title")
+        return None
+
+    if not config.get("image_url"):
+        _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
+        return None
+
+    if not config.get("match") and (match := generate_regex_pattern(filedir)):
+        config["match"] = match
 
     # context
     config["path"] = path

@@ -68,7 +68,10 @@ def commonsuffix(filenames: list[str]) -> str:
     return commonprefix(rev)[::-1]
 
 
-def infer_episode_pattern(filenames: list[str], number_positions: list[NumberPosition]):
+def infer_episode_pattern(
+    filenames: list[str],
+    number_positions: list[NumberPosition],
+) -> str | None:
     if not (filenames and number_positions):
         _LOGGER.debug("No filenames or number positions found")
         return None
@@ -131,7 +134,7 @@ def infer_episode_pattern(filenames: list[str], number_positions: list[NumberPos
                 structural_score=structural_score,
                 before=before_common,
                 after=after_common,
-            )
+            ),
         )
 
     if not candidates:
