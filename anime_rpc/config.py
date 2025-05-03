@@ -7,7 +7,7 @@ import threading
 from collections import defaultdict
 from io import TextIOWrapper
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, SupportsInt, TypedDict
+from typing import TYPE_CHECKING, SupportsInt, TypedDict
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -25,6 +25,7 @@ _LOGGER = logging.getLogger("config")
 _MISSING_LOG_MSG = "Missing %s in config file, ignoring..."
 
 DEBOUNCE_SECONDS = 1
+EMPTY_QUEUE = object()
 
 
 class Config(TypedDict):
@@ -65,7 +66,7 @@ class EventHandler(FileSystemEventHandler):
         while not self._event.wait(DEBOUNCE_SECONDS):
             for file in {*self.queues}:
                 _LOGGER.debug("Processing queue for %s", file)
-                path: Literal[0] | Path | None = 0
+                path: Path | None | object = EMPTY_QUEUE
                 try:
                     while 1:
                         path = self.queues[file].get_nowait()
@@ -73,7 +74,7 @@ class EventHandler(FileSystemEventHandler):
                     pass
 
                 # 0 is the def value, meaning the queue is empty
-                if path == 0:
+                if path is EMPTY_QUEUE:
                     _LOGGER.debug("Queue for %s is empty", file)
                     continue
 
@@ -86,6 +87,7 @@ class EventHandler(FileSystemEventHandler):
 
                 _LOGGER.debug("Origins subscribed to %s: %s", file, origins)
 
+                assert isinstance(path, Path)
                 config: Config | None = None
                 if path:
                     with path.open("r") as f:
