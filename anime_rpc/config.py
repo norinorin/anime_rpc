@@ -208,7 +208,7 @@ class ConfigStore:
                 self.observer.unschedule(self.dir_watchers[file])
                 del self.dir_watchers[file]
                 del self.path_to_origins[file]
-                del self.event_handler.queues[file]
+                self.event_handler.queues.pop(file, None)
 
 
 def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
