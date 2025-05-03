@@ -45,25 +45,25 @@ async def poll_player(
 
     while not event.is_set():
         state: State = poller.get_empty_state()
-        vars_: Vars | None
-        if vars_ := await wait(poller.get_vars(session), event):
-            if filedir != (tmp := Path(vars_["filedir"])):
-                filedir = tmp
-                _ = subscription and file_watcher_manager.unsubscribe(subscription)
-                subscription = file_watcher_manager.subscribe(
-                    filedir / "rpc.config", parser=parse_rpc_config
-                )
+        vars_ = await wait(poller.get_vars(session), event)
+        new_filedir = vars_ and Path(vars_.get("filedir"))
 
-            with suppress(QueueEmptyError):
-                config = subscription and subscription.consume()
-
-            if config and filedir:
-                await fill_in_missing_data(config, session, filedir)
-                state = poller.get_state(vars_, config)
-        else:
-            filedir = None
-            _ = subscription and file_watcher_manager.unsubscribe(subscription)
+        if filedir != new_filedir and subscription:
+            file_watcher_manager.unsubscribe(subscription)
             subscription = None
+            filedir = new_filedir
+
+        if filedir:
+            subscription = file_watcher_manager.subscribe(
+                filedir / "rpc.config", parser=parse_rpc_config
+            )
+
+        with suppress(QueueEmptyError):
+            config = subscription and subscription.consume()
+
+        if vars_ and config and filedir:
+            await fill_in_missing_data(config, session, filedir)
+            state = poller.get_state(vars_, config)
 
         await queue.put(state)
 
