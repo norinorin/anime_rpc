@@ -208,7 +208,6 @@ class FileWatcherManager:
                 ),
             )
         )
-        print(self.subscriptions[file_path])
         # dispatch false event to trigger the intial parse
         self.event_handler.dispatch_modified({subscription})
         _LOGGER.debug("New subscription for %s", file_path)
