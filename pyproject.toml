@@ -1,6 +1,6 @@
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["S101", "D100", "D101", "D102"]
+ignore = ["S101", "D100", "D101", "D102", "D107"]
 
 [tool.pyright]
 typeCheckingMode = "strict"
