@@ -5,6 +5,7 @@ import sys
 from collections.abc import Coroutine
 from contextlib import suppress
 from pathlib import Path
+from queue import Empty as QueueEmptyError
 from time import perf_counter
 from typing import Any
 
@@ -13,7 +14,8 @@ import aiohttp
 from anime_rpc import __version__
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
-from anime_rpc.config import Config, ConfigStore, fill_in_missing_data, parse_rpc_config
+from anime_rpc.config import Config, fill_in_missing_data, parse_rpc_config
+from anime_rpc.file_watcher import FileWatcherManager, Subscription
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller, Vars
@@ -35,34 +37,33 @@ async def poll_player(
     event: asyncio.Event,
     queue: asyncio.Queue[State],
     session: aiohttp.ClientSession,
-    config_store: ConfigStore,
+    file_watcher_manager: FileWatcherManager,
 ) -> None:
     config: Config | None = None
     filedir: Path | None = None
-    config_queue: asyncio.Queue[Config | None] = asyncio.Queue()
+    subscription: Subscription[Config] | None = None
 
     while not event.is_set():
         state: State = poller.get_empty_state()
         vars_: Vars | None
         if vars_ := await wait(poller.get_vars(session), event):
             if filedir != (tmp := Path(vars_["filedir"])):
-                config_store.unsubscribe(poller.origin())
-                config_store.subscribe(tmp, poller.origin(), config_queue)
-
                 filedir = tmp
-                if (config_path := filedir / "rpc.config").exists():
-                    with config_path.open("r") as f:
-                        config = parse_rpc_config(f)
+                _ = subscription and file_watcher_manager.unsubscribe(subscription)
+                subscription = file_watcher_manager.subscribe(
+                    filedir / "rpc.config", parser=parse_rpc_config
+                )
 
-            while config_queue.qsize() > 0:
-                config = config_queue.get_nowait()
+            with suppress(QueueEmptyError):
+                config = subscription and subscription.consume()
 
             if config and filedir:
                 await fill_in_missing_data(config, session, filedir)
                 state = poller.get_state(vars_, config)
         else:
             filedir = None
-            config_store.unsubscribe(poller.origin())
+            _ = subscription and file_watcher_manager.unsubscribe(subscription)
+            subscription = None
 
         await queue.put(state)
 
@@ -170,7 +171,7 @@ async def main() -> None:
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
     session = aiohttp.ClientSession()
-    config_store = ConfigStore(loop=asyncio.get_running_loop())
+    file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
 
     consumer_task = asyncio.create_task(
@@ -179,7 +180,7 @@ async def main() -> None:
     )
     poller_tasks = [
         asyncio.create_task(
-            poll_player(poller, event, queue, session, config_store),
+            poll_player(poller, event, queue, session, file_watcher_manager),
             name=poller.__class__.__name__,
         )
         for poller in CLI_ARGS.pollers
@@ -191,8 +192,7 @@ async def main() -> None:
     if CLI_ARGS.enable_webserver:
         app = await get_app(queue)
         webserver = await start_app(app)
-
-    config_store.start()
+    file_watcher_manager.start()
 
     with suppress(Bail):
         await asyncio.gather(consumer_task, *poller_tasks)
@@ -201,7 +201,7 @@ async def main() -> None:
         await webserver.stop()
 
     await session.close()
-    config_store.stop()
+    file_watcher_manager.stop()
 
 
 def _sigint_callback(event: asyncio.Event) -> None:
@@ -210,7 +210,9 @@ def _sigint_callback(event: asyncio.Event) -> None:
 
 
 init_logging()
+
 _LOGGER.info("Starting anime_rpc ver: %s", __version__)
+
 print_cli_args()
 
 if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
