@@ -79,9 +79,6 @@ class EventHandler(FileSystemEventHandler):
                         event = self.parser_queues[file_path].get_nowait()
 
                 if event is Empty():
-                    _LOGGER.debug(
-                        "Queue for %s is empty, nothing to process", file_path
-                    )
                     continue
 
                 if not (
