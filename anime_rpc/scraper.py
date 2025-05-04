@@ -227,7 +227,11 @@ class _CachingScraper(BaseScraper):
                 episode,
             )
 
-        metadata["episodes"] = episodes
+        metadata["episodes"] = dict(
+            sorted(
+                episodes.items(), key=lambda i: (i[0].isdigit() and int(i[0])) or i[0]
+            ),
+        )
         assert "id" in metadata
         path = self.get_cache_path(metadata["id"])
         with path.open("w", encoding="utf-8") as f:
@@ -303,7 +307,4 @@ class MALScraper(_CachingScraper):
             episode_title = title_cell.get_text(strip=True)
             ret[episode_number] = episode_title
 
-        ret = dict(
-            sorted(ret.items(), key=lambda i: (i[0].isdigit() and int(i[0])) or i[0]),
-        )
         return ret
