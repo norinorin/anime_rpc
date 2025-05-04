@@ -6,10 +6,9 @@ from pathlib import Path
 from typing import TYPE_CHECKING, SupportsInt, TypedDict
 
 from anime_rpc.matcher import generate_regex_pattern
-from anime_rpc.scraper import update_missing_metadata_in
 
 if TYPE_CHECKING:
-    from aiohttp import ClientSession
+    from anime_rpc.scraper import MALScraper
 
 DEFAULT_APPLICATION_ID = 1088900742523392133
 _LOGGER = logging.getLogger("config")
@@ -60,13 +59,14 @@ def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
     return config
 
 
+# fixme: make this a method of either the scraper or the config
 async def fill_in_missing_data(
-    config: Config | None, session: ClientSession, filedir: Path
+    config: Config | None, scraper: MALScraper, filedir: Path
 ) -> Config | None:
     if not config:
         return None
 
-    if session and (diff := await update_missing_metadata_in(config, session)):
+    if diff := await scraper.update_missing_metadata_in(config):
         with (Path(filedir) / "rpc.config").open("a") as f:
             f.write("\n# Fetched metadata\n" + "\n".join(diff) + "\n")
 
