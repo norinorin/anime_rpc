@@ -66,7 +66,11 @@ class EventHandler(FileSystemEventHandler):
         with file_path.open("r") as f:
             for s in subscriptions:
                 f.seek(0)
-                parsed = s.parser(f)
+                try:
+                    parsed = s.parser(f)
+                except Exception:
+                    _LOGGER.exception("Failed to parse %s, ignoring...", file_path)
+                    continue
                 s.put(parsed)
 
     def _consume_parser_queue(self) -> None:
@@ -75,7 +79,7 @@ class EventHandler(FileSystemEventHandler):
             for file_path in {*self.parser_queues}:
                 event = Empty()
                 with contextlib.suppress(QueueEmptyError):
-                    while 1:
+                    while True:
                         event = self.parser_queues[file_path].get_nowait()
 
                 if event is Empty():
