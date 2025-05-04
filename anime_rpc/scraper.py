@@ -249,7 +249,7 @@ class MALScraper(_CachingScraper):
 
     @property
     def subdir(self) -> str:
-        return "mal/"
+        return "mal"
 
     @classmethod
     def extract_id(cls, url: str) -> str | None:
