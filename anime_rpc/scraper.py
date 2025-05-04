@@ -152,7 +152,7 @@ class _CachingScraper(BaseScraper):
             self.file_watcher_manager.unsubscribe(self._subscription)
 
         if self._consumer_task:
-            _LOGGER.debug("Cancelling consumer task for %S", id_)
+            _LOGGER.debug("Cancelling consumer task for %s", id_)
             self._consumer_task.cancel()
             with suppress(asyncio.CancelledError):
                 await self._consumer_task
