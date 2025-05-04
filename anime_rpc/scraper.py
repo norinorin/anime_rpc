@@ -61,7 +61,7 @@ class BaseScraper(ABC):
     def subdir(self) -> str: ...
 
     @abstractmethod
-    async def scrape_episodes(self, state: State) -> Scraped: ...
+    async def scrape_episodes(self, url: str, episode: str) -> dict[str, str]: ...
 
     @abstractmethod
     async def get_metadata(self, url: str) -> Scraped: ...
@@ -74,15 +74,19 @@ class BaseScraper(ABC):
         self,
         state: State,
     ) -> State:
-        scraped = await self.scrape_episodes(state)
-        # scraping fails, no need to mutate
-        if not (episodes := scraped.get("episodes")):
+        if state.get("episode_title") is not None:
             return state
 
-        if "episode" not in state:
+        if not (url := state.get("url")):
             return state
 
-        if episode_title := episodes.get(str(state["episode"])):
+        if not (episode := str(state.get("episode", ""))):
+            return state
+
+        if not (episodes := await self.scrape_episodes(url, episode)):
+            return state
+
+        if episode_title := episodes.get(episode):
             state["episode_title"] = episode_title
 
         return state
@@ -146,9 +150,9 @@ class _CacheMeta(ABCMeta):
                 if path.exists():
                     await task  # wait until we get the intial value
                     if self.last_queried is not None:
-                        _LOGGER.debug("Using cached metadata for %s", url)
                         return self.last_queried
 
+                _LOGGER.info("[API CALL] Fetching metadata from %s", url)
                 metadata = await original_get_metadata(self, url)
                 metadata["id"] = id_
                 with path.open("w", encoding="utf-8") as f:
@@ -158,8 +162,54 @@ class _CacheMeta(ABCMeta):
             cls.get_metadata = get_metadata  # type: ignore
 
         if (original_scrape_episodes := dct.get("scrape_episodes")) is not None:
-            ...
 
+            async def scrape_episodes(
+                self: "_CachingScraper", url: str, episode: str
+            ) -> dict[str, str]:
+                if not (metadata := await self.get_metadata(url)):
+                    _LOGGER.debug("Failed to get metadata for %s. Is URL valid?", url)
+                    return {}
+
+                if episode in (episodes := metadata.get("episodes", {})):
+                    return episodes
+
+                if episodes:
+                    # not our first time fetching episodes
+                    _LOGGER.info(
+                        "Episode %s seems like a new episode, updating cache", episode
+                    )
+
+                if not (episodes_url := metadata.get("episodes_url")):
+                    return {}
+
+                # time to hit the api
+                _LOGGER.info("[API CALL] Fetching episodes from %s", episodes_url)
+                new_episodes = await original_scrape_episodes(self, url, episode)
+                # this marks the episode as invalid if it
+                # doesn't exist after re-hitting the API
+                new_episodes.setdefault(episode, "")
+                episodes.update(new_episodes)
+
+                if not episodes[episode]:
+                    _LOGGER.warning(
+                        "Episode %s isn't found in the most recent scrape, "
+                        "is the episode valid?",
+                        episode,
+                    )
+
+                metadata["episodes"] = episodes
+                assert "id" in metadata
+                path = self.get_cache_path(metadata["id"])
+                with path.open("w", encoding="utf-8") as f:
+                    _LOGGER.info(
+                        "Dumping episodes:\n%s to %s",
+                        pprint.pformat(episodes, indent=4, sort_dicts=False),
+                        path,
+                    )
+                    json.dump(metadata, f)
+                return episodes
+
+            cls.scrape_episodes = scrape_episodes  # type: ignore
         return cls
 
 
@@ -282,66 +332,8 @@ class MALScraper(_CachingScraper):
 
         return ret
 
-    async def scrape_episodes(self, state: State) -> Scraped:
-        empty = Scraped()
-
-        # episode title is already present
-        # bail
-        if state.get("episode_title") is not None:
-            _LOGGER.debug("Episode title already present, skipping scraping")
-            return empty
-
-        # no url is provided
-        if not (url := state.get("url")):
-            _LOGGER.debug("No url provided, skipping scraping")
-            return empty
-
-        if not (episode := str(state.get("episode", ""))):
-            _LOGGER.warning("`episode` is missing in state")
-            return empty
-
-        if not (metadata := await self.get_metadata(url)):
-            _LOGGER.debug("Failed to get metadata for %s. Is URL valid?", url)
-            return empty
-
-        if episode in (episodes := metadata.get("episodes", {})):
-            _LOGGER.debug("Using cached episodes for %s", url)
-            return metadata
-
-        if episodes:
-            # not our first time fetching episodes
-            _LOGGER.info("Episode %s seems like a new episode, updating cache", episode)
-
-        if not (episodes_url := metadata.get("episodes_url")):
-            return metadata
-
-        new_episodes = await self._get_episodes(episodes_url)
-
-        if not new_episodes:
-            _LOGGER.error("Caching %s as an invalid URL", url)
-        else:
-            _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
-
-        # this marks the episode as invalid if it
-        # doesn't exist after re-hitting the API
-        new_episodes.setdefault(episode, "")
-        episodes.update(new_episodes)
-        if not episodes[episode]:
-            _LOGGER.warning(
-                "Episode %s isn't found in the most recent scrape, "
-                "is the episode valid?",
-                episode,
-            )
-
-        metadata["episodes"] = episodes
-        assert "id" in metadata
-        cached = SCRAPING_CACHE_DIR / f"{metadata['id']}.json"
-        with cached.open("w", encoding="utf-8") as f:
-            _LOGGER.info(
-                "Dumping episodes:\n%s to %s",
-                pprint.pformat(episodes, indent=4, sort_dicts=False),
-                cached,
-            )
-            json.dump(metadata, f)
-
-        return metadata
+    async def scrape_episodes(self, url: str, episode: str) -> dict[str, str]:
+        # _CacheMeta handles the metadata fetching and caching
+        # at this point, the cache should have the episodes_url
+        assert self.last_queried and "episodes_url" in self.last_queried
+        return await self._get_episodes(self.last_queried["episodes_url"])
