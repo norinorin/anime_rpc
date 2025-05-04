@@ -38,14 +38,28 @@ def _parse_int(value: SupportsInt, default: int = 0) -> int:
 
 def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
     config: Config = {}  # type: ignore[reportGeneralTypeIssues]
+    valid_keys = {*Config.__annotations__.keys()}
 
     for line in handle:
         stripped = line.strip()
         if not stripped or stripped.startswith("#"):
             continue
 
+        if stripped.count("=") == 0:
+            _LOGGER.warning(
+                "Ignoring line with invalid syntax %r in rpc.config", stripped
+            )
+            continue
+
         _LOGGER.debug("Parsing line %s", stripped)
         key, value = stripped.split("=", maxsplit=1)
+
+        if key not in valid_keys:
+            _LOGGER.warning(
+                "Ignoring invalid key %r with value %r in rpc.config", key, value
+            )
+            continue
+
         config[key] = value.strip()
 
     # optional settings
