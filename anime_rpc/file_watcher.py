@@ -61,6 +61,8 @@ class EventHandler(FileSystemEventHandler):
     @staticmethod
     def dispatch_modified(subscriptions: set[Subscription[Any]]) -> None:
         file_path = next(iter(subscriptions)).file_path
+        if not file_path.exists():
+            return
         with file_path.open("r") as f:
             for s in subscriptions:
                 f.seek(0)
