@@ -178,7 +178,7 @@ class _CachingScraper(BaseScraper, metaclass=_CacheMeta):
     async def _consume_queue(
         self, id_: str, queue: asyncio.Queue[Scraped | None]
     ) -> None:
-        _LOGGER.debug("Starting consumer for %d", id_)
+        _LOGGER.debug("Starting consumer for %s", id_)
         while 1:
             self._last_queried = (id_, await queue.get())
             self._event.set()
