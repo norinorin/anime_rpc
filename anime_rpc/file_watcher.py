@@ -55,14 +55,20 @@ class EventHandler(FileSystemEventHandler):
 
     @staticmethod
     def dispatch_removed(subscriptions: set[Subscription[Any]]) -> None:
+        file_path = next(iter(subscriptions)).file_path
+        _LOGGER.info("File %s has been removed, dispatching...", file_path)
         for s in subscriptions:
             s.put(None)
 
     @staticmethod
-    def dispatch_modified(subscriptions: set[Subscription[Any]]) -> None:
+    def dispatch_modified(
+        subscriptions: set[Subscription[Any]], *, manually_triggered: bool = False
+    ) -> None:
         file_path = next(iter(subscriptions)).file_path
         if not file_path.exists():
             return
+        if not manually_triggered:
+            _LOGGER.info("File %s has been modified, dispatching...", file_path)
         with file_path.open("r") as f:
             for s in subscriptions:
                 f.seek(0)
@@ -211,8 +217,8 @@ class FileWatcherManager:
                 ),
             )
         )
-        # dispatch false event to trigger the intial parse
-        self.event_handler.dispatch_modified({subscription})
+        # dispatch a fake event to trigger the intial parse
+        self.event_handler.dispatch_modified({subscription}, manually_triggered=True)
         _LOGGER.debug("New subscription for %s", file_path)
         return subscription
 
