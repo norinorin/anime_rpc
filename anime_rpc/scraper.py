@@ -1,16 +1,28 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import pprint
 import re
+from abc import ABC, ABCMeta, abstractmethod
+from contextlib import suppress
 from http import HTTPStatus
+from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    ParamSpec,
+    Type,
+    TypedDict,
+    TypeVar,
+)
 
 from bs4 import BeautifulSoup
 
 from anime_rpc.cache import SCRAPING_CACHE_DIR
+from anime_rpc.file_watcher import FileWatcherManager, Subscription
 
 if TYPE_CHECKING:
     import aiohttp
@@ -18,11 +30,11 @@ if TYPE_CHECKING:
     from anime_rpc.config import Config
     from anime_rpc.states import State
 
-MAL_PATTERN = re.compile(r"https?://myanimelist\.net/anime/(?P<id>\d+)")
+T = TypeVar("T")
+P = ParamSpec("P")
+C = TypeVar("C", bound="_CacheMeta")
+
 _LOGGER = logging.getLogger("scraper")
-
-
-SCRAPING_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 class Scraped(TypedDict, total=False):
@@ -34,198 +46,302 @@ class Scraped(TypedDict, total=False):
     last_updated: int
 
 
-async def _get_text(session: aiohttp.ClientSession, url: str) -> str | HTTPStatus:
-    async with session.get(url) as response:
-        if response.status != HTTPStatus.OK:
-            status = HTTPStatus(response.status)
-            _LOGGER.error(
-                "Failed to fetch %s. Reason: %s. Code: %d (%s)",
-                url,
-                status.description,
-                status.value,
-                status.phrase,
-            )
-            return status
+class BaseScraper(ABC):
+    def __init__(self, session: aiohttp.ClientSession) -> None:
+        self.session = session
 
-        return await response.text()
+    def get_cache_path(self, id_: str | None = None) -> Path:
+        cache_dir = SCRAPING_CACHE_DIR / self.subdir
+        if id_ is not None:
+            return cache_dir / f"{id_}.json"
+        return cache_dir
+
+    @property
+    @abstractmethod
+    def subdir(self) -> str: ...
+
+    @abstractmethod
+    async def scrape_episodes(self, state: State) -> Scraped: ...
+
+    @abstractmethod
+    async def get_metadata(self, url: str) -> Scraped: ...
+
+    @classmethod
+    @abstractmethod
+    def extract_id(cls, url: str) -> str | None: ...
+
+    async def update_episode_title_in(
+        self,
+        state: State,
+    ) -> State:
+        scraped = await self.scrape_episodes(state)
+        # scraping fails, no need to mutate
+        if not (episodes := scraped.get("episodes")):
+            return state
+
+        if "episode" not in state:
+            return state
+
+        if episode_title := episodes.get(str(state["episode"])):
+            state["episode_title"] = episode_title
+
+        return state
+
+    async def update_missing_metadata_in(
+        self,
+        config: Config,
+    ) -> list[str]:
+        diff: list[str] = []
+
+        missing_metadata = [m for m in ("title", "image_url") if not config.get(m)]
+
+        if not missing_metadata:
+            return diff
+
+        if not (scraped := await self.get_metadata(config["url"])):
+            return diff
+
+        for m in missing_metadata:
+            if m not in scraped:
+                continue
+            diff.append(f"{m}={scraped[m]}")
+            config[m] = scraped[m]
+
+        return diff
+
+    async def _get_text(self, url: str) -> str | HTTPStatus:
+        async with self.session.get(url) as response:
+            if response.status != HTTPStatus.OK:
+                status = HTTPStatus(response.status)
+                _LOGGER.error(
+                    "Failed to fetch %s. Reason: %s. Code: %d (%s)",
+                    url,
+                    status.description,
+                    status.value,
+                    status.phrase,
+                )
+                return status
+
+            return await response.text()
 
 
-async def _fetch_metadata(session: aiohttp.ClientSession, url: str) -> Scraped:
-    _LOGGER.info("Fetching metadata from %s", url)
+class _CacheMeta(ABCMeta):
+    def __new__(
+        mcs: Type[C], name: str, bases: tuple[type, ...], dct: dict[str, Any]
+    ) -> C:
+        cls = super().__new__(mcs, name, bases, dct)
 
-    ret = Scraped()
+        if (original_get_metadata := dct.get("get_metadata")) is not None:
 
-    if isinstance(html := await _get_text(session, url), HTTPStatus):
+            async def get_metadata(self: "_CachingScraper", url: str) -> Scraped:
+                if not (id_ := self.extract_id(url)):
+                    return Scraped()
+
+                path = self.get_cache_path(id_)
+                task = asyncio.create_task(self.subscribe(id_, path))
+
+                # with caching, we make a distinction between None and an empty Scraped()
+                # None means the file doesn't exist, and an empty Scraped() means the
+                # scraping fails and we've marked the url as invalid
+                if path.exists():
+                    await task  # wait until we get the intial value
+                    if self.last_queried is not None:
+                        _LOGGER.debug("Using cached metadata for %s", url)
+                        return self.last_queried
+
+                metadata = await original_get_metadata(self, url)
+                metadata["id"] = id_
+                with path.open("w", encoding="utf-8") as f:
+                    json.dump(metadata, f)
+                return metadata
+
+            cls.get_metadata = get_metadata  # type: ignore
+
+        if (original_scrape_episodes := dct.get("scrape_episodes")) is not None:
+            ...
+
+        return cls
+
+
+class _CachingScraper(BaseScraper, metaclass=_CacheMeta):
+    def __init__(
+        self, session: aiohttp.ClientSession, file_watcher_manager: FileWatcherManager
+    ) -> None:
+        super().__init__(session)
+
+        self.file_watcher_manager = file_watcher_manager
+        self._last_queried: tuple[str, Scraped | None] | None = None
+        self._subscription: Subscription[Scraped] | None = None
+        self._consumer_task: asyncio.Task[None] | None = None
+        self._event = asyncio.Event()
+
+    async def _consume_queue(
+        self, id_: str, queue: asyncio.Queue[Scraped | None]
+    ) -> None:
+        _LOGGER.debug("Starting consumer for %d", id_)
+        while 1:
+            self._last_queried = (id_, await queue.get())
+            self._event.set()
+
+    async def subscribe(self, id_: str, path: Path) -> None:
+        if self._last_queried and self._last_queried[0] == id_:
+            return None
+
+        if self._subscription:
+            self.file_watcher_manager.unsubscribe(self._subscription)
+
+        if self._consumer_task:
+            _LOGGER.debug("Cancelling consumer task for %d", id_)
+            self._consumer_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self._consumer_task
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._event.clear()
+        self._subscription = self.file_watcher_manager.subscribe(path, json.load)
+        self._consumer_task = asyncio.create_task(
+            self._consume_queue(id_, self._subscription.queue)
+        )
+        await self._event.wait()
+
+    @property
+    def last_queried(self) -> Scraped | None:
+        return self._last_queried[1] if self._last_queried else None
+
+
+class MALScraper(_CachingScraper):
+    ID_PATTERN = re.compile(r"https?://myanimelist\.net/anime/(?P<id>\d+)")
+
+    @property
+    def subdir(self) -> str:
+        return "mal/"
+
+    @classmethod
+    def extract_id(cls, url: str) -> str | None:
+        if not (match := cls.ID_PATTERN.match(url)):
+            _LOGGER.debug("URL doesn't match MAL pattern: %s", url)
+            return None
+
+        return match.group("id")
+
+    async def get_metadata(self, url: str) -> Scraped:
+        _LOGGER.info("Fetching metadata from %s", url)
+
+        ret = Scraped()
+
+        if isinstance(html := await self._get_text(url), HTTPStatus):
+            return ret
+
+        soup = BeautifulSoup(html, "html.parser")
+        for a in soup.select("#horiznav_nav ul li a"):
+            if a.string == "Episodes":
+                url = str(a["href"])
+                _LOGGER.info("Found episodes url: %s", url)
+                ret["episodes_url"] = url
+                break
+
+        if title := soup.select_one("h1.title-name"):
+            ret["title"] = title.get_text(strip=True)
+
+        if img := soup.select_one("div.leftside a img"):
+            ret["image_url"] = str(img.attrs["data-src"])
+
+        ret["last_updated"] = int(time() * 1000)
         return ret
 
-    soup = BeautifulSoup(html, "html.parser")
-    for a in soup.select("#horiznav_nav ul li a"):
-        if a.string == "Episodes":
-            url = str(a["href"])
-            _LOGGER.info("Found episodes url: %s", url)
-            ret["episodes_url"] = url
-            break
+    async def _get_episodes(
+        self,
+        url: str,
+        *,
+        sort: bool = True,
+    ) -> dict[str, str]:
+        _LOGGER.info("Getting episodes from %s", url)
 
-    if title := soup.select_one("h1.title-name"):
-        ret["title"] = title.get_text(strip=True)
+        ret: dict[str, str] = {}
+        if isinstance(html := await self._get_text(url), HTTPStatus):
+            return ret
 
-    if img := soup.select_one("div.leftside a img"):
-        ret["image_url"] = str(img.attrs["data-src"])
+        soup = BeautifulSoup(html, "html.parser")
+        for row in soup.select("tr.episode-list-data"):
+            number_cell = row.select_one("td.episode-number")
+            title_cell = row.select_one("td.episode-title a")
 
-    ret["last_updated"] = int(time() * 1000)
-    return ret
+            if not (number_cell and title_cell):
+                continue
 
+            episode_number = number_cell.get_text(strip=True)
+            episode_title = title_cell.get_text(strip=True)
+            ret[episode_number] = episode_title
 
-async def get_metadata(session: aiohttp.ClientSession, url: str) -> Scraped | None:
-    if not (match := MAL_PATTERN.match(url)):
-        _LOGGER.debug("URL %s does not match MAL pattern", url)
-        return None
+        if sort:
+            ret = dict(
+                sorted(
+                    ret.items(), key=lambda i: (i[0].isdigit() and int(i[0])) or i[0]
+                ),
+            )
 
-    id_ = match.group("id")
-    if (cached := SCRAPING_CACHE_DIR / f"{id_}.json").exists():
-        _LOGGER.debug("Using cached metadata for %s", url)
-        metadata = json.loads(cached.read_text(encoding="utf-8"))
-    else:
-        metadata = await _fetch_metadata(session, url)
-        metadata["id"] = id_
+        return ret
+
+    async def scrape_episodes(self, state: State) -> Scraped:
+        empty = Scraped()
+
+        # episode title is already present
+        # bail
+        if state.get("episode_title") is not None:
+            _LOGGER.debug("Episode title already present, skipping scraping")
+            return empty
+
+        # no url is provided
+        if not (url := state.get("url")):
+            _LOGGER.debug("No url provided, skipping scraping")
+            return empty
+
+        if not (episode := str(state.get("episode", ""))):
+            _LOGGER.warning("`episode` is missing in state")
+            return empty
+
+        if not (metadata := await self.get_metadata(url)):
+            _LOGGER.debug("Failed to get metadata for %s. Is URL valid?", url)
+            return empty
+
+        if episode in (episodes := metadata.get("episodes", {})):
+            _LOGGER.debug("Using cached episodes for %s", url)
+            return metadata
+
+        if episodes:
+            # not our first time fetching episodes
+            _LOGGER.info("Episode %s seems like a new episode, updating cache", episode)
+
+        if not (episodes_url := metadata.get("episodes_url")):
+            return metadata
+
+        new_episodes = await self._get_episodes(episodes_url)
+
+        if not new_episodes:
+            _LOGGER.error("Caching %s as an invalid URL", url)
+        else:
+            _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
+
+        # this marks the episode as invalid if it
+        # doesn't exist after re-hitting the API
+        new_episodes.setdefault(episode, "")
+        episodes.update(new_episodes)
+        if not episodes[episode]:
+            _LOGGER.warning(
+                "Episode %s isn't found in the most recent scrape, "
+                "is the episode valid?",
+                episode,
+            )
+
+        metadata["episodes"] = episodes
+        assert "id" in metadata
+        cached = SCRAPING_CACHE_DIR / f"{metadata['id']}.json"
         with cached.open("w", encoding="utf-8") as f:
+            _LOGGER.info(
+                "Dumping episodes:\n%s to %s",
+                pprint.pformat(episodes, indent=4, sort_dicts=False),
+                cached,
+            )
             json.dump(metadata, f)
 
-    return metadata
-
-
-async def _get_episodes(
-    session: aiohttp.ClientSession,
-    url: str,
-    *,
-    sort: bool = True,
-) -> dict[str, str]:
-    _LOGGER.info("Getting episodes from %s", url)
-
-    ret: dict[str, str] = {}
-    if isinstance(html := await _get_text(session, url), HTTPStatus):
-        return ret
-
-    soup = BeautifulSoup(html, "html.parser")
-    for row in soup.select("tr.episode-list-data"):
-        number_cell = row.select_one("td.episode-number")
-        title_cell = row.select_one("td.episode-title a")
-
-        if not (number_cell and title_cell):
-            continue
-
-        episode_number = number_cell.get_text(strip=True)
-        episode_title = title_cell.get_text(strip=True)
-        ret[episode_number] = episode_title
-
-    if sort:
-        ret = dict(
-            sorted(ret.items(), key=lambda i: (i[0].isdigit() and int(i[0])) or i[0]),
-        )
-
-    return ret
-
-
-async def scrape_episodes(
-    state: State,
-    session: aiohttp.ClientSession,
-) -> Scraped | None:
-    # episode title is already present
-    # bail
-    if state.get("episode_title") is not None:
-        _LOGGER.debug("Episode title already present, skipping scraping")
-        return None
-
-    # no url is provided
-    if not (url := state.get("url")):
-        _LOGGER.debug("No url provided, skipping scraping")
-        return None
-
-    if not (episode := str(state.get("episode", ""))):
-        _LOGGER.warning("`episode` is missing in state")
-        return None
-
-    if not (metadata := await get_metadata(session, url)):
-        _LOGGER.debug("Failed to get metadata for %s. Is URL valid?", url)
-        return None
-
-    if episode in (episodes := metadata.get("episodes", {})):
-        _LOGGER.debug("Using cached episodes for %s", url)
         return metadata
-
-    if episodes:
-        # not our first time fetching episodes
-        _LOGGER.info("Episode %s seems like a new episode, updating cache", episode)
-
-    if not (episodes_url := metadata.get("episodes_url")):
-        return None
-
-    new_episodes = await _get_episodes(session, episodes_url)
-
-    if not new_episodes:
-        _LOGGER.error("Caching %s as an invalid URL", url)
-    else:
-        _LOGGER.info("Scraped %d episodes from %s", len(episodes), episodes_url)
-
-    # this marks the episode as invalid if it
-    # doesn't exist after re-hitting the API
-    new_episodes.setdefault(episode, "")
-    episodes.update(new_episodes)
-    if not episodes[episode]:
-        _LOGGER.warning(
-            "Episode %s isn't found in the most recent scrape, "
-            "is the episode valid?",
-            episode,
-        )
-
-    metadata["episodes"] = episodes
-    assert "id" in metadata
-    cached = SCRAPING_CACHE_DIR / f"{metadata['id']}.json"
-    with cached.open("w", encoding="utf-8") as f:
-        _LOGGER.info(
-            "Dumping episodes:\n%s to %s",
-            pprint.pformat(episodes, indent=4, sort_dicts=False),
-            cached,
-        )
-        json.dump(metadata, f)
-
-    return metadata
-
-
-async def update_episode_title_in(
-    state: State,
-    session: aiohttp.ClientSession,
-) -> State:
-    scraped = await scrape_episodes(state, session)
-    # scraping fails, no need to mutate
-    if not (scraped and (episodes := scraped.get("episodes"))):
-        return state
-
-    if "episode" not in state:
-        return state
-
-    if episode_title := episodes.get(str(state["episode"])):
-        state["episode_title"] = episode_title
-
-    return state
-
-
-async def update_missing_metadata_in(
-    config: Config,
-    session: aiohttp.ClientSession,
-) -> list[str]:
-    diff: list[str] = []
-
-    missing_metadata = [m for m in ("title", "image_url") if not config.get(m)]
-
-    if not missing_metadata:
-        return diff
-
-    if not (scraped := await get_metadata(session, config["url"])):
-        return diff
-
-    for m in missing_metadata:
-        diff.append(f"{m}={scraped[m]}")
-        config[m] = scraped[m]
-
-    return diff

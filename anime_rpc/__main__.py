@@ -20,7 +20,7 @@ from anime_rpc.formatting import ms2timestamp
 from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlags
-from anime_rpc.scraper import update_episode_title_in
+from anime_rpc.scraper import MALScraper
 from anime_rpc.states import State, states_logger
 from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
@@ -38,6 +38,7 @@ async def poll_player(
     queue: asyncio.Queue[State],
     session: aiohttp.ClientSession,
     file_watcher_manager: FileWatcherManager,
+    scraper: MALScraper,
 ) -> None:
     config: Config | None = None
     filedir: Path | None = None
@@ -63,7 +64,7 @@ async def poll_player(
             config = subscription and subscription.consume()
 
         if vars_ and config and filedir:
-            await fill_in_missing_data(config, session, filedir)
+            await fill_in_missing_data(config, scraper, filedir)
             state = poller.get_state(vars_, config)
 
         await queue.put(state)
@@ -75,7 +76,7 @@ async def poll_player(
 async def consumer_loop(
     event: asyncio.Event,
     queue: asyncio.Queue[State],
-    session: aiohttp.ClientSession,
+    scraper: MALScraper,
 ) -> None:
     presence = Presence()
     flags: UpdateFlags | None = None
@@ -142,7 +143,7 @@ async def consumer_loop(
         logger.send(state)
 
         if CLI_ARGS.fetch_episode_titles:
-            state = await wait(update_episode_title_in(state, session), event)
+            state = await wait(scraper.update_episode_title_in(state), event)
 
         # only force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
@@ -173,15 +174,16 @@ async def main() -> None:
     event = asyncio.Event()
     session = aiohttp.ClientSession()
     file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
+    scraper = MALScraper(session, file_watcher_manager)
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
 
     consumer_task = asyncio.create_task(
-        consumer_loop(event, queue, session),
+        consumer_loop(event, queue, scraper),
         name="consumer",
     )
     poller_tasks = [
         asyncio.create_task(
-            poll_player(poller, event, queue, session, file_watcher_manager),
+            poll_player(poller, event, queue, session, file_watcher_manager, scraper),
             name=poller.__class__.__name__,
         )
         for poller in CLI_ARGS.pollers
