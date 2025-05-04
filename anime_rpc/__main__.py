@@ -63,8 +63,10 @@ async def poll_player(
         with suppress(QueueEmptyError):
             config = subscription and subscription.consume()
 
-        if vars_ and config and filedir:
-            await fill_in_missing_data(config, scraper, filedir)
+        if filedir:
+            config = await fill_in_missing_data(config, scraper, filedir)
+
+        if vars_ and config:
             state = poller.get_state(vars_, config)
 
         await queue.put(state)

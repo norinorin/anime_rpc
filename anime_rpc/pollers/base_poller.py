@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Literal, TypedDict
 
 from pymediainfo import MediaInfo
 
+from anime_rpc.config import validate_config
 from anime_rpc.states import State, WatchingState
 
 if TYPE_CHECKING:
@@ -68,6 +69,10 @@ class BasePoller(ABC):
     @classmethod
     def get_state(cls, vars_: Vars, config: Config) -> State:
         state: State = cls.get_empty_state()
+
+        if validate_config(config):
+            return state
+
         state["title"] = config["title"]
         state["rewatching"] = config["rewatching"]
         state["position"] = vars_["position"]
