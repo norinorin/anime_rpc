@@ -128,7 +128,7 @@ class _CachingScraper(BaseScraper):
         self._last_queried: tuple[str, Scraped | None] | None = None
         self._subscription: Subscription[Scraped] | None = None
         self._consumer_task: asyncio.Task[None] | None = None
-        self._event = asyncio.Event()
+        self._cache_ready_event = asyncio.Event()
 
     @abstractmethod
     async def fetch_episodes(self, url: str, episode: str) -> dict[str, str]: ...
@@ -142,7 +142,7 @@ class _CachingScraper(BaseScraper):
         _LOGGER.debug("Starting consumer for %s", id_)
         while 1:
             self._last_queried = (id_, await queue.get())
-            self._event.set()
+            self._cache_ready_event.set()
 
     async def subscribe(self, id_: str, path: Path) -> None:
         if self._last_queried and self._last_queried[0] == id_:
@@ -158,12 +158,15 @@ class _CachingScraper(BaseScraper):
                 await self._consumer_task
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._event.clear()
+        self._cache_ready_event.clear()
         self._subscription = self.file_watcher_manager.subscribe(path, json.load)
         self._consumer_task = asyncio.create_task(
             self._consume_queue(id_, self._subscription.queue)
         )
-        await self._event.wait()
+        await self.wait_for_cache_ready()
+
+    async def wait_for_cache_ready(self) -> None:
+        await self._cache_ready_event.wait()
 
     @property
     def last_queried(self) -> Scraped | None:
@@ -279,6 +282,7 @@ class MALScraper(_CachingScraper):
     async def fetch_episodes(self, url: str, episode: str) -> dict[str, str]:
         # _CachingScraper handles the metadata fetching and caching
         # at this point, the cache should have the episodes_url
+        await self.wait_for_cache_ready()
         assert self.last_queried and "episodes_url" in self.last_queried
         episode_url = self.last_queried["episodes_url"]
 
