@@ -59,6 +59,24 @@ def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
     return config
 
 
+def validate_config(config: Config) -> set[str]:
+    ret: set[str] = set()
+
+    if not config.get("title"):
+        _LOGGER.debug(_MISSING_LOG_MSG, "title")
+        ret.add("title")
+
+    if not config.get("image_url"):
+        _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
+        ret.add("image_url")
+
+    if not config.get("match"):
+        _LOGGER.debug(_MISSING_LOG_MSG, "match")
+        ret.add("match")
+
+    return ret
+
+
 # fixme: make this a method of either the scraper or the config
 async def fill_in_missing_data(
     config: Config | None, scraper: MALScraper, filedir: Path
@@ -69,14 +87,6 @@ async def fill_in_missing_data(
     if diff := await scraper.update_missing_metadata_in(config):
         with (Path(filedir) / "rpc.config").open("a") as f:
             f.write("\n# Fetched metadata\n" + "\n".join(diff) + "\n")
-
-    if not config.get("title"):
-        _LOGGER.debug(_MISSING_LOG_MSG, "title")
-        return None
-
-    if not config.get("image_url"):
-        _LOGGER.debug(_MISSING_LOG_MSG, "image_url")
-        return None
 
     if not config.get("match") and (match := generate_regex_pattern(filedir)):
         config["match"] = match
