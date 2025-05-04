@@ -152,7 +152,7 @@ class _CachingScraper(BaseScraper):
             self.file_watcher_manager.unsubscribe(self._subscription)
 
         if self._consumer_task:
-            _LOGGER.debug("Cancelling consumer task for %s", id_)
+            _LOGGER.debug("Cancelling consumer task %r", self._consumer_task.get_name())
             self._consumer_task.cancel()
             with suppress(asyncio.CancelledError):
                 await self._consumer_task
@@ -161,7 +161,8 @@ class _CachingScraper(BaseScraper):
         self._cache_ready_event.clear()
         self._subscription = self.file_watcher_manager.subscribe(path, json.load)
         self._consumer_task = asyncio.create_task(
-            self._consume_queue(id_, self._subscription.queue)
+            self._consume_queue(id_, self._subscription.queue),
+            name=f"consume-{id_}.json",
         )
         await self.wait_for_cache_ready()
 
