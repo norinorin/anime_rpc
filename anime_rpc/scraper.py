@@ -260,8 +260,6 @@ class MALScraper(_CachingScraper):
         return match.group("id")
 
     async def fetch_metadata(self, url: str) -> Scraped:
-        _LOGGER.info("Fetching metadata from %s", url)
-
         ret = Scraped()
 
         if isinstance(html := await self._get_text(url), HTTPStatus):
