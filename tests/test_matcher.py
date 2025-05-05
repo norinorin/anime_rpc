@@ -212,7 +212,7 @@ SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES = [
         ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES, [1, 2, 3, 4]),
     ],
 )
-def test_generated_pattern_ordered(
+def test_ordered_filenames(
     name: str,
     filenames: list[str],
     expected_eps: list[int],
