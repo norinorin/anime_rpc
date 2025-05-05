@@ -234,3 +234,35 @@ def test_generated_pattern_ordered(
         ), f"Episode {ep} does not match expected value for {name}"
 
     assert not expected_eps, f"Some episodes are unmatched: {expected_eps}"
+
+
+def test_filenames_with_hashes_only() -> None:
+    filenames = [
+        "[37A7738A].mkv",
+        "[FD85DB3B].mkv",
+        "[DA3A7942].mkv",
+        "[15C004DC].mkv",
+        "[67F09F1E].mkv",
+        "[31495666].mkv",
+        "[CC62BE28].mkv",
+        "[80D8938E].mkv",
+        "[E13D3D71].mkv",
+        "[7E21DEAC].mkv",
+        "[3234B245].mkv",
+        "[AA7A5258].mkv",
+        "[8BA96863].mkv",
+        "[D65FDE01].mkv",
+        "[FB68E283].mkv",
+        "[9C0F12FB].mkv",
+        "[A43D8299].mkv",
+        "[4D8326BF].mkv",
+        "[D5611B67].mkv",
+        "[4B3CBDD9].mkv",
+        "[764EED02].mkv",
+        "[DA2E0498].mkv",
+        "[BF6EE038].mkv",
+        "[0EA543A4].mkv",
+    ]
+    pattern = build_filename_pattern(filenames)
+    # fixme: should this return None instead?
+    assert pattern == "%ep%", "Pattern should fall back to %ep% for invalid sequences"
