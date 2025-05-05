@@ -19,11 +19,11 @@ class Config(TypedDict):
     # fmt: off
     # REQUIRED SETTINGS unless url is set to MAL
     title: str
-    image_url: str       # defaults to ""
+    image_url: str
 
     # OPTIONAL SETTINGS
     url: str             # defaults to ""
-    url_text: str        # defaults to View Anime
+    url_text: str        # defaults to ""
     rewatching: bool     # defaults to 0
     application_id: int  # defaults to DEFAULT_APPLICATION_ID
     match: str           # will attempt to generate a regex pattern if not set
@@ -64,7 +64,7 @@ def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
 
     # optional settings
     config.setdefault("url", "")
-    config["url_text"] = config.get("url_text", "View Anime")
+    config["url_text"] = config.get("url_text", "")
     config["rewatching"] = bool(_parse_int(config.get("rewatching")))
     config["application_id"] = _parse_int(
         config.get("application_id"),
