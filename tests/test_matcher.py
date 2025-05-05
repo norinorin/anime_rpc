@@ -236,6 +236,21 @@ def test_generated_pattern_ordered(
     assert not expected_eps, f"Some episodes are unmatched: {expected_eps}"
 
 
+@pytest.mark.parametrize(
+    ("name", "filenames"),
+    [
+        ("nato", ["alpha.mkv", "beta.mkv", "gamma.mkv"]),
+        ("alphabetic", ["file_a.mkv", "file_b.mkv", "file_c.mkv"]),
+    ],
+)
+def test_filenames_with_no_numbers(name: str, filenames: list[str]) -> None:
+    pattern = build_filename_pattern(filenames)
+
+    assert (
+        pattern is None
+    ), f"Sequence {name} returns a pattern (should be None instead)"
+
+
 def test_filenames_with_hashes_only() -> None:
     filenames = [
         "[37A7738A].mkv",
