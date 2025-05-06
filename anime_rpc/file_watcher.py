@@ -145,11 +145,15 @@ class EventHandler(FileSystemEventHandler):
 
         _LOGGER.debug("Received an event for file %s (%s)", src_path, event.event_type)
 
-        path = dest_path if event.event_type is MOVED else src_path
-        if event.event_type in (MODIFIED, CREATED) or (
-            event.event_type is MOVED and path.name == "rpc.config"
+        if event.event_type in (MODIFIED, CREATED):
+            self.parser_queues[src_path].put(MODIFIED)
+            return
+
+        if (
+            event.event_type == MOVED
+            and dest_path in self.file_watcher_manager.subscriptions
         ):
-            self.parser_queues[path].put(MODIFIED)
+            self.parser_queues[dest_path].put(MODIFIED)
             return
 
         self.parser_queues[src_path].put(DELETED)
