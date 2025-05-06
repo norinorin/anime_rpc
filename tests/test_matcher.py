@@ -281,3 +281,22 @@ def test_filenames_with_hashes_only() -> None:
     pattern = build_filename_pattern(filenames)
     # fixme: should this return None instead?
     assert pattern == "%ep%", "Pattern should fall back to %ep% for invalid sequences"
+
+
+@pytest.mark.parametrize(
+    ("name", "filenames"),
+    [
+        ("arifureta", ARIFURETA[:1]),
+        ("dandadan", DANDADAN[:1]),
+        ("salaryman", SALARYMAN[:1]),
+        ("breaking_bad", BREAKING_BAD[:1]),
+        ("house_md", HOUSE_MD[:1]),
+        ("the_punisher", THE_PUNISHER[:1]),
+        ("dungeon_meshi", DUNGEON_MESHI[:1]),
+        ("bokuyaba", BOKUYABA[:1]),
+        ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES[:1]),
+    ],
+)
+def test_single_filename(name: str, filenames: list[str]):
+    pattern = build_filename_pattern(filenames)
+    assert pattern is None, f"Pattern should be None for {name}"
