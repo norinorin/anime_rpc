@@ -8,13 +8,13 @@ from enum import Flag, auto
 from typing import Any, TypedDict, cast
 
 from pypresence import (  # type: ignore[reportMissingTypeStubs]
-    ActivityType,
-    AioPresence,
     DiscordError,
     DiscordNotFound,
     PipeClosed,
     ResponseTimeout,
 )
+from pypresence.presence import AioPresence  # type: ignore[reportMissingTypeStubs]
+from pypresence.types import ActivityType  # type: ignore[reportMissingTypeStubs]
 from typing_extensions import Unpack
 
 from anime_rpc.cli import CLI_ARGS
