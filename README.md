@@ -5,7 +5,7 @@
 </h1>
 
 <p align="center">
-  A Rich Presence integration for Discord to show what (anime) you are watching.
+  A Discord Rich Presence integration that shows what (anime) you are watching.
 </p>
 
 <p align="center">
