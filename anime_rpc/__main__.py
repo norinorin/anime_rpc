@@ -112,16 +112,6 @@ async def consumer_loop(
         except asyncio.TimeoutError:
             state = last_state
 
-        timer.tick()
-
-        # store this in a variable outside of the while loop
-        # so it's only consumed when the origin check passes
-        # otherwise inactive pollers could consume this prematurely.
-        if timer.should_force_update():
-            flags = (
-                flags and flags | UpdateFlags.PERIODIC_UPDATE
-            ) or UpdateFlags.PERIODIC_UPDATE
-
         # state fed should always contain origin
         if "origin" not in state:
             continue
@@ -150,6 +140,8 @@ async def consumer_loop(
             _LOGGER.debug("Ignoring invalid state %s", state)
             continue
 
+        timer.tick()
+
         # force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
         if abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
@@ -159,6 +151,14 @@ async def consumer_loop(
                 ms2timestamp(pos),
             )
             flags = (flags and flags | UpdateFlags.SEEKING) or UpdateFlags.SEEKING
+
+        # store this in a variable outside of the while loop
+        # so it's only consumed when the origin check passes
+        # otherwise inactive pollers could consume this prematurely.
+        if timer.should_force_update():
+            flags = (
+                flags and flags | UpdateFlags.PERIODIC_UPDATE
+            ) or UpdateFlags.PERIODIC_UPDATE
 
         last_state = await wait(
             presence.update(state, last_state, origin, flags=flags),
