@@ -54,6 +54,8 @@ Unfortunately, you'll need to manually create a config file for each anime folde
 
 \* If one of these is missing, the folder is ignored.
 
+? Optional.
+
 ## Supported platforms
 
 | poller name | type      | description                                                                                              |
