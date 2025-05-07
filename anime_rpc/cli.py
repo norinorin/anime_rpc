@@ -6,6 +6,7 @@ from anime_rpc import __version__
 from anime_rpc.pollers import BasePoller
 
 _LOGGER = logging.getLogger("cli")
+_MINIMUM_INTERVAL = 5
 
 
 class CLIArgs(argparse.Namespace):
@@ -14,6 +15,7 @@ class CLIArgs(argparse.Namespace):
     pollers: list[type[BasePoller]]
     fetch_episode_titles: bool
     interval: int
+    periodic_forced_updates: bool
 
 
 _parser = argparse.ArgumentParser(
@@ -71,6 +73,7 @@ _parser.add_argument(
     default=0,
 )
 CLI_ARGS, _unknown_args = _parser.parse_known_args(namespace=CLIArgs)
+CLI_ARGS.periodic_forced_updates = CLI_ARGS.interval >= _MINIMUM_INTERVAL
 
 
 def print_cli_args() -> None:
@@ -85,6 +88,9 @@ def print_cli_args() -> None:
     )
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
     _LOGGER.info("Update interval: %ds", CLI_ARGS.interval)
+
+    if CLI_ARGS.interval < _MINIMUM_INTERVAL:
+        _LOGGER.warning("Interval is set too low (<%d), ignoring...", _MINIMUM_INTERVAL)
 
     if _unknown_args:
         _LOGGER.warning("Unknown arguments: %s", shlex.join(_unknown_args))
