@@ -2,4 +2,4 @@
 ignore = ["S101", "D100", "D101", "D102", "D103", "D107"]
 
 [tool.pyright]
-typeCheckingMode = "all"
+typeCheckingMode = "strict"
