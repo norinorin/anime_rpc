@@ -113,6 +113,7 @@ class MPVIPCPoller(BasePoller):
         async def _send_command(command: bytes) -> bytes:
             # The following code is untested
             try:
+                # fixme: write in a another thread
                 with open(MPVIPCPoller.ipc_path, "w+b", buffering=0) as pipe:
                     pipe.write(command)
                     return pipe.readline()
@@ -177,7 +178,7 @@ class MPVIPCPoller(BasePoller):
 
     @staticmethod
     async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
-        # is there a way to do this in batch?
+        # fixme: is there a way to do this in batch?
         playlist = await MPVIPCPoller.get_property(
             "playlist",
             MPVIPCPoller._typecast_playlist,

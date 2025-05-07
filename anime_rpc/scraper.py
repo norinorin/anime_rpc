@@ -191,6 +191,7 @@ class _CachingScraper(BaseScraper):
         _LOGGER.info("[API CALL] Fetching metadata from %s", url)
         metadata = await self.fetch_metadata(url)
         metadata["id"] = id_
+        # fixme: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
             json.dump(metadata, f)
         return metadata
@@ -234,6 +235,7 @@ class _CachingScraper(BaseScraper):
         )
         assert "id" in metadata
         path = self.get_cache_path(metadata["id"])
+        # fixme: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
             _LOGGER.info(
                 "Dumping episodes:\n%s to %s",

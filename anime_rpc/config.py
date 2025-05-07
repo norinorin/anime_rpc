@@ -99,6 +99,7 @@ async def fill_in_missing_data(
         return None
 
     if diff := await scraper.update_missing_metadata_in(config):
+        # fixme: write in a dedicated thread
         with (Path(filedir) / "rpc.config").open("a") as f:
             f.write("\n# Fetched metadata\n" + "\n".join(diff) + "\n")
 
