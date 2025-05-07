@@ -6,7 +6,6 @@ from collections.abc import Coroutine
 from contextlib import suppress
 from pathlib import Path
 from queue import Empty as QueueEmptyError
-from time import perf_counter
 from typing import Any
 
 import aiohttp
@@ -14,14 +13,16 @@ import aiohttp
 from anime_rpc import __version__
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
-from anime_rpc.config import Config, fill_in_missing_data, parse_rpc_config
+from anime_rpc.config import Config, parse_rpc_config
 from anime_rpc.file_watcher import FileWatcherManager, Subscription
 from anime_rpc.formatting import ms2timestamp
+from anime_rpc.matcher import generate_regex_pattern
 from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlags
 from anime_rpc.scraper import MALScraper
-from anime_rpc.states import State, states_logger
+from anime_rpc.states import State, states_logger, validate_state
+from anime_rpc.timer import Timer
 from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
 
@@ -38,7 +39,6 @@ async def poll_player(
     queue: asyncio.Queue[State],
     session: aiohttp.ClientSession,
     file_watcher_manager: FileWatcherManager,
-    scraper: MALScraper,
 ) -> None:
     config: Config | None = None
     filedir: Path | None = None
@@ -49,6 +49,7 @@ async def poll_player(
         vars_ = await wait(poller.get_vars(session), event)
         new_filedir = vars_ and Path(vars_.get("filedir"))
 
+        # user switches folder
         if filedir != new_filedir:
             _ = subscription and file_watcher_manager.unsubscribe(subscription)
             filedir = new_filedir
@@ -60,11 +61,17 @@ async def poll_player(
                 else None
             )
 
+        # drain the queue and get the latest change
         with suppress(QueueEmptyError):
             config = subscription and subscription.consume()
 
-        if filedir:
-            config = await fill_in_missing_data(config, scraper, filedir)
+        if (
+            config
+            and filedir
+            and not config.get("match")
+            and (match := generate_regex_pattern(filedir))
+        ):
+            config["match"] = match
 
         if vars_ and config:
             state = poller.get_state(vars_, config)
@@ -81,21 +88,21 @@ async def consumer_loop(
     scraper: MALScraper,
 ) -> None:
     presence = Presence()
-    flags: UpdateFlags | None = None
+    timer = Timer()
 
+    # internal states
     last_state: State = {}
     last_pos: int = 0
     last_origin: str = ""
-
-    # periodic updates are updates that occur without any state changes.
-    periodic_updates = CLI_ARGS.interval >= 1
-    t0 = perf_counter()
-    last_log_time = 0.0
+    flags: UpdateFlags | None = None
 
     def _queue_get_with_timeout() -> Coroutine[Any, Any, State]:
         return asyncio.wait_for(queue.get(), timeout=1)
 
-    queue_get = _queue_get_with_timeout if periodic_updates else queue.get
+    queue_get = (
+        _queue_get_with_timeout if CLI_ARGS.periodic_forced_updates else queue.get
+    )
+
     logger = states_logger()
     next(logger)
 
@@ -105,22 +112,12 @@ async def consumer_loop(
         except asyncio.TimeoutError:
             state = last_state
 
-        t1 = perf_counter()
-        delta = t1 - t0
-        periodic_update_in = CLI_ARGS.interval - delta
-        if periodic_updates and last_log_time + 1 < t1 and periodic_update_in > 0:
-            _LOGGER.debug(
-                "%ds onto the next periodic update",
-                max(periodic_update_in, 0),
-            )
-            last_log_time = t1
+        timer.tick()
 
         # store this in a variable outside of the while loop
         # so it's only consumed when the origin check passes
         # otherwise inactive pollers could consume this prematurely.
-        if periodic_updates and periodic_update_in <= 0:
-            _LOGGER.debug("Interval reached, resetting the clock...")
-            t0 = perf_counter()
+        if timer.should_force_update():
             flags = (
                 flags and flags | UpdateFlags.PERIODIC_UPDATE
             ) or UpdateFlags.PERIODIC_UPDATE
@@ -147,7 +144,13 @@ async def consumer_loop(
         if CLI_ARGS.fetch_episode_titles:
             state = await wait(scraper.update_episode_title_in(state), event)
 
-        # only force update if the position seems off (seeking)
+        state = await wait(scraper.update_missing_metadata_in(state), event)
+
+        if not validate_state(state):
+            _LOGGER.debug("Ignoring invalid state %s", state)
+            continue
+
+        # force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
         if abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
             _LOGGER.debug(
@@ -185,7 +188,7 @@ async def main() -> None:
     )
     poller_tasks = [
         asyncio.create_task(
-            poll_player(poller, event, queue, session, file_watcher_manager, scraper),
+            poll_player(poller, event, queue, session, file_watcher_manager),
             name=poller.__class__.__name__,
         )
         for poller in CLI_ARGS.pollers

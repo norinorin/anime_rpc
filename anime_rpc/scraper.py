@@ -20,7 +20,6 @@ from anime_rpc.file_watcher import FileWatcherManager, Subscription
 if TYPE_CHECKING:
     import aiohttp
 
-    from anime_rpc.config import Config
     from anime_rpc.states import State
 
 _LOGGER = logging.getLogger("scraper")
@@ -82,25 +81,22 @@ class BaseScraper(ABC):
 
     async def update_missing_metadata_in(
         self,
-        config: Config,
-    ) -> list[str]:
-        diff: list[str] = []
-
-        missing_metadata = [m for m in ("title", "image_url") if not config.get(m)]
+        state: State,
+    ) -> State:
+        missing_metadata = [m for m in ("title", "image_url") if not state.get(m)]
 
         if not missing_metadata:
-            return diff
+            return state
 
-        if not (scraped := await self.get_metadata(config["url"])):
-            return diff
+        if not (scraped := await self.get_metadata(state.get("url", ""))):
+            return state
 
         for m in missing_metadata:
             if m not in scraped:
                 continue
-            diff.append(f"{m}={scraped[m]}")
-            config[m] = scraped[m]
+            state[m] = scraped[m]
 
-        return diff
+        return state
 
     async def _get_text(self, url: str) -> str | HTTPStatus:
         async with self.session.get(url) as response:

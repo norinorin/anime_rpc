@@ -72,3 +72,18 @@ def states_logger(*, verbose: bool = False) -> Generator[None, State, None]:
             _LOGGER.debug("Received state: %s", state)
 
         last_state = state
+
+
+def validate_state(state: State) -> bool:
+    return all(
+        i in state
+        for i in (
+            "title",
+            "episode",
+            "position",
+            "duration",
+            "image_url",
+            "watching_state",
+            "application_id",
+        )
+    )
