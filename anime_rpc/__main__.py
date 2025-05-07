@@ -134,7 +134,7 @@ async def consumer_loop(
 
         state = await wait(scraper.update_missing_metadata_in(state), event)
 
-        if not validate_state(state):
+        if state and not validate_state(state):
             _LOGGER.debug("Ignoring invalid state %s", state)
             continue
 
