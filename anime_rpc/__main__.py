@@ -21,7 +21,7 @@ from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlags
 from anime_rpc.scraper import MALScraper
-from anime_rpc.states import State, states_logger, validate_state
+from anime_rpc.states import State, get_states_logger, validate_state
 from anime_rpc.timer import Timer
 from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
@@ -99,12 +99,10 @@ async def consumer_loop(
     def _queue_get_with_timeout() -> Coroutine[Any, Any, State]:
         return asyncio.wait_for(queue.get(), timeout=1)
 
+    states_logger = get_states_logger()
     queue_get = (
         _queue_get_with_timeout if CLI_ARGS.periodic_forced_updates else queue.get
     )
-
-    logger = states_logger()
-    next(logger)
 
     while not event.is_set():
         try:
@@ -129,7 +127,7 @@ async def consumer_loop(
         if last_origin != origin:
             continue
 
-        logger.send(state)
+        states_logger.send(state)
 
         if CLI_ARGS.fetch_episode_titles:
             state = await wait(scraper.update_episode_title_in(state), event)

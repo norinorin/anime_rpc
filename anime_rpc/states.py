@@ -54,7 +54,7 @@ def compare_states(a: State, b: State) -> bool:
     return a == b
 
 
-def states_logger(*, verbose: bool = False) -> Generator[None, State, None]:
+def _states_logger(*, verbose: bool = False) -> Generator[None, State, None]:
     last_state: State = State()
 
     while 1:
@@ -72,6 +72,12 @@ def states_logger(*, verbose: bool = False) -> Generator[None, State, None]:
             _LOGGER.debug("Received state: %s", state)
 
         last_state = state
+
+
+def get_states_logger(*, verbose: bool = False) -> Generator[None, State, None]:
+    ret = _states_logger(verbose=verbose)
+    next(ret)
+    return ret
 
 
 def validate_state(state: State) -> bool:
