@@ -89,7 +89,7 @@ def print_cli_args() -> None:
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
     _LOGGER.info("Update interval: %ds", CLI_ARGS.interval)
 
-    if CLI_ARGS.interval < _MINIMUM_INTERVAL:
+    if 0 < CLI_ARGS.interval < _MINIMUM_INTERVAL:
         _LOGGER.warning("Interval is set too low (<%d), ignoring...", _MINIMUM_INTERVAL)
 
     if _unknown_args:
