@@ -44,10 +44,10 @@ Unfortunately, you'll need to manually create a config file for each anime folde
 
 | Key             | Default Value                                         | Description                                                                                                                                                                                  |
 | --------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| title\*         | scraped from MAL if `url` is a MAL URL                | Title of the anime, used in the Rich Presence.                                                                                                                                               |
-| image_url\*     | scraped from MAL if `url` is a MAL URL                | Image shown in Rich Presence.                                                                                                                                                                |
-| match\*         | auto-generated if folder has more than one video file | Regex pattern used to extract episode metadata from filenames. Must include a named group `ep` that matches numbers, or use `movie` for movies.                                              |
-| url?            | `""`                                                  | URL for the presence button. set to a MAL URL to enable scraping for metadata and episode titles.                                                                                            |
+| title\*         | Scraped from MAL if `url` is a MAL URL                | Title of the anime, used in the Rich Presence.                                                                                                                                               |
+| image_url\*     | Scraped from MAL if `url` is a MAL URL                | Image shown in Rich Presence.                                                                                                                                                                |
+| match\*         | Auto-generated if folder has more than one video file | Regex pattern used to extract episode metadata from filenames. Must include a named group `ep` that matches numbers, or use `movie` for movies.                                              |
+| url?            | `""`                                                  | URL for the presence button. Set to a MAL URL to enable scraping for metadata and episode titles.                                                                                            |
 | url_text?       | `""`                                                  | Button label. If empty, the button will not be shown.                                                                                                                                        |
 | rewatching?     | `0`                                                   | Set to `1` if you're rewatching the anime.                                                                                                                                                   |
 | application_id? | `1088900742523392133`                                 | Discord application ID. Defaults to the "Anime" app. To display "Watching a stream" instead, use `1337621628179316848`. Otherwise, you can create your own app and use its `application_id`. |
@@ -58,11 +58,11 @@ Unfortunately, you'll need to manually create a config file for each anime folde
 
 ## Supported platforms
 
-| poller name | type      | description                                                                                              |
+| Platform    | Type      | Description                                                                                              |
 | ----------- | --------- | -------------------------------------------------------------------------------------------------------- |
-| mpv         | poller    | polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). |
-| mpc         | poller    | polls MPC via its web interface.                                                                         |
-| bilibili.tv | websocket | support for [Bstation](https://www.bilibili.tv/anime).                                                   |
+| mpv         | poller    | Polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). |
+| mpc         | poller    | Polls MPC via its web interface.                                                                         |
+| bilibili.tv | websocket | Support for [Bstation](https://www.bilibili.tv/anime).                                                   |
 
 and more coming!
 
