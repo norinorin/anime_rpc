@@ -73,7 +73,6 @@ class BasePoller(ABC):
         if validate_config(config):
             return state
 
-        state["title"] = config["title"]
         state["rewatching"] = config["rewatching"]
         state["position"] = vars_["position"]
         state["duration"] = vars_["duration"]
@@ -93,7 +92,15 @@ class BasePoller(ABC):
         if ep_title:
             state["episode_title"] = ep_title
 
-        state["image_url"] = config["image_url"]
+        # title and image_url may be scraped later
+        if title := config.get("title"):
+            state["title"] = title
+
+        if image_url := config.get("image_url"):
+            state["image_url"] = image_url
+
+        # url, state, application_id, and url_text have default values
+        # which are set during config parsing, this won't raise KeyError
         state["url"] = config["url"]
         state["watching_state"] = vars_["state"]
         state["application_id"] = config["application_id"]
