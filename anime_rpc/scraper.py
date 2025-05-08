@@ -138,13 +138,12 @@ class _CachingScraper(BaseScraper):
         _LOGGER.debug("Starting consumer for %s", id_)
         while 1:
             item = await queue.get()
-            if item is None:
-                self._last_queried = None
-                self._cache_ready_event.clear()
-                continue
-
             self._last_queried = (id_, item)
-            self._cache_ready_event.set()
+            (
+                self._cache_ready_event.clear()
+                if item is None
+                else self._cache_ready_event.set()
+            )
 
     async def subscribe(self, id_: str, path: Path) -> None:
         if self._last_queried and self._last_queried[0] == id_:
@@ -166,6 +165,7 @@ class _CachingScraper(BaseScraper):
             self._consume_queue(id_, self._subscription.queue),
             name=f"consume-{id_}.json",
         )
+        _LOGGER.debug("Spawning new consumer task %s", self._consumer_task.get_name())
         await self.wait_for_cache_ready()
 
     async def wait_for_cache_ready(self) -> None:
