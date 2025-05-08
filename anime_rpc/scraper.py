@@ -193,9 +193,21 @@ class _CachingScraper(BaseScraper):
         _LOGGER.info("[API CALL] Fetching metadata from %s", url)
         metadata = await self.fetch_metadata(url)
         metadata["id"] = id_
+
+        # always clear event before writing so we
+        # can wait for the new value to be parsed
+        # and passed to the consumer, otherwise
+        # we may end up scraping twice
+        self._cache_ready_event.clear()
         # fixme: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
+            _LOGGER.info(
+                "Dumping episodes:\n%s to %s",
+                pprint.pformat(metadata, indent=4),
+                path,
+            )
             json.dump(metadata, f)
+        await self.wait_for_cache_ready()
         return metadata
 
     async def get_episodes(
@@ -237,6 +249,7 @@ class _CachingScraper(BaseScraper):
         )
         assert "id" in metadata
         path = self.get_cache_path(metadata["id"])
+        self._cache_ready_event.clear()
         # fixme: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
             _LOGGER.info(
@@ -245,6 +258,7 @@ class _CachingScraper(BaseScraper):
                 path,
             )
             json.dump(metadata, f)
+        await self.wait_for_cache_ready()
         return episodes
 
 
