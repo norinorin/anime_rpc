@@ -137,7 +137,13 @@ class _CachingScraper(BaseScraper):
     ) -> None:
         _LOGGER.debug("Starting consumer for %s", id_)
         while 1:
-            self._last_queried = (id_, await queue.get())
+            item = await queue.get()
+            if item is None:
+                self._last_queried = None
+                self._cache_ready_event.clear()
+                continue
+
+            self._last_queried = (id_, item)
             self._cache_ready_event.set()
 
     async def subscribe(self, id_: str, path: Path) -> None:
