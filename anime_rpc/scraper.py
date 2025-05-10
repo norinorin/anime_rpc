@@ -202,7 +202,7 @@ class _CachingScraper(BaseScraper):
         # fixme: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
             _LOGGER.info(
-                "Dumping episodes:\n%s to %s",
+                "Dumping metadata:\n%s to %s",
                 pprint.pformat(metadata, indent=4),
                 path,
             )
