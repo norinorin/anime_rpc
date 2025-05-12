@@ -140,6 +140,14 @@ async def consumer_loop(
 
         timer.tick()
 
+        # store this in a variable outside of the while loop
+        # so it's only consumed when the origin check passes
+        # otherwise inactive pollers could consume this prematurely.
+        if timer.should_force_update():
+            flags = (
+                flags and flags | UpdateFlags.PERIODIC_UPDATE
+            ) or UpdateFlags.PERIODIC_UPDATE
+
         # force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
         if abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
@@ -150,26 +158,17 @@ async def consumer_loop(
             )
             flags = (flags and flags | UpdateFlags.SEEKING) or UpdateFlags.SEEKING
 
-        # store this in a variable outside of the while loop
-        # so it's only consumed when the origin check passes
-        # otherwise inactive pollers could consume this prematurely.
-        if timer.should_force_update():
-            flags = (
-                flags and flags | UpdateFlags.PERIODIC_UPDATE
-            ) or UpdateFlags.PERIODIC_UPDATE
-
         last_state = await wait(
             presence.update(state, last_state, origin, flags=flags),
             event,
         )
-
         flags = None
+        last_pos = pos
 
         # if last_state is empty
         # it's given up control
         if not last_state:
             last_origin = ""
-        last_pos = pos
 
 
 async def main() -> None:
