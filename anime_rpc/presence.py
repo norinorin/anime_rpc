@@ -288,6 +288,9 @@ class Presence:
                 # if it's a periodic update just use the previous kwargs
                 # as to prevent the rich presence time from bugging
                 # for a split second
+                #
+                # FIXME: this no longer seems effective, Discord ignores updates
+                # when the payload is identitcal.
                 _LOGGER.debug(
                     "Periodic update triggered, reusing the previous kwargs...",
                 )
