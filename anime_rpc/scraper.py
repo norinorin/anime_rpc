@@ -199,7 +199,7 @@ class _CachingScraper(BaseScraper):
         # and passed to the consumer, otherwise
         # we may end up scraping twice
         self._cache_ready_event.clear()
-        # fixme: write in a dedicated thread
+        # FIXME: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
             _LOGGER.info(
                 "Dumping metadata:\n%s to %s",
@@ -250,7 +250,7 @@ class _CachingScraper(BaseScraper):
         assert "id" in metadata
         path = self.get_cache_path(metadata["id"])
         self._cache_ready_event.clear()
-        # fixme: write in a dedicated thread
+        # FIXME: write in a dedicated thread
         with path.open("w", encoding="utf-8") as f:
             _LOGGER.info(
                 "Dumping episodes:\n%s to %s",

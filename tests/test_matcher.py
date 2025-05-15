@@ -279,7 +279,7 @@ def test_filenames_with_hashes_only() -> None:
         "[0EA543A4].mkv",
     ]
     pattern = build_filename_pattern(filenames)
-    # fixme: should this return None instead?
+    # FIXME: should this return None instead?
     assert pattern == "%ep%", "Pattern should fall back to %ep% for invalid sequences"
 
 
