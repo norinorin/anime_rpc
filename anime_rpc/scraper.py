@@ -244,7 +244,8 @@ class _CachingScraper(BaseScraper):
 
         metadata["episodes"] = dict(
             sorted(
-                episodes.items(), key=lambda i: (i[0].isdigit() and int(i[0])) or i[0]
+                episodes.items(),
+                key=lambda i: (0, int(i[0])) if i[0].isdigit() else (1, i[0]),
             ),
         )
         assert "id" in metadata
