@@ -69,7 +69,7 @@ class EventHandler(FileSystemEventHandler):
             return
         if not manually_triggered:
             _LOGGER.info("File %s has been modified, dispatching...", file_path)
-        with file_path.open("r") as f:
+        with file_path.open("r", encoding="UTF-8") as f:
             for s in subscriptions:
                 f.seek(0)
                 try:
