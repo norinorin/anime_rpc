@@ -36,11 +36,42 @@ pip install -r requirements.txt
 python -OOm anime_rpc -h
 ```
 
-## Configuration
+## Local Playback Configuration
 
-anime_rpc looks for a configuration file named `rpc.config` in the anime folder you're watching (when watching locally). If no such file is found, the folder is ignored. Refer to [the example config](example.rpc.config) to get started.
+**anime_rpc** looks for a configuration file named `rpc.config` in the anime folder you're watching. If no such file is found, the folder is ignored.
 
-Unfortunately, you'll need to manually create a config file for each anime folder. However, if the anime is on MyAnimeList (which is likely), you only need to set the `url` field to the anime's MAL page. The rest of the required fields will be filled in automatically. See the table below:
+There are two ways to set the metadata:
+
+<details>
+
+<summary>1. Automatically via MAL scraper (recommended)</summary>
+
+---
+
+To use the scraper, you only need to set the `url` key to the respective MAL page. This will automatically get the title, episode titles (if run using `--fetch-episode-titles`), and image URL for the presence. 
+
+```env
+# rpc.config
+url=MAL_URL_HERE
+```
+
+---
+
+</details>
+
+<details>
+
+<summary>2. Manually</summary>
+
+---
+
+Refer to [the example config](example.rpc.config) to get started.
+
+---
+
+</details>
+
+##### See the table below for more information:
 
 | Key             | Default Value                                         | Description                                                                                                                                                                                  |
 | --------------- | ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
