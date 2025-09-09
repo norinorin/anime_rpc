@@ -20,11 +20,7 @@ from typing_extensions import Unpack
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
-from anime_rpc.states import (
-    State,
-    WatchingState,
-    compare_states,
-)
+from anime_rpc.states import State, WatchingState, compare_states
 
 ORIGIN2SERVICE = {
     "mpc": "MPC-HC",
@@ -168,7 +164,7 @@ class Presence:
         )
         return (
             f"{('re' * rewatching + 'watching').title()} "
-            f"{(quote(title)+' ') * show_title_in_large_text}"
+            f"{(quote(title) + ' ') * show_title_in_large_text}"
             f"on {ORIGIN2SERVICE.get(origin, origin)}"
         )
 

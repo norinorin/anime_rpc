@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 
 from pymediainfo import MediaInfo
 
@@ -16,8 +16,9 @@ if TYPE_CHECKING:
     from anime_rpc.config import Config
 
 
-EP_TEMPLATE = ("%ep%", r"(?P<ep>\d+)")
+EP_TEMPLATE = ("%ep%", r"(?P<ep>\d+(?:\.\d+)?)")
 EP_TITLE_TEMPLATE = ("%title%", r"(?P<title>.+)")
+EP_NORMALIZER = re.compile(r"^0+(?=\d)")
 
 
 class Vars(TypedDict):
@@ -42,7 +43,7 @@ class BasePoller(ABC):
         pattern: str,
         file: str,
         filedir: str,
-    ) -> tuple[int, str | None] | tuple[Literal["Movie"], None] | None:
+    ) -> tuple[str, str | None] | None:
         if pattern.lower() == "movie":
             return "Movie", None
 
@@ -60,7 +61,7 @@ class BasePoller(ABC):
         groups = match.groupdict()
         ep = groups["ep"]
         title = groups.get("title")
-        return int(ep), title.strip() if title else None
+        return EP_NORMALIZER.sub("", ep), title.strip() if title else None
 
     @classmethod
     def get_empty_state(cls) -> State:

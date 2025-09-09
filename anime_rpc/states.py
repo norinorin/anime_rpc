@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import IntEnum
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict
 
 if TYPE_CHECKING:
     from typing import Generator  # noqa: UP035
@@ -19,7 +19,7 @@ class WatchingState(IntEnum):
 
 class State(TypedDict, total=False):
     title: str
-    episode: int | str  # str for "Movie"
+    episode: str | Literal["Movie"]
     episode_title: str
     position: int  # in ms
     duration: int  # in ms
