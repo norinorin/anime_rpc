@@ -55,7 +55,7 @@ async def poll_player(
             filedir = new_filedir
             subscription = (
                 file_watcher_manager.subscribe(
-                    filedir / "rpc.config", parser=parse_rpc_config
+                    filedir / ".rpc", parser=parse_rpc_config
                 )
                 if filedir
                 else None

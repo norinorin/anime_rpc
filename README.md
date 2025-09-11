@@ -38,7 +38,7 @@ python -OOm anime_rpc -h
 
 ## Local Playback Configuration
 
-**anime_rpc** looks for a configuration file named `rpc.config` in the anime folder you're watching. If no such file is found, the folder is ignored.
+**anime_rpc** looks for a configuration file named `.rpc` in the anime folder you're watching. If no such file is found, the folder is ignored.
 
 There are two ways to set the metadata:
 
@@ -65,7 +65,7 @@ url=MAL_URL_HERE
 
 ---
 
-Refer to [the example config](example.rpc.config) to get started.
+Refer to [the example config](example.rpc) to get started.
 
 ---
 
@@ -100,7 +100,7 @@ and more coming!
 ## Plans
 
 - [x] Automatically generate a regex given filenames in a folder.
-- [x] Add formatting templates for `rpc.config.match` (`%ep%`, `%title%`).
+- [x] Add formatting templates for `.rpc.match` (`%ep%`, `%title%`).
 - [ ] Rework browser extension.
 - [ ] Add more support for anime sites and media players.
 - [ ] Implement a customisable formatting.

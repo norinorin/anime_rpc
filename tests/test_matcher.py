@@ -36,7 +36,7 @@ DANDADAN = [
     "[EMBER] Dandadan - 10.mkv",
     "[EMBER] Dandadan - 11.mkv",
     "[EMBER] Dandadan - 12.mkv",
-    "rpc.config",
+    ".rpc",
 ]
 SALARYMAN = [
     "[Judas] Salaryman - S01E01v2.mkv",
@@ -51,7 +51,7 @@ SALARYMAN = [
     "[Judas] Salaryman - S01E10v2.mkv",
     "[Judas] Salaryman - S01E11v2.mkv",
     "[Judas] Salaryman - S01E12v2.mkv",
-    "rpc.config",
+    ".rpc",
 ]
 BREAKING_BAD = [
     "Breaking Bad s01e01 720p.BRrip.Sujaidr.mkv",
@@ -229,9 +229,9 @@ def test_ordered_filenames(
         if not (match := compiled_pattern.search(filename)):
             continue
         ep = int(match.group("ep"))
-        assert (
-            ep == expected_eps.pop()
-        ), f"Episode {ep} does not match expected value for {name}"
+        assert ep == expected_eps.pop(), (
+            f"Episode {ep} does not match expected value for {name}"
+        )
 
     assert not expected_eps, f"Some episodes are unmatched: {expected_eps}"
 
@@ -246,9 +246,9 @@ def test_ordered_filenames(
 def test_filenames_with_no_numbers(name: str, filenames: list[str]) -> None:
     pattern = build_filename_pattern(filenames)
 
-    assert (
-        pattern is None
-    ), f"Sequence {name} returns a pattern (should be None instead)"
+    assert pattern is None, (
+        f"Sequence {name} returns a pattern (should be None instead)"
+    )
 
 
 def test_filenames_with_hashes_only() -> None:

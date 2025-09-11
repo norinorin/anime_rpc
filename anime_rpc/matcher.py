@@ -160,10 +160,10 @@ def generate_regex_pattern(filedir: Path) -> str | None:
         return None
 
     _LOGGER.debug("Generated pattern: %s", pattern)
-    _LOGGER.info("Appending generated pattern to rpc.config...")
+    _LOGGER.info("Appending generated pattern to .rpc...")
 
     # FIXME: write in a dedicated thread
-    with (filedir / "rpc.config").open("a") as f:
+    with (filedir / ".rpc").open("a") as f:
         f.write(f"\n# Automatically generated pattern\nmatch={pattern}\n")
 
     return pattern

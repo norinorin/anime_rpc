@@ -1,4 +1,4 @@
-# rename this file to rpc.config and put this file in an anime folder,
+# rename this file to ".rpc" without quotation marks and put this file in an anime folder,
 # e.g.: /media/data/Anime/Boku no Kokoro no Yabai Yatsu.
 # make sure that the folder contains only one title.
 # for this config, it should only contain the bokuyaba anime

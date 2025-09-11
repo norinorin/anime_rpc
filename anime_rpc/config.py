@@ -40,18 +40,14 @@ def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
             continue
 
         if stripped.count("=") == 0:
-            _LOGGER.warning(
-                "Ignoring line with invalid syntax %r in rpc.config", stripped
-            )
+            _LOGGER.warning("Ignoring line with invalid syntax %r in .rpc", stripped)
             continue
 
         _LOGGER.debug("Parsing line %s", stripped)
         key, value = stripped.split("=", maxsplit=1)
 
         if key not in valid_keys:
-            _LOGGER.warning(
-                "Ignoring invalid key %r with value %r in rpc.config", key, value
-            )
+            _LOGGER.warning("Ignoring invalid key %r with value %r in .rpc", key, value)
             continue
 
         config[key] = value.strip()
