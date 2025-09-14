@@ -34,7 +34,7 @@ _LOGGER = logging.getLogger("main")
 
 
 async def poll_player(
-    poller: type[BasePoller],
+    poller: BasePoller,
     event: asyncio.Event,
     queue: asyncio.Queue[State],
     session: aiohttp.ClientSession,

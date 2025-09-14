@@ -30,13 +30,17 @@ class Vars(TypedDict):
 
 
 class BasePoller(ABC):
+    default_port = None
+
+    def __init__(self, port: int | None = None) -> None:
+        self.port = port if port is not None else self.default_port
+
     @classmethod
     @abstractmethod
     def origin(cls) -> str: ...
 
-    @staticmethod
     @abstractmethod
-    async def get_vars(client: aiohttp.ClientSession) -> Vars | None: ...
+    async def get_vars(self, client: aiohttp.ClientSession) -> Vars | None: ...
 
     @staticmethod
     def get_ep_title(

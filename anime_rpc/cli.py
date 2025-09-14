@@ -12,7 +12,7 @@ _MINIMUM_INTERVAL = 5
 class CLIArgs(argparse.Namespace):
     clear_on_pause: bool
     enable_webserver: bool
-    pollers: list[type[BasePoller]]
+    pollers: list[BasePoller]
     fetch_episode_titles: bool
     interval: int
     periodic_forced_updates: bool
@@ -42,14 +42,36 @@ _parser.add_argument(
     default=False,
 )
 POLLERS = BasePoller.get_pollers()
+
+
+def parse_pollers(s: str) -> list[BasePoller]:
+    ret: list[BasePoller] = []
+    for part in s.split(","):
+        part = part.strip()
+        if not part:
+            continue
+
+        split = part.split(":")
+        name = split[0]
+        port = len(split) > 1 and split[1].isdigit() and int(split[1]) or None
+
+        if name not in POLLERS:
+            raise argparse.ArgumentTypeError(
+                f"unknown poller '{name}'. Options: {', '.join(POLLERS.keys())}"
+            )
+
+        ret.append(POLLERS[name](port=port))
+
+    return ret
+
+
 _parser.add_argument(
     "--pollers",
     help=(
-        "list of pollers to use"
-        f" (comma-separated) Options: {', '.join(POLLERS.keys())}"
+        f"list of pollers to use (comma-separated) Options: {', '.join(POLLERS.keys())}"
     ),
     default=[],
-    type=lambda a: [POLLERS[p] for p in a.split(",")],
+    type=parse_pollers,
 )
 _parser.add_argument(
     "--fetch-episode-titles",
@@ -80,7 +102,11 @@ def print_cli_args() -> None:
     _LOGGER.info("Clear presence on pause: %s", CLI_ARGS.clear_on_pause)
     _LOGGER.info(
         "Pollers used: %s",
-        ", ".join(p.origin() for p in CLI_ARGS.pollers) or "none",
+        ", ".join(
+            f"{p.origin()}{(':' + str(p.port)) * (p.port is not None)}"
+            for p in CLI_ARGS.pollers
+        )
+        or "none",
     )
     _LOGGER.info(
         "Webserver: %s",

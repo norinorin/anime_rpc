@@ -15,7 +15,7 @@ P_TAG_PATTERN = re.compile(
 
 
 class MPCPoller(BasePoller):
-    port = 13579  # TODO: allow for custom ports via cli
+    default_port = 13579
 
     @classmethod
     def origin(cls) -> str:
@@ -29,11 +29,10 @@ class MPCPoller(BasePoller):
         ret["duration"] = int(ret["duration"])
         return ret
 
-    @staticmethod
-    async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
+    async def get_vars(self, client: aiohttp.ClientSession) -> Vars | None:
         try:
             async with client.get(
-                f"http://127.0.0.1:{MPCPoller.port}/variables.html",
+                f"http://127.0.0.1:{self.port}/variables.html",
             ) as response:
                 if response.status != HTTPStatus.OK:
                     return None

@@ -69,17 +69,16 @@ def _get_mpv_vars(
 
 
 class MPVWebUIPoller(BasePoller):
-    port = 14567  # TODO: allow for custom ports via cli
+    default_port = 8080
 
     @classmethod
     def origin(cls) -> str:
         return "mpv-webui"
 
-    @staticmethod
-    async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
+    async def get_vars(self, client: aiohttp.ClientSession) -> Vars | None:
         try:
             async with client.get(
-                f"http://127.0.0.1:{MPVWebUIPoller.port}/api/status",
+                f"http://127.0.0.1:{self.port}/api/status",
             ) as response:
                 if response.status != HTTPStatus.OK:
                     return None
@@ -103,9 +102,7 @@ class MPVWebUIPoller(BasePoller):
 # TODO: maybe consider switching to a hook-based approach
 class MPVIPCPoller(BasePoller):
     # TODO: allow for custom paths
-    ipc_path = (
-        "\\\\.\\pipe\\mpv-pipe" if os.name == "nt" else "/tmp/mpvsocket"
-    )  # noqa: S108
+    ipc_path = "\\\\.\\pipe\\mpv-pipe" if os.name == "nt" else "/tmp/mpvsocket"  # noqa: S108
 
     if os.name == "nt":
 
@@ -176,8 +173,7 @@ class MPVIPCPoller(BasePoller):
     def _typecast_playlist(data: str) -> list[MPVPlaylistEntry]:
         return json.loads(data)
 
-    @staticmethod
-    async def get_vars(client: aiohttp.ClientSession) -> Vars | None:
+    async def get_vars(self, client: aiohttp.ClientSession) -> Vars | None:
         # FIXME: is there a way to do this in batch?
         playlist = await MPVIPCPoller.get_property(
             "playlist",
