@@ -47,7 +47,7 @@ async def poll_player(
     while not event.is_set():
         state: State = poller.get_empty_state()
         vars_ = await wait(poller.get_vars(session), event)
-        new_filedir = vars_ and Path(vars_.get("filedir"))
+        new_filedir = vars_ and (fd := vars_.get("filedir")) and Path(fd) or None
 
         # user switches folder
         if filedir != new_filedir:
