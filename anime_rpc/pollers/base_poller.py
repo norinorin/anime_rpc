@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
@@ -52,11 +53,19 @@ class BasePoller(ABC):
             return "Movie", None
 
         pattern = pattern.replace(*EP_TEMPLATE, 1).replace(*EP_TITLE_TEMPLATE, 1)
+        candidates: list[str] = [file]
 
-        for f in (MediaInfo.parse(Path(filedir) / file).general_tracks[0].title, file):
-            if f is None:
-                continue
+        # sometimes "file" and "filedir" are out of sync when fetching from MPC
+        # so we may get the old file name with the new filedir, or vice versa
+        # in that case, suppress FileNotFoundError
+        with suppress(FileNotFoundError):
+            metadata = MediaInfo.parse(Path(filedir) / file)
+            if metadata.general_tracks and (
+                title := (metadata.general_tracks[0].title or "").strip()
+            ):
+                candidates.insert(0, title)
 
+        for f in candidates:
             if match := re.search(pattern, f):
                 break
         else:
