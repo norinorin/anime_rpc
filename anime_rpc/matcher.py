@@ -127,6 +127,10 @@ def infer_episode_pattern(
             else STRUCTURAL_PENALTY
         )
 
+        if increasing_score == 0:
+            _LOGGER.debug("No increasing sequence found for index %d, ignoring...", idx)
+            continue
+
         candidates.append(
             Candidate(
                 index=idx,

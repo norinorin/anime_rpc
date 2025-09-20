@@ -196,6 +196,18 @@ SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES = [
     "Title - 3v2.mkv",  # 3v2 is a noise
     "Long titleeeeeeee - 4.mkv",
 ]
+MIZUZOKUSEI = [
+    "The.Water.Magician.S01E01.The.Slow.But.Dangerous.Life..1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E02.Abel.the.Castaway.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E03.The.Town.of.Lune.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E04.Eclipses.and.Akuma.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E05.The.Great.Tidal.Bore.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E06.The.Sealed.Dungeon.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E07.Beyond.the.Gate.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E08.Unprecedented.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E09.Nils.and.the.Mysterious.Town.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+    "The.Water.Magician.S01E10.The.Open.Port.Festival.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
+]
 
 
 @pytest.mark.parametrize(
@@ -210,6 +222,7 @@ SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES = [
         ("dungeon_meshi", DUNGEON_MESHI, [*range(1, 25)]),
         ("bokuyaba", BOKUYABA, [1, *range(1, 14)]),
         ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES, [1, 2, 3, 4]),
+        ("mizuzokusei", MIZUZOKUSEI, [*range(1, 11)]),
     ],
 )
 def test_ordered_filenames(
