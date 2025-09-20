@@ -75,6 +75,10 @@ class MPVWebUIPoller(BasePoller):
     def origin(cls) -> str:
         return "mpv-webui"
 
+    @property
+    def display_name(self) -> str:
+        return "mpv"
+
     async def get_vars(self, client: aiohttp.ClientSession) -> Vars | None:
         try:
             async with client.get(
@@ -149,6 +153,10 @@ class MPVIPCPoller(BasePoller):
     @classmethod
     def origin(cls) -> str:
         return "mpv-ipc"
+
+    @property
+    def display_name(self) -> str:
+        return "mpv"
 
     @staticmethod
     async def send_command(command: MPVCommand) -> MPVResponse:

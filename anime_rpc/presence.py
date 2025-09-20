@@ -23,14 +23,9 @@ from typing_extensions import Unpack
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
+from anime_rpc.services import ORIGIN2SERVICE
 from anime_rpc.states import State, WatchingState, compare_states
 
-ORIGIN2SERVICE = {
-    "mpc": "MPC-HC",
-    "www.bilibili.tv": "BiliBili (Bstation)",
-    "mpv-ipc": "mpv",
-    "mpv-webui": "mpv",
-}
 ASSETS = {
     "PLAYING": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/play.png?raw=true",
     "PAUSED": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/pause.png?raw=true",
@@ -62,6 +57,7 @@ class StateOptions(TypedDict):
     watching_state: WatchingState
     rewatching: bool
     origin: str
+    display_name: str
 
 
 class UpdateFlags(Flag):
@@ -161,14 +157,14 @@ class Presence:
         ep_title = kwargs["ep_title"]
         rewatching = kwargs["rewatching"]
         title = kwargs["title"]
-        origin = kwargs["origin"]
+        display_name = kwargs["display_name"]
         show_title_in_large_text = (
             watching_state == WatchingState.PAUSED and ep_title is not None
         )
         return (
             f"{('re' * rewatching + 'watching').title()} "
             f"{(quote(title) + ' ') * show_title_in_large_text}"
-            f"on {ORIGIN2SERVICE.get(origin, origin)}"
+            f"on {display_name}"
         )
 
     def _get_playing_state_kwargs(
@@ -258,6 +254,9 @@ class Presence:
             "rewatching": state["rewatching"],
             "watching_state": state.get("watching_state", WatchingState.NOT_AVAILABLE),
             "origin": origin,
+            "display_name": state.get(
+                "display_name", ORIGIN2SERVICE.get(origin, origin)
+            ),
         }
 
         kwargs: dict[str, Any] = {

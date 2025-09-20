@@ -28,6 +28,7 @@ class State(TypedDict, total=False):
     url_text: str
     rewatching: bool
     watching_state: WatchingState
+    display_name: str
 
     # origin must always be set so we know where it's coming from,
     # i.e., if multiple pollers are used, we know if the clear presence request

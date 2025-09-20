@@ -43,6 +43,10 @@ class BasePoller(ABC):
     @abstractmethod
     async def get_vars(self, client: aiohttp.ClientSession) -> Vars | None: ...
 
+    @property
+    @abstractmethod
+    def display_name(self) -> str: ...
+
     @staticmethod
     def get_ep_title(
         pattern: str,
@@ -76,13 +80,11 @@ class BasePoller(ABC):
         title = groups.get("title")
         return EP_NORMALIZER.sub("", ep), title.strip() if title else None
 
-    @classmethod
-    def get_empty_state(cls) -> State:
-        return State(origin=cls.origin())
+    def get_empty_state(self) -> State:
+        return State(origin=self.origin())
 
-    @classmethod
-    def get_state(cls, vars_: Vars, config: Config) -> State:
-        state: State = cls.get_empty_state()
+    def get_state(self, vars_: Vars, config: Config) -> State:
+        state: State = self.get_empty_state()
 
         if validate_config(config):
             return state
@@ -90,7 +92,8 @@ class BasePoller(ABC):
         state["rewatching"] = config["rewatching"]
         state["position"] = vars_["position"]
         state["duration"] = vars_["duration"]
-        maybe_ep_title = cls.get_ep_title(
+        state["display_name"] = self.display_name
+        maybe_ep_title = self.get_ep_title(
             config["match"],
             vars_["file"],
             vars_["filedir"],
@@ -98,7 +101,7 @@ class BasePoller(ABC):
 
         # if nothing matches, return an empty state as to clear the activity
         if not maybe_ep_title:
-            return cls.get_empty_state()
+            return self.get_empty_state()
 
         state["episode"], ep_title = maybe_ep_title
 
