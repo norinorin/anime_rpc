@@ -7,15 +7,8 @@ import time
 from enum import Flag, auto
 from typing import Any, TypedDict, cast
 
-# fmt: off
-from pypresence import (  # type: ignore[reportMissingTypeStubs]
-    DiscordError,
-    DiscordNotFound,
-    PipeClosed,
-    ResponseTimeout,
-)
-
-# fmt: on
+from pypresence import DiscordError  # type: ignore[reportMissingTypeStubs]
+from pypresence import DiscordNotFound, PipeClosed, ResponseTimeout  # type: ignore[reportMissingTypeStubs]
 from pypresence.presence import AioPresence  # type: ignore[reportMissingTypeStubs]
 from pypresence.types import ActivityType  # type: ignore[reportMissingTypeStubs]
 from typing_extensions import Unpack
