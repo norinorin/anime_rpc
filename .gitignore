@@ -3,4 +3,6 @@ build/
 dist/
 *.spec
 .venv
+.pytest_cache/
+.ruff_cache/
 test.py
