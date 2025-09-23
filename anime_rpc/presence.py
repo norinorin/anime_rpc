@@ -136,19 +136,9 @@ class Presence:
         return int(time.mktime(time.localtime()))
 
     def _get_large_text(self, **kwargs: Unpack[StateOptions]) -> str:
-        watching_state = kwargs["watching_state"]
-        ep_title = kwargs["ep_title"]
         rewatching = kwargs["rewatching"]
-        title = kwargs["title"]
         display_name = kwargs["display_name"]
-        show_title_in_large_text = (
-            watching_state == WatchingState.PAUSED and ep_title is not None
-        )
-        return (
-            f"{('re' * rewatching + 'watching').title()} "
-            f"{(quote(title) + ' ') * show_title_in_large_text}"
-            f"on {display_name}"
-        )
+        return f"{('re' * rewatching + 'watching').title()} on {display_name}"
 
     def _get_playing_state_kwargs(
         self,
