@@ -17,10 +17,10 @@ from anime_rpc.config import Config, parse_rpc_config
 from anime_rpc.file_watcher import FileWatcherManager, Subscription
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.matcher import generate_regex_pattern
-from anime_rpc.monkey_patch import patch_pypresence
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlags
 from anime_rpc.scraper import MALScraper
+from anime_rpc.social_sdk import C, Discord
 from anime_rpc.states import State, get_states_logger, validate_state
 from anime_rpc.timer import Timer
 from anime_rpc.ux import init_logging
@@ -86,8 +86,9 @@ async def consumer_loop(
     event: asyncio.Event,
     queue: asyncio.Queue[State],
     scraper: MALScraper,
+    discord: Discord,
 ) -> None:
-    presence = Presence()
+    presence = Presence(discord)
     timer = Timer()
 
     # internal states
@@ -158,10 +159,12 @@ async def consumer_loop(
             )
             flags = (flags and flags | UpdateFlags.SEEKING) or UpdateFlags.SEEKING
 
-        last_state = await wait(
-            presence.update(state, last_state, origin, flags=flags),
-            event,
-        )
+        try:
+            last_state = presence.update(state, last_state, origin, flags=flags)
+        except Exception as e:
+            _LOGGER.exception("Failed to update presence: %s", e)
+            event.set()
+            break
         flags = None
         last_pos = pos
 
@@ -178,9 +181,11 @@ async def main() -> None:
     file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
     scraper = MALScraper(session, file_watcher_manager)
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
+    discord = Discord()
+    discord.start()
 
     consumer_task = asyncio.create_task(
-        consumer_loop(event, queue, scraper),
+        consumer_loop(event, queue, scraper, discord),
         name="consumer",
     )
     poller_tasks = [
@@ -199,14 +204,19 @@ async def main() -> None:
         webserver = await start_app(app)
     file_watcher_manager.start()
 
+    _LOGGER.info("Press CTRL+C to exit")
+
     with suppress(Bail):
         await asyncio.gather(consumer_task, *poller_tasks)
+
+    _LOGGER.info("Shutting down...")
 
     if webserver is not None:
         await webserver.stop()
 
     await session.close()
     file_watcher_manager.stop()
+    discord.stop()
 
 
 def _sigint_callback(event: asyncio.Event) -> None:
@@ -216,6 +226,8 @@ def _sigint_callback(event: asyncio.Event) -> None:
 
 init_logging()
 
+
+_LOGGER.info("Loaded Social SDK C library: %s", C)
 _LOGGER.info("Starting anime_rpc ver: %s", __version__)
 
 print_cli_args()
@@ -223,7 +235,5 @@ print_cli_args()
 if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
     _LOGGER.error("Nothing's running. Exiting...")
     sys.exit(1)
-
-patch_pypresence()
 
 asyncio.run(main())

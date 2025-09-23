@@ -1,22 +1,18 @@
 from __future__ import annotations
 
-import contextlib
 import logging
 import struct
 import time
-from enum import Flag, auto
+from enum import Flag, IntEnum, auto
 from typing import Any, TypedDict, cast
 
-from pypresence import DiscordError  # type: ignore[reportMissingTypeStubs]
-from pypresence import DiscordNotFound, PipeClosed, ResponseTimeout  # type: ignore[reportMissingTypeStubs]
-from pypresence.presence import AioPresence  # type: ignore[reportMissingTypeStubs]
-from pypresence.types import ActivityType  # type: ignore[reportMissingTypeStubs]
 from typing_extensions import Unpack
 
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
 from anime_rpc.services import ORIGIN2SERVICE
+from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, WatchingState, compare_states
 
 ASSETS = {
@@ -32,6 +28,22 @@ CHAR_LIMITS = {
     "button_url": 512,
 }
 _LOGGER = logging.getLogger("presence")
+
+
+class ActivityType(IntEnum):
+    PLAYING = 0
+    STREAMING = 1
+    LISTENING = 2
+    WATCHING = 3
+    CUSTOMSTATUS = 4
+    COMPETING = 5
+    HANGSTATUS = 6
+
+
+class StatusDisplayType(IntEnum):
+    NAME = 0
+    STATE = 1
+    DETAILS = 2
 
 
 class ActivityOptions(TypedDict, total=False):
@@ -67,47 +79,26 @@ class UpdateFlags(Flag):
 
 
 class Presence:
-    def __init__(self) -> None:
-        self._rpc: AioPresence | None = None
-        self._last_application_id: int | None = None
-        self._reconnecting = False
+    def __init__(self, client: Discord) -> None:
+        self._client = client
         self._last_kwargs: dict[str, Any] = {}
 
-    async def _ensure_application_id(self, application_id: int) -> None:
-        if self._rpc is None or application_id != self._last_application_id:
-            _ = self._rpc and self._rpc.close()
-            self._rpc = AioPresence(
-                application_id,
-                connection_timeout=5,
-                response_timeout=5,
-            )
-            self._last_application_id = application_id
-            data = cast("dict[str, Any]", await self._rpc.handshake())
-            user = data["data"]["user"]
-            _LOGGER.info(
-                "Connected to %s (%s)",
-                user.get("username", "unknown"),
-                user.get("id", "<unknown id>"),
-            )
+    def _ensure_application_id(self, application_id: int) -> None:
+        self._client.set_application_id(application_id)
 
-    async def _update(
+    def _update(
         self,
         application_id: int,
         *args: tuple[Any, ...],
         **kwargs: Unpack[ActivityOptions],
     ) -> bool:
         try:
-            await self._ensure_application_id(application_id)
-            assert self._rpc is not None
-            await self._rpc.update(*args, **kwargs)  # type: ignore[reportCallIssue]
+            self._ensure_application_id(application_id)
+            self._client.set_activity(*args, **kwargs)  # type: ignore[reportCallIssue]
         except (
             OSError,
             ConnectionRefusedError,
-            PipeClosed,
-            ResponseTimeout,
             struct.error,
-            DiscordError,
-            DiscordNotFound,
         ):
             if not self._reconnecting:
                 _LOGGER.error(  # noqa: TRY400
@@ -125,27 +116,18 @@ class Presence:
                         "--interval is set, will retry to reconnect every %.2fs",
                         CLI_ARGS.interval,
                     )
-            self._rpc = None
             self._reconnecting = True
             return False
 
         self._reconnecting = False
         return True
 
-    async def _clear(self, last_state: State) -> State:
+    def _clear(self, last_state: State) -> State:
         # only clear activity if last state is not empty
-        if last_state and self._rpc:
+        if last_state:
             _LOGGER.info("Clearing presence...")
-            # we don't care if clearing fails
-            with contextlib.suppress(
-                OSError,
-                ConnectionRefusedError,
-                PipeClosed,
-                ResponseTimeout,
-                struct.error,
-                DiscordError,
-            ):
-                await self._rpc.clear()
+            self._client.clear_activity()
+            self._last_kwargs = {}
 
         return State()
 
@@ -206,18 +188,19 @@ class Presence:
         dur = kwargs["duration"]
         ep = kwargs["episode"]
         is_movie = kwargs["is_movie"]
-        ep_title = kwargs["ep_title"]
-        details = (
-            title
-            if is_movie
-            else (f"E{ep} {quote(ep_title)}" if ep_title else f"{quote(title)} E{ep}")
+        state = (
+            "Paused"
+            + (f" on E{ep}" * (not is_movie))
+            + " - "
+            + " / ".join(
+                [ms2timestamp(i) for i in (pos, dur)],
+            )
         )
         return cast(
             "ActivityOptions",
             {
-                "details": details,
-                "state": "Paused - "
-                + " / ".join([ms2timestamp(i) for i in (pos, dur)]),
+                "details": title,
+                "state": state,
                 "small_text": "Paused",
                 "small_image": ASSETS["PAUSED"],
             },
@@ -246,7 +229,7 @@ class Presence:
             if "url" in button and isinstance(button["url"], str):
                 button["url"] = _maybe_trim(button["url"], button_url_limit)
 
-    async def update(
+    def update(
         self,
         state: State,
         last_state: State,
@@ -255,7 +238,7 @@ class Presence:
         flags: UpdateFlags | None = None,
     ) -> State:
         if not state:
-            return await self._clear(last_state)
+            return self._clear(last_state)
 
         assert "title" in state
         assert "episode" in state
@@ -285,7 +268,8 @@ class Presence:
 
         kwargs: dict[str, Any] = {
             "large_text": self._get_large_text(**state_opts),
-            "activity_type": 3,
+            "type_": 3,
+            "status_display_type": StatusDisplayType.DETAILS,
             "large_image": state["image_url"],
         }
 
@@ -298,7 +282,7 @@ class Presence:
         elif watching_state == WatchingState.PAUSED and not CLI_ARGS.clear_on_pause:
             kwargs.update(self._get_paused_state_kwargs(**state_opts))
         else:
-            return await self._clear(last_state)
+            return self._clear(last_state)
 
         self._trim_kwargs(kwargs)
 
@@ -335,7 +319,7 @@ class Presence:
         self._last_kwargs = kwargs
 
         # only log on state changes or seeking
-        if await self._update(application_id, **kwargs) and not (
+        if self._update(application_id, **kwargs) and not (
             flags and UpdateFlags.PERIODIC_UPDATE in flags
         ):
             _LOGGER.info(
