@@ -20,7 +20,7 @@ from anime_rpc.matcher import generate_regex_pattern
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlags
 from anime_rpc.scraper import MALScraper
-from anime_rpc.social_sdk import C, Discord
+from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, get_states_logger, validate_state
 from anime_rpc.timer import Timer
 from anime_rpc.ux import init_logging
@@ -226,8 +226,6 @@ def _sigint_callback(event: asyncio.Event) -> None:
 
 init_logging()
 
-
-_LOGGER.info("Loaded Social SDK C library: %s", C)
 _LOGGER.info("Starting anime_rpc ver: %s", __version__)
 
 print_cli_args()
