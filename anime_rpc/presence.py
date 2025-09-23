@@ -280,13 +280,16 @@ class Presence:
                 # if it's a periodic update just use the previous kwargs
                 # as to prevent the rich presence time from bugging
                 # for a split second
-                #
-                # FIXME: this no longer seems effective, Discord ignores updates
-                # when the payload is identitcal.
                 _LOGGER.debug(
                     "Periodic update triggered, reusing the previous kwargs...",
                 )
                 kwargs = self._last_kwargs
+
+                # discord seems to optimise identical updates away,
+                # so we add a trailing space to the `small_text` (it can be any field, though)
+                # to trick it into thinking it's not an identical payload
+                assert "small_text" in kwargs and isinstance(kwargs["small_text"], str)
+                kwargs["small_text"] += " "
 
         _LOGGER.debug(
             "Setting presence to [%s] %s @ %s",
