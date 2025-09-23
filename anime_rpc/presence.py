@@ -23,6 +23,14 @@ ASSETS = {
     "PLAYING": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/play.png?raw=true",
     "PAUSED": "https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/assets/pause.png?raw=true",
 }
+CHAR_LIMITS = {
+    "details": 128,
+    "state": 128,
+    "large_text": 128,
+    "small_text": 128,
+    "button_label": 32,
+    "button_url": 512,
+}
 _LOGGER = logging.getLogger("presence")
 
 
@@ -215,6 +223,29 @@ class Presence:
             },
         )
 
+    def _maybe_trim(self, text: str, max_length: int) -> str:
+        if not text:
+            return ""
+
+        return len(text) <= max_length and text or text[: max_length - 1] + "…"
+
+    def _trim_kwargs(self, kwargs: dict[str, Any]) -> None:
+        _maybe_trim = self._maybe_trim
+
+        for key, limit in CHAR_LIMITS.items():
+            if key == "button_label" or key == "button_url":
+                continue
+            if key in kwargs and isinstance(kwargs[key], str):
+                kwargs[key] = _maybe_trim(kwargs[key], limit)
+
+        button_url_limit = CHAR_LIMITS["button_url"]
+        button_label_limit = CHAR_LIMITS["button_label"]
+        for button in kwargs.get("buttons", []):
+            if "label" in button and isinstance(button["label"], str):
+                button["label"] = _maybe_trim(button["label"], button_label_limit)
+            if "url" in button and isinstance(button["url"], str):
+                button["url"] = _maybe_trim(button["url"], button_url_limit)
+
     async def update(
         self,
         state: State,
@@ -268,6 +299,8 @@ class Presence:
             kwargs.update(self._get_paused_state_kwargs(**state_opts))
         else:
             return await self._clear(last_state)
+
+        self._trim_kwargs(kwargs)
 
         # only compare states after validating watching state
         if compare_states(state, last_state):
