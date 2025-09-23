@@ -37,9 +37,9 @@ LIB_PATH = Path(__file__).parent / "../lib"
 if sys.platform == "win32":
     LIB_NAME = "discord_partner_sdk.dll"
 elif sys.platform == "linux":
-    LIB_NAME = "libdiscord_partner_sdk.so"
+    LIB_NAME = "libdiscord_partner_sdk.so"  # type: ignore[reportConstantRedefinition]
 elif sys.platform == "darwin":
-    LIB_NAME = "libdiscord_partner_sdk.dylib"
+    LIB_NAME = "libdiscord_partner_sdk.dylib"  # type: ignore[reportConstantRedefinition]
 else:
     raise RuntimeError(f"Unsupported platform: {sys.platform}")
 
