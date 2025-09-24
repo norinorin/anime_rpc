@@ -150,6 +150,7 @@ class Presence:
         dur = kwargs["duration"]
         ep = kwargs["episode"]
         is_movie = kwargs["is_movie"]
+        now = kwargs["now"]
         state = (
             "Paused"
             + (f" on E{ep}" * (not is_movie))
@@ -165,6 +166,7 @@ class Presence:
                 "state": state,
                 "small_text": "Paused",
                 "small_image": ASSETS["PAUSED"],
+                "start": now,
             },
         )
 
