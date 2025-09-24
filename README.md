@@ -16,7 +16,24 @@
 
 ---
 
-## Installation
+## 🚀 Features
+
+- 📂 **Per-folder metadata with `.rpc` files**  
+  Configure rich presence info for local media players like MPC and MPV by placing `.rpc` files in your anime folders
+
+- 🔄 **Real-time presence updates**  
+  Edits to `.rpc` files are picked up instantly, so your Discord status stays in sync without restarting anything.
+
+- 🎉 **Discord Rich Presence without running Discord**  
+  Show what you’re watching without needing the Discord client open via OAuth2.
+
+- 📺 **Automatic anime episode tracking & metadata scraping**  
+  Scrapes anime details and episode info from MyAnimeList with caching.
+
+- 🎭 **Dynamic activity name**  
+  The activity status adapts to what you’re watching, showing the anime title instead of a generic label (see [#14](https://github.com/norinorin/anime_rpc/pull/14)).
+
+## 📦 Installation
 
 1. Clone the repository:
 
@@ -37,7 +54,7 @@ pip install -e .
 anime_rpc -h
 ```
 
-## Local Playback Configuration
+## ⚙️ Local Playback Configuration
 
 **anime_rpc** looks for a configuration file named `.rpc` (short for Rich Presence Config—not to be confused with Remote Procedure Call, or even Rich Presence Client :p) in the anime folder you're watching. If no such file is found, the folder is ignored.
 
@@ -88,7 +105,7 @@ Refer to [the example config](example.rpc) to get started.
 
 ? Optional.
 
-## Supported Platforms
+## 🖥️ Supported Platforms
 
 | Platform    | Type      | Description                                                                                              |
 | ----------- | --------- | -------------------------------------------------------------------------------------------------------- |
@@ -98,7 +115,7 @@ Refer to [the example config](example.rpc) to get started.
 
 and more coming!
 
-## Plans
+## 📅 Plans
 
 - [x] Automatically generate a regex given filenames in a folder.
 - [x] Add formatting templates for `.rpc.match` (`%ep%`, `%title%`).
@@ -106,6 +123,6 @@ and more coming!
 - [ ] Add more support for anime sites and media players.
 - [ ] Implement a customisable formatting.
 
-## License
+## 📝 License
 
 MIT
