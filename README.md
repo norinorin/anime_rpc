@@ -122,6 +122,7 @@ and more coming!
 - [ ] Rework browser extension.
 - [ ] Add more support for anime sites and media players.
 - [ ] Implement a customisable formatting.
+- [ ] Implement automatic MyAnimeList/AniList episode tracking.
 
 ## 📝 License
 
