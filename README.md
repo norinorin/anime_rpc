@@ -87,7 +87,7 @@ Refer to [the example config](example.rpc) to get started.
 
 ? Optional.
 
-## Supported platforms
+## Supported Platforms
 
 | Platform    | Type      | Description                                                                                              |
 | ----------- | --------- | -------------------------------------------------------------------------------------------------------- |
