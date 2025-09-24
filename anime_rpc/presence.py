@@ -122,7 +122,6 @@ class Presence:
         pos = kwargs["position"]
         dur = kwargs["duration"]
         ep = kwargs["episode"]
-        rewatching = kwargs["rewatching"]
         is_movie = kwargs["is_movie"]
         ep_title = kwargs["ep_title"]
         if is_movie:
@@ -133,7 +132,7 @@ class Presence:
         return cast(
             "ActivityOptions",
             {
-                "details": ("Rewatching " * bool(rewatching)) + title,
+                "details": title,
                 "state": state,
                 "start": now - pos // 1_000,
                 "end": now + (dur - pos) // 1_000,
