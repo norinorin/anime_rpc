@@ -7,7 +7,6 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Any
 
-# import keyring
 import cffi
 import keyring
 
@@ -323,7 +322,6 @@ class Discord:
             raise RuntimeError("Discord client is not initialised")
         _LOGGER.debug("Stopping internal loop")
         self.drop()  # type: ignore
-        self.client = None
         if self.thread is not None:
             self.thread.join()
             self.thread = None
