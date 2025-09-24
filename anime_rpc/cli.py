@@ -16,6 +16,7 @@ class CLIArgs(argparse.Namespace):
     fetch_episode_titles: bool
     interval: int
     periodic_forced_updates: bool
+    use_oauth2: bool
 
 
 _parser = argparse.ArgumentParser(
@@ -39,6 +40,12 @@ _parser.add_argument(
     "--enable-webserver",
     action="store_true",
     help="enable webserver (extension integration)",
+    default=False,
+)
+_parser.add_argument(
+    "--use-oauth2",
+    action="store_true",
+    help="enable authentication (OAuth2) so you do not need to have a Discord client running",
     default=False,
 )
 POLLERS = BasePoller.get_pollers()
@@ -99,6 +106,7 @@ CLI_ARGS.periodic_forced_updates = CLI_ARGS.interval >= _MINIMUM_INTERVAL
 
 
 def print_cli_args() -> None:
+    _LOGGER.info("Using OAuth2: %s", CLI_ARGS.use_oauth2)
     _LOGGER.info("Clear presence on pause: %s", CLI_ARGS.clear_on_pause)
     _LOGGER.info(
         "Pollers used: %s",
