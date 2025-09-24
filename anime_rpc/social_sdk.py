@@ -8,7 +8,9 @@ from pathlib import Path
 
 # import keyring
 import cffi
+import keyring
 
+from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 
 DISCORD_API_PATTERN = re.compile(r"\bDISCORD_API\b")
@@ -88,6 +90,121 @@ class LoggingSeverity(IntEnum):
     NONE = 5
 
 
+@ffi.callback("void(Discord_String, Discord_LoggingSeverity, void *)")
+def _log_callback(message_struct, severity, user_data) -> None:  # type: ignore
+    message = _dec_c_str(message_struct).strip()  # type: ignore
+    severity = LoggingSeverity(severity)
+
+    assert isinstance(message, str)
+    if severity == LoggingSeverity.ERROR:
+        _LOGGER.error("Log callback: %s", message)
+    else:
+        _LOGGER.debug("Log callback: %s", message)
+
+
+@ffi.callback("void(Discord_Client_Status, Discord_Client_Error, int32_t, void *)")
+def _status_changed_callback(status, error, error_detail, user_data):  # type: ignore
+    status_ptr = ffi.new("Discord_String *")  # type: ignore
+    C.Discord_Client_StatusToString(status, status_ptr)  # type: ignore
+    status = _dec_c_str(status_ptr[0])  # type: ignore
+
+    _LOGGER.debug("Status changed: %s", status)
+
+    if status == C.Discord_Client_Status_Ready:  # type: ignore
+        _LOGGER.info("Discord client is ready")
+    elif error != C.Discord_Client_Error_None:  # type: ignore
+        _handle_discord_error(
+            "Status changed",
+            error,  # type: ignore
+            C.Discord_Client_ErrorToString,  # type: ignore
+        )
+
+
+@ffi.callback("void(Discord_ClientResult *, Discord_String, Discord_String, void *)")
+def _authorize_callback(result_ptr, code, redirect_uri, user_data):  # type: ignore
+    instance = ffi.from_handle(user_data)  # type: ignore
+
+    if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
+        _LOGGER.info("Getting access token...")
+
+        verifier_str_ptr = ffi.new("Discord_String *")  # type: ignore
+        C.Discord_AuthorizationCodeVerifier_Verifier(  # type: ignore
+            instance.code_verifier, verifier_str_ptr
+        )
+        C.Discord_Client_GetToken(  # type: ignore
+            instance.client,
+            instance.last_application_id,
+            code,
+            verifier_str_ptr[0],
+            redirect_uri,
+            _token_exchange_callback,
+            ffi.NULL,
+            instance.self_handle,
+        )
+        return
+
+    _handle_discord_error("Authorization", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
+
+
+@ffi.callback(
+    "void(Discord_ClientResult *, Discord_String, Discord_String, Discord_AuthorizationTokenType, int32_t, Discord_String, void *)"
+)
+def _token_exchange_callback(
+    result_ptr,  # type: ignore
+    access_token,  # type: ignore
+    refresh_token,  # type: ignore
+    token_type,  # type: ignore
+    expires_in,  # type: ignore
+    scopes,  # type: ignore
+    user_data,  # type: ignore
+):
+    instance = ffi.from_handle(user_data)  # type: ignore
+
+    if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
+        _LOGGER.info("Access token received! Connecting...")
+        C.Discord_Client_UpdateToken(  # type: ignore
+            instance.client,
+            token_type,
+            access_token,
+            _update_token_callback,
+            ffi.NULL,
+            instance.self_handle,
+        )
+        keyring.set_password(
+            SERVICE_NAME,
+            f"refresh_token:{instance.last_application_id}",
+            _dec_c_str(refresh_token),  # type: ignore
+        )
+        return
+
+    _handle_discord_error("Get token", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
+
+
+@ffi.callback("void(Discord_ClientResult *, void *)")
+def _update_token_callback(result_ptr, user_data):  # type: ignore
+    instance = ffi.from_handle(user_data)  # type: ignore
+
+    if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
+        _LOGGER.info("Token updated, connecting to Discord...")
+        C.Discord_Client_Connect(instance.client)  # type: ignore
+        return
+
+    _handle_discord_error("Update token", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
+
+
+@ffi.callback("void(Discord_ClientResult *, void *)")
+def _update_presence_callback(result_ptr, user_data):  # type: ignore
+    if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
+        _LOGGER.debug("Presence updated")
+        return
+
+    _handle_discord_error(
+        "Update presence",
+        result_ptr,  # type: ignore
+        C.Discord_ClientResult_Error,  # type: ignore
+    )
+
+
 class Discord:
     def __init__(self) -> None:
         self.last_application_id = None
@@ -102,122 +219,6 @@ class Discord:
         C.Discord_ClientCreateOptions_Init(options)  # type: ignore
         return options
 
-    @ffi.callback("void(Discord_String, Discord_LoggingSeverity, void *)")
-    def _log_callback(message_struct, severity, user_data) -> None:  # type: ignore
-        message = _dec_c_str(message_struct).strip()  # type: ignore
-        severity = LoggingSeverity(severity)
-
-        assert isinstance(message, str)
-        if severity == LoggingSeverity.ERROR:
-            _LOGGER.error("Log callback: %s", message)
-        else:
-            _LOGGER.debug("Log callback: %s", message)
-
-    @ffi.callback("void(Discord_Client_Status, Discord_Client_Error, int32_t, void *)")
-    def _status_changed_callback(status, error, error_detail, user_data):  # type: ignore
-        status_ptr = ffi.new("Discord_String *")  # type: ignore
-        C.Discord_Client_StatusToString(status, status_ptr)  # type: ignore
-        status = _dec_c_str(status_ptr[0])  # type: ignore
-
-        _LOGGER.debug("Status changed: %s", status)
-
-        if status == C.Discord_Client_Status_Ready:  # type: ignore
-            _LOGGER.info("Discord client is ready")
-        elif error != C.Discord_Client_Error_None:  # type: ignore
-            _handle_discord_error(
-                "Status changed",
-                error,  # type: ignore
-                C.Discord_Client_ErrorToString,  # type: ignore
-            )
-
-    @ffi.callback(
-        "void(Discord_ClientResult *, Discord_String, Discord_String, void *)"
-    )
-    def _authorize_callback(result_ptr, code, redirect_uri, user_data):  # type: ignore
-        instance = ffi.from_handle(user_data)  # type: ignore
-
-        if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
-            _LOGGER.info("Getting access token...")
-
-            verifier_str_ptr = ffi.new("Discord_String *")  # type: ignore
-            C.Discord_AuthorizationCodeVerifier_Verifier(  # type: ignore
-                instance.code_verifier, verifier_str_ptr
-            )
-            C.Discord_Client_GetToken(  # type: ignore
-                instance.client,
-                instance.client_id,
-                code,
-                verifier_str_ptr[0],
-                redirect_uri,
-                instance._get_token_callback,
-                ffi.NULL,
-                instance.self_handle,
-            )
-            return
-
-        _handle_discord_error("Authorization", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
-
-    @ffi.callback(
-        "void(Discord_ClientResult *, Discord_String, Discord_String, Discord_AuthorizationTokenType, int32_t, Discord_String, void *)"
-    )
-    def _get_token_callback(
-        result_ptr,
-        access_token,  # type: ignore
-        refresh_token,  # type: ignore
-        token_type,  # type: ignore
-        expires_in,  # type: ignore
-        scopes,  # type: ignore
-        user_data,  # type: ignore
-    ):
-        instance = ffi.from_handle(user_data)  # type: ignore
-
-        if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
-            _LOGGER.info("Access token received! Connecting...")
-            C.Discord_Client_UpdateToken(  # type: ignore
-                instance.client,
-                token_type,
-                access_token,
-                instance._update_token_callback,
-                ffi.NULL,
-                instance.self_handle,
-            )
-            # keyring.set_password(
-            #     SERVICE_NAME,
-            #     f"access_token:{instance.client_id}",
-            #     _dec_c_str(access_token),  # type: ignore
-            # )
-            # keyring.set_password(
-            #     SERVICE_NAME,
-            #     f"refresh_token:{instance.client_id}",
-            #     _dec_c_str(refresh_token),  # type: ignore
-            # )
-            return
-
-        _handle_discord_error("Get token", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
-
-    @ffi.callback("void(Discord_ClientResult *, void *)")
-    def _update_token_callback(result_ptr, user_data):  # type: ignore
-        instance = ffi.from_handle(user_data)  # type: ignore
-
-        if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
-            _LOGGER.info("Token updated, connecting to Discord...")
-            C.Discord_Client_Connect(instance.client)  # type: ignore
-            return
-
-        _handle_discord_error("Update token", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
-
-    @ffi.callback("void(Discord_ClientResult *, void *)")
-    def _update_presence_callback(result_ptr, user_data):  # type: ignore
-        if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
-            _LOGGER.debug("Presence updated")
-            return
-
-        _handle_discord_error(
-            "Update presence",
-            result_ptr,  # type: ignore
-            C.Discord_ClientResult_Error,  # type: ignore
-        )
-
     def init(self) -> None:
         if self.client is not None:
             raise RuntimeError("Discord client is already initialised")
@@ -229,19 +230,18 @@ class Discord:
         C.Discord_Client_InitWithOptions(self.client, options)  # type: ignore
         C.Discord_Client_AddLogCallback(  # type: ignore
             self.client,
-            self._log_callback,
+            _log_callback,
             ffi.NULL,
             self.self_handle,
             C.Discord_LoggingSeverity_Verbose,  # type: ignore
         )
         C.Discord_Client_SetStatusChangedCallback(  # type: ignore
             self.client,
-            self._status_changed_callback,
+            _status_changed_callback,
             ffi.NULL,
             self.self_handle,
         )
         self.set_application_id(DEFAULT_APPLICATION_ID)
-        # self.authorize()
 
     def set_application_id(self, application_id: int) -> None:
         if self.client is None:
@@ -251,6 +251,37 @@ class Discord:
             _LOGGER.debug("Setting application id: %d", application_id)
             C.Discord_Client_SetApplicationId(self.client, application_id)  # type: ignore
             self.last_application_id = application_id
+            _ = (
+                CLI_ARGS.use_oauth2
+                and not self.try_authorize_with_stored_token()
+                and self.authorize()
+            )
+
+    def try_authorize_with_stored_token(self) -> bool:
+        if self.client is None:
+            raise RuntimeError("Discord client is not initialised")
+        if self.last_application_id is None:
+            raise RuntimeError("Application ID is not set")
+
+        refresh_token = keyring.get_password(
+            SERVICE_NAME, f"refresh_token:{self.last_application_id}"
+        )
+        if not refresh_token:
+            _LOGGER.info("No stored refresh token found")
+            return False
+
+        _LOGGER.info("Stored refresh token found, trying to authorize...")
+
+        ptr, _buf = _enc_c_str(refresh_token)
+        C.Discord_Client_RefreshToken(  # type: ignore
+            self.client,
+            self.last_application_id,
+            ptr[0],
+            _token_exchange_callback,
+            ffi.NULL,
+            self.self_handle,
+        )
+        return True
 
     def drop(self) -> None:
         _LOGGER.debug("Dropping Discord client")
@@ -295,25 +326,16 @@ class Discord:
 
         args = ffi.new("Discord_AuthorizationArgs *")  # type: ignore
         C.Discord_AuthorizationArgs_Init(args)  # type: ignore
-        C.Discord_AuthorizationArgs_SetClientId(args, self.client_id)  # type: ignore
+        C.Discord_AuthorizationArgs_SetClientId(args, self.last_application_id)  # type: ignore
 
-        test = ffi.new("Discord_String *")  # type: ignore
-        C.Discord_Client_GetDefaultPresenceScopes(test)  # type: ignore
-        print(_dec_c_str(test[0]))  # type: ignore
-
-        discord_string_scopes = ffi.new("Discord_String *")  # type: ignore
-        discord_string_scopes.ptr = ffi.cast(  # type: ignore
-            "uint8_t *",  # type: ignore
-            ffi.new("uint8_t[]", SCOPES.encode("utf-8")),  # type: ignore
-        )
-        discord_string_scopes.size = len(SCOPES)  # type: ignore
-        C.Discord_AuthorizationArgs_SetScopes(args, discord_string_scopes[0])  # type: ignore
+        ptr, _buf = _enc_c_str(SCOPES)
+        C.Discord_AuthorizationArgs_SetScopes(args, ptr[0])  # type: ignore
 
         challenge_ptr = ffi.new("Discord_AuthorizationCodeChallenge *")  # type: ignore
         C.Discord_AuthorizationCodeVerifier_Challenge(self.code_verifier, challenge_ptr)  # type: ignore
         C.Discord_AuthorizationArgs_SetCodeChallenge(args, challenge_ptr)  # type: ignore
         C.Discord_Client_Authorize(  # type: ignore
-            self.client, args, self._authorize_callback, ffi.NULL, self.self_handle
+            self.client, args, _authorize_callback, ffi.NULL, self.self_handle
         )
 
     def set_activity(
@@ -429,7 +451,7 @@ class Discord:
         C.Discord_Client_UpdateRichPresence(  # type: ignore
             self.client,
             activity,
-            self._update_presence_callback,  # type: ignore
+            _update_presence_callback,  # type: ignore
             ffi.NULL,
             self.self_handle,
         )
