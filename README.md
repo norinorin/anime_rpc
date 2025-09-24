@@ -24,16 +24,16 @@ git clone https://github.com/norinorin/anime_rpc.git
 cd anime_rpc
 ```
 
-2. Install the dependencies:
+2. Install the package:
 
 ```sh
-pip install -r requirements.txt
+pip install -e .
 ```
 
 3. Run the app:
 
 ```sh
-python -OOm anime_rpc -h
+anime_rpc -h
 ```
 
 ## Local Playback Configuration

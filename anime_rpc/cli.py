@@ -106,6 +106,7 @@ CLI_ARGS.periodic_forced_updates = CLI_ARGS.interval >= _MINIMUM_INTERVAL
 
 
 def print_cli_args() -> None:
+    _LOGGER.info("Starting anime_rpc ver: %s", __version__)
     _LOGGER.info("Using OAuth2: %s", CLI_ARGS.use_oauth2)
     _LOGGER.info("Clear presence on pause: %s", CLI_ARGS.clear_on_pause)
     _LOGGER.info(

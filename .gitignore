@@ -6,3 +6,5 @@ dist/
 .pytest_cache/
 .ruff_cache/
 test.py
+*.egg-info/
+anime_rpc/_version.py
