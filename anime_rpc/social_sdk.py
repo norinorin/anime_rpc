@@ -285,7 +285,7 @@ class Discord:
             _LOGGER.info("No stored refresh token found")
             return False
 
-        _LOGGER.info("Stored refresh token found, trying to authorize...")
+        _LOGGER.info("Stored refresh token found, trying to authorise...")
 
         ptr, _buf = _enc_c_str(refresh_token)
         C.Discord_Client_RefreshToken(  # type: ignore
