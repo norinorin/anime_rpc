@@ -1,5 +1,10 @@
+__version__: str
+
 try:
-    from anime_rpc._version import __version__ as __version__
+    # _version.py is dynamically generated during build time
+    from anime_rpc._version import (  # type: ignore[reportMissingImports]
+        __version__ as __version__,  # type: ignore[reportUnknownVariableType]
+    )
 except ImportError:
     __version__ = "0.0.0+unknown"
 
