@@ -79,7 +79,7 @@ def _handle_discord_error(
     error_ptr = ffi.new("Discord_String *")  # type: ignore
     convert(error, error_ptr)  # type: ignore
     error_str = _dec_c_str(error_ptr[0])  # type: ignore
-    _LOGGER.error("%s error: %s", scope, error_str)
+    _LOGGER.error("%s error: %s", scope, error_str or "unknown error")
 
 
 class LoggingSeverity(IntEnum):
