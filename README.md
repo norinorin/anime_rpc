@@ -38,7 +38,7 @@ python -OOm anime_rpc -h
 
 ## Local Playback Configuration
 
-**anime_rpc** looks for a configuration file named `.rpc` in the anime folder you're watching. If no such file is found, the folder is ignored.
+**anime_rpc** looks for a configuration file named `.rpc` (short for Rich Presence Config—not to be confused with Remote Procedure Call, or even Rich Presence Client :p) in the anime folder you're watching. If no such file is found, the folder is ignored.
 
 There are two ways to set the metadata:
 
@@ -48,7 +48,7 @@ There are two ways to set the metadata:
 
 ---
 
-To use the scraper, you only need to set the `url` key to the respective MAL page. This will automatically get the title, episode titles (if run using `--fetch-episode-titles`), and image URL for the presence. 
+To use the scraper, you only need to set the `url` key to the respective MAL page. This will automatically get the title, image URL, and episode titles (if run using `--fetch-episode-titles`) for the presence.
 
 ```env
 # rpc.config
