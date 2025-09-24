@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-import struct
 import time
 from enum import Flag, IntEnum, auto
 from typing import Any, TypedDict, cast
@@ -91,36 +90,10 @@ class Presence:
         application_id: int,
         *args: tuple[Any, ...],
         **kwargs: Unpack[ActivityOptions],
-    ) -> bool:
-        try:
-            self._ensure_application_id(application_id)
-            self._client.set_activity(*args, **kwargs)  # type: ignore[reportCallIssue]
-        except (
-            OSError,
-            ConnectionRefusedError,
-            struct.error,
-        ):
-            if not self._reconnecting:
-                _LOGGER.error(  # noqa: TRY400
-                    "Failed to connect to Discord. Is Discord running?",
-                )
-                if CLI_ARGS.interval < 1:
-                    _LOGGER.warning(
-                        "--interval is not set or is less than 1 second, "
-                        "will only try to reconnect on state changes, "
-                        "meaning you have to trigger the state changes "
-                        "by play/pausing the media",
-                    )
-                else:
-                    _LOGGER.info(
-                        "--interval is set, will retry to reconnect every %.2fs",
-                        CLI_ARGS.interval,
-                    )
-            self._reconnecting = True
-            return False
-
-        self._reconnecting = False
-        return True
+    ) -> None:
+        # FIXME: I guess reconnection handling moves to social_sdk?
+        self._ensure_application_id(application_id)
+        self._client.set_activity(*args, **kwargs)  # type: ignore[reportCallIssue]
 
     def _clear(self, last_state: State) -> State:
         # only clear activity if last state is not empty
@@ -306,12 +279,11 @@ class Presence:
             ms2timestamp(state["position"]),
         )
 
+        self._update(application_id, **kwargs)
         self._last_kwargs = kwargs
 
         # only log on state changes or seeking
-        if self._update(application_id, **kwargs) and not (
-            flags and UpdateFlags.PERIODIC_UPDATE in flags
-        ):
+        if not (flags and UpdateFlags.PERIODIC_UPDATE in flags):
             _LOGGER.info(
                 "Presence set to [%s] %s @ %s",
                 watching_state.name,
