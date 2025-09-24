@@ -82,17 +82,13 @@ class Presence:
         self._client = client
         self._last_kwargs: dict[str, Any] = {}
 
-    def _ensure_application_id(self, application_id: int) -> None:
-        self._client.set_application_id(application_id)
-
     def _update(
         self,
         application_id: int,
         *args: tuple[Any, ...],
         **kwargs: Unpack[ActivityOptions],
     ) -> None:
-        # FIXME: I guess reconnection handling moves to social_sdk?
-        self._ensure_application_id(application_id)
+        self._client.set_application_id(application_id)
         self._client.set_activity(*args, **kwargs)  # type: ignore[reportCallIssue]
 
     def _clear(self, last_state: State) -> State:
