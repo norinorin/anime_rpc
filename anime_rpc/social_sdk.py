@@ -5,6 +5,7 @@ import threading
 import time
 from enum import IntEnum
 from pathlib import Path
+from typing import Any
 
 # import keyring
 import cffi
@@ -94,6 +95,7 @@ class LoggingSeverity(IntEnum):
 def _log_callback(message_struct, severity, user_data) -> None:  # type: ignore
     message = _dec_c_str(message_struct).strip()  # type: ignore
     severity = LoggingSeverity(severity)
+    instance = ffi.from_handle(user_data)  # type: ignore
 
     assert isinstance(message, str)
     if severity == LoggingSeverity.ERROR:
@@ -101,17 +103,30 @@ def _log_callback(message_struct, severity, user_data) -> None:  # type: ignore
     else:
         _LOGGER.debug("Log callback: %s", message)
 
+    if (
+        "RPC Connect error: -4058" in message
+        and not instance.sent_disconnection_warning
+    ):
+        _LOGGER.error("Disconnected! Is Discord running?")
+        instance.sent_disconnection_warning = True
+    elif "RPC manager connected" in message:
+        instance.sent_disconnection_warning = False
+        _LOGGER.info("Connected to Discord!")
+        if instance.current_activity:
+            _LOGGER.info("Restoring current activity...")
+            instance.set_activity(**instance.current_activity)  # type: ignore
+
 
 @ffi.callback("void(Discord_Client_Status, Discord_Client_Error, int32_t, void *)")
 def _status_changed_callback(status, error, error_detail, user_data):  # type: ignore
     status_ptr = ffi.new("Discord_String *")  # type: ignore
     C.Discord_Client_StatusToString(status, status_ptr)  # type: ignore
-    status = _dec_c_str(status_ptr[0])  # type: ignore
-
-    _LOGGER.debug("Status changed: %s", status)
+    _LOGGER.debug("Status changed: %s", _dec_c_str(status_ptr[0]))  # type: ignore
 
     if status == C.Discord_Client_Status_Ready:  # type: ignore
         _LOGGER.info("Discord client is ready")
+    elif status == C.Discord_Client_Status_Disconnected:  # type: ignore
+        _LOGGER.info("Discord client is disconnected")
     elif error != C.Discord_Client_Error_None:  # type: ignore
         _handle_discord_error(
             "Status changed",
@@ -195,7 +210,7 @@ def _update_token_callback(result_ptr, user_data):  # type: ignore
 @ffi.callback("void(Discord_ClientResult *, void *)")
 def _update_presence_callback(result_ptr, user_data):  # type: ignore
     if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
-        _LOGGER.debug("Presence updated")
+        _LOGGER.debug("Presence updated!")
         return
 
     _handle_discord_error(
@@ -210,9 +225,10 @@ class Discord:
         self.last_application_id = None
         self.client = None  # type: ignore
         self.thread: threading.Thread | None = None
-
         self.code_verifier = None
         self.self_handle = ffi.new_handle(self)
+        self.sent_disconnection_warning = False
+        self.current_activity: dict[str, Any] = {}
 
     def _create_options(self) -> cffi.FFI.CData:
         options = ffi.new("Discord_ClientCreateOptions*")  # type: ignore
@@ -355,6 +371,21 @@ class Discord:
         if self.client is None:
             raise RuntimeError("Discord client is not initialised")
 
+        self.current_activity = {
+            "state": state,
+            "details": details,
+            "type_": type_,
+            "small_text": small_text,
+            "small_image": small_image,
+            "large_text": large_text,
+            "large_image": large_image,
+            "buttons": buttons,
+            "start": start,
+            "end": end,
+            "status_display_type": status_display_type,
+        }
+        _LOGGER.debug("Current activity: %s", self.current_activity)
+
         garbage_buffers: list[cffi.FFI.CData] = []
         activity = ffi.new("Discord_Activity *")  # type: ignore
         C.Discord_Activity_Init(activity)  # type: ignore
@@ -459,6 +490,9 @@ class Discord:
     def clear_activity(self) -> None:
         if self.client is None:
             raise RuntimeError("Discord client is not initialised")
+
+        _LOGGER.debug("Received clear activity request, resetting current activity")
+        self.current_activity = {}
         C.Discord_Client_ClearRichPresence(  # type: ignore
             self.client,
         )
