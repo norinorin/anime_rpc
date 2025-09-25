@@ -1,1 +1,4 @@
-import anime_rpc.__main__  # type: ignore # noqa: F401
+from anime_rpc.main import main
+
+if __name__ == "__main__":
+    main()
