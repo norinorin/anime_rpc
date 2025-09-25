@@ -5,7 +5,7 @@ import threading
 import time
 from enum import IntEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import cffi
 import keyring
@@ -138,26 +138,30 @@ def _status_changed_callback(status, error, error_detail, user_data):  # type: i
 def _authorize_callback(result_ptr, code, redirect_uri, user_data):  # type: ignore
     instance = ffi.from_handle(user_data)  # type: ignore
 
-    if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
-        _LOGGER.info("Getting access token...")
+    try:
+        if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
+            _LOGGER.info("Getting access token...")
 
-        verifier_str_ptr = ffi.new("Discord_String *")  # type: ignore
-        C.Discord_AuthorizationCodeVerifier_Verifier(  # type: ignore
-            instance.code_verifier, verifier_str_ptr
-        )
-        C.Discord_Client_GetToken(  # type: ignore
-            instance.client,
-            instance.last_application_id,
-            code,
-            verifier_str_ptr[0],
-            redirect_uri,
-            _token_exchange_callback,
-            ffi.NULL,
-            instance.self_handle,
-        )
-        return
+            verifier_str_ptr = ffi.new("Discord_String *")  # type: ignore
+            C.Discord_AuthorizationCodeVerifier_Verifier(  # type: ignore
+                instance.code_verifier, verifier_str_ptr
+            )
+            C.Discord_Client_GetToken(  # type: ignore
+                instance.client,
+                instance.last_application_id,
+                code,
+                verifier_str_ptr[0],
+                redirect_uri,
+                _token_exchange_callback,
+                ffi.NULL,
+                instance.self_handle,
+            )
+            return
 
-    _handle_discord_error("Authorization", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
+        _handle_discord_error("Authorization", result_ptr, C.Discord_ClientResult_Error)  # type: ignore
+    finally:
+        C.Discord_AuthorizationCodeVerifier_Drop(instance.code_verifier)  # type: ignore
+        instance.code_verifier = None
 
 
 @ffi.callback(
@@ -225,9 +229,9 @@ class Discord:
         self.client = None  # type: ignore
         self.thread: threading.Thread | None = None
         self.code_verifier = None
-        self.self_handle = ffi.new_handle(self)
         self.sent_disconnection_warning = False
         self.current_activity: dict[str, Any] = {}
+        self.self_handle = None
 
     def _create_options(self) -> cffi.FFI.CData:
         options = ffi.new("Discord_ClientCreateOptions*")  # type: ignore
@@ -237,26 +241,33 @@ class Discord:
     def init(self) -> None:
         if self.client is not None:
             raise RuntimeError("Discord client is already initialised")
+
+        if self.self_handle is None:
+            self.self_handle = ffi.new_handle(self)  # type: ignore
+
         _LOGGER.debug(
             "Initializing Discord client, with app id: %d", DEFAULT_APPLICATION_ID
         )
         self.client = ffi.new("Discord_Client*")  # type: ignore
         options = self._create_options()
-        C.Discord_Client_InitWithOptions(self.client, options)  # type: ignore
-        C.Discord_Client_AddLogCallback(  # type: ignore
-            self.client,
-            _log_callback,
-            ffi.NULL,
-            self.self_handle,
-            C.Discord_LoggingSeverity_Verbose,  # type: ignore
-        )
-        C.Discord_Client_SetStatusChangedCallback(  # type: ignore
-            self.client,
-            _status_changed_callback,
-            ffi.NULL,
-            self.self_handle,
-        )
-        self.set_application_id(DEFAULT_APPLICATION_ID)
+        try:
+            C.Discord_Client_InitWithOptions(self.client, options)  # type: ignore
+            C.Discord_Client_AddLogCallback(  # type: ignore
+                self.client,
+                _log_callback,
+                ffi.NULL,
+                self.self_handle,
+                C.Discord_LoggingSeverity_Verbose,  # type: ignore
+            )
+            C.Discord_Client_SetStatusChangedCallback(  # type: ignore
+                self.client,
+                _status_changed_callback,
+                ffi.NULL,
+                self.self_handle,
+            )
+            self.set_application_id(DEFAULT_APPLICATION_ID)
+        finally:
+            C.Discord_ClientCreateOptions_Drop(options)  # type: ignore
 
     def set_application_id(self, application_id: int) -> None:
         if self.client is None:
@@ -300,8 +311,11 @@ class Discord:
 
     def drop(self) -> None:
         _LOGGER.debug("Dropping Discord client")
-        C.Discord_Client_Drop(self.client)  # type: ignore
-        self.client = None
+        if self.client:
+            C.Discord_Client_Drop(self.client)  # type: ignore
+            self.client = None
+
+        self.self_handle = None
 
     def start(self, threaded: bool = True) -> None:
         if self.client is None:
@@ -340,17 +354,23 @@ class Discord:
 
         args = ffi.new("Discord_AuthorizationArgs *")  # type: ignore
         C.Discord_AuthorizationArgs_Init(args)  # type: ignore
-        C.Discord_AuthorizationArgs_SetClientId(args, self.last_application_id)  # type: ignore
 
-        ptr, _buf = _enc_c_str(SCOPES)
-        C.Discord_AuthorizationArgs_SetScopes(args, ptr[0])  # type: ignore
+        try:
+            C.Discord_AuthorizationArgs_SetClientId(args, self.last_application_id)  # type: ignore
 
-        challenge_ptr = ffi.new("Discord_AuthorizationCodeChallenge *")  # type: ignore
-        C.Discord_AuthorizationCodeVerifier_Challenge(self.code_verifier, challenge_ptr)  # type: ignore
-        C.Discord_AuthorizationArgs_SetCodeChallenge(args, challenge_ptr)  # type: ignore
-        C.Discord_Client_Authorize(  # type: ignore
-            self.client, args, _authorize_callback, ffi.NULL, self.self_handle
-        )
+            ptr, _buf = _enc_c_str(SCOPES)
+            C.Discord_AuthorizationArgs_SetScopes(args, ptr[0])  # type: ignore
+
+            challenge_ptr = ffi.new("Discord_AuthorizationCodeChallenge *")  # type: ignore
+            C.Discord_AuthorizationCodeVerifier_Challenge(  # type: ignore
+                self.code_verifier, challenge_ptr
+            )
+            C.Discord_AuthorizationArgs_SetCodeChallenge(args, challenge_ptr)  # type: ignore
+            C.Discord_Client_Authorize(  # type: ignore
+                self.client, args, _authorize_callback, ffi.NULL, self.self_handle
+            )
+        finally:
+            C.Discord_AuthorizationArgs_Drop(args)  # type: ignore
 
     def set_activity(
         self,
@@ -384,106 +404,117 @@ class Discord:
         }
         _LOGGER.debug("Current activity: %s", self.current_activity)
 
-        garbage_buffers: list[cffi.FFI.CData] = []
-        activity = ffi.new("Discord_Activity *")  # type: ignore
-        C.Discord_Activity_Init(activity)  # type: ignore
-        C.Discord_Activity_SetType(activity, type_)  # type: ignore
+        garbages: list[tuple[cffi.FFI.CData, Callable[[Any], None] | None]] = []
 
-        ptr, buf = _enc_c_str(state)
-        if ptr != ffi.NULL:  # type: ignore
-            C.Discord_Activity_SetState(activity, ptr)  # type: ignore
-            garbage_buffers.append(buf)
+        try:
+            activity = ffi.new("Discord_Activity *")  # type: ignore
+            C.Discord_Activity_Init(activity)  # type: ignore
+            C.Discord_Activity_SetType(activity, type_)  # type: ignore
+            garbages.append((activity, C.Discord_Activity_Drop))  # type: ignore
 
-        ptr, buf = _enc_c_str(details)
-        if ptr != ffi.NULL:  # type: ignore
-            C.Discord_Activity_SetDetails(activity, ptr)  # type: ignore
-            garbage_buffers.append(buf)
+            ptr, buf = _enc_c_str(state)
+            if ptr != ffi.NULL:  # type: ignore
+                C.Discord_Activity_SetState(activity, ptr)  # type: ignore
+                garbages.append((buf, None))  # type: ignore
 
-        if start > 0:
-            timestamps = ffi.new("Discord_ActivityTimestamps *")  # type: ignore
-            C.Discord_ActivityTimestamps_Init(timestamps)  # type: ignore
-            C.Discord_ActivityTimestamps_SetStart(timestamps, start)  # type: ignore
-            if end > 0:
-                C.Discord_ActivityTimestamps_SetEnd(timestamps, end)  # type: ignore
-            C.Discord_Activity_SetTimestamps(activity, timestamps)  # type: ignore
+            ptr, buf = _enc_c_str(details)
+            if ptr != ffi.NULL:  # type: ignore
+                C.Discord_Activity_SetDetails(activity, ptr)  # type: ignore
+                garbages.append((buf, None))  # type: ignore
 
-        if large_image or large_text or small_image or small_text:
-            assets = ffi.new("Discord_ActivityAssets *")  # type: ignore
-            C.Discord_ActivityAssets_Init(assets)  # type: ignore
+            if start > 0:
+                timestamps = ffi.new("Discord_ActivityTimestamps *")  # type: ignore
+                C.Discord_ActivityTimestamps_Init(timestamps)  # type: ignore
+                C.Discord_ActivityTimestamps_SetStart(timestamps, start)  # type: ignore
+                if end > 0:
+                    C.Discord_ActivityTimestamps_SetEnd(timestamps, end)  # type: ignore
+                C.Discord_Activity_SetTimestamps(activity, timestamps)  # type: ignore
+                garbages.append((timestamps, C.Discord_ActivityTimestamps_Drop))  # type: ignore
 
-            def set_asset(
-                text: str,
-                image: str,
-                text_setter: cffi.FFI.CData,
-                image_setter: cffi.FFI.CData,
-            ) -> None:
-                ptr, buf = _enc_c_str(text)
-                if ptr != ffi.NULL:  # type: ignore
-                    garbage_buffers.append(buf)
-                    text_setter(assets, ptr)
+            if large_image or large_text or small_image or small_text:
+                assets = ffi.new("Discord_ActivityAssets *")  # type: ignore
+                C.Discord_ActivityAssets_Init(assets)  # type: ignore
+                garbages.append((assets, C.Discord_ActivityAssets_Drop))  # type: ignore
 
-                ptr, buf = _enc_c_str(image)
-                if ptr != ffi.NULL:  # type: ignore
-                    garbage_buffers.append(buf)
-                    image_setter(assets, ptr)
+                def set_asset(
+                    text: str,
+                    image: str,
+                    text_setter: cffi.FFI.CData,
+                    image_setter: cffi.FFI.CData,
+                ) -> None:
+                    ptr, buf = _enc_c_str(text)
+                    if ptr != ffi.NULL:  # type: ignore
+                        garbages.append((buf, None))  # type: ignore
+                        text_setter(assets, ptr)
 
-            set_asset(
-                large_text,
-                large_image,
-                C.Discord_ActivityAssets_SetLargeText,  # type: ignore
-                C.Discord_ActivityAssets_SetLargeImage,  # type: ignore
-            )
-            set_asset(
-                small_text,
-                small_image,
-                C.Discord_ActivityAssets_SetSmallText,  # type: ignore
-                C.Discord_ActivityAssets_SetSmallImage,  # type: ignore
-            )
+                    ptr, buf = _enc_c_str(image)
+                    if ptr != ffi.NULL:  # type: ignore
+                        garbages.append((buf, None))  # type: ignore
+                        image_setter(assets, ptr)
 
-            C.Discord_Activity_SetAssets(activity, assets)  # type: ignore
-
-        if buttons:
-            if len(buttons) > MAX_BUTTONS:
-                _LOGGER.warning(
-                    "Too many buttons (%d), truncating to %d",
-                    len(buttons),
-                    MAX_BUTTONS,
+                set_asset(
+                    large_text,
+                    large_image,
+                    C.Discord_ActivityAssets_SetLargeText,  # type: ignore
+                    C.Discord_ActivityAssets_SetLargeImage,  # type: ignore
                 )
-                buttons = buttons[:MAX_BUTTONS]
+                set_asset(
+                    small_text,
+                    small_image,
+                    C.Discord_ActivityAssets_SetSmallText,  # type: ignore
+                    C.Discord_ActivityAssets_SetSmallImage,  # type: ignore
+                )
 
-        for button_data in buttons or ():
-            label = button_data.get("label")
-            url = button_data.get("url")
+                C.Discord_Activity_SetAssets(activity, assets)  # type: ignore
 
-            if not label or not url:
-                continue
+            if buttons:
+                if len(buttons) > MAX_BUTTONS:
+                    _LOGGER.warning(
+                        "Too many buttons (%d), truncating to %d",
+                        len(buttons),
+                        MAX_BUTTONS,
+                    )
+                    buttons = buttons[:MAX_BUTTONS]
 
-            c_button = ffi.new("Discord_ActivityButton *")  # type: ignore
-            C.Discord_ActivityButton_Init(c_button)  # type: ignore
+            for button_data in buttons or ():
+                label = button_data.get("label")
+                url = button_data.get("url")
 
-            ptr, buf = _enc_c_str(label)
-            C.Discord_ActivityButton_SetLabel(c_button, ptr[0])  # type: ignore
-            garbage_buffers.append(buf)
+                if not label or not url:
+                    continue
 
-            ptr, buf = _enc_c_str(url)
-            C.Discord_ActivityButton_SetUrl(c_button, ptr[0])  # type: ignore
-            garbage_buffers.append(buf)
+                c_button = ffi.new("Discord_ActivityButton *")  # type: ignore
+                C.Discord_ActivityButton_Init(c_button)  # type: ignore
 
-            C.Discord_Activity_AddButton(activity, c_button)  # type: ignore
+                ptr, buf = _enc_c_str(label)
+                C.Discord_ActivityButton_SetLabel(c_button, ptr[0])  # type: ignore
+                garbages.append((buf, None))  # type: ignore
 
-        if status_display_type > 0:
-            c_display_type = ffi.new(  # type: ignore
-                "Discord_StatusDisplayTypes *", status_display_type
+                ptr, buf = _enc_c_str(url)
+                C.Discord_ActivityButton_SetUrl(c_button, ptr[0])  # type: ignore
+                garbages.append((buf, None))  # type: ignore
+
+                C.Discord_Activity_AddButton(activity, c_button)  # type: ignore
+                garbages.append((c_button, C.Discord_ActivityButton_Drop))  # type: ignore
+
+            if status_display_type > 0:
+                c_display_type = ffi.new(  # type: ignore
+                    "Discord_StatusDisplayTypes *", status_display_type
+                )
+                C.Discord_Activity_SetStatusDisplayType(activity, c_display_type)  # type: ignore
+
+            C.Discord_Client_UpdateRichPresence(  # type: ignore
+                self.client,
+                activity,
+                _update_presence_callback,  # type: ignore
+                ffi.NULL,
+                self.self_handle,
             )
-            C.Discord_Activity_SetStatusDisplayType(activity, c_display_type)  # type: ignore
+        finally:
+            for buffer, drop in reversed(garbages):
+                _ = drop and drop(buffer)
 
-        C.Discord_Client_UpdateRichPresence(  # type: ignore
-            self.client,
-            activity,
-            _update_presence_callback,  # type: ignore
-            ffi.NULL,
-            self.self_handle,
-        )
+            garbages.clear()
 
     def clear_activity(self) -> None:
         if self.client is None:
