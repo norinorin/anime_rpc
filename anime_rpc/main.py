@@ -17,7 +17,7 @@ from anime_rpc.file_watcher import FileWatcherManager, Subscription
 from anime_rpc.formatting import ms2timestamp
 from anime_rpc.matcher import generate_regex_pattern
 from anime_rpc.pollers import BasePoller
-from anime_rpc.presence import Presence, UpdateFlags
+from anime_rpc.presence import Presence, UpdateFlag
 from anime_rpc.scraper import MALScraper
 from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, get_states_logger, validate_state
@@ -92,9 +92,9 @@ async def consumer_loop(
 
     # internal states
     last_state: State = {}
-    last_pos: int = 0
+    last_pos: int = -1
     last_origin: str = ""
-    flags: UpdateFlags | None = None
+    flags = UpdateFlag(0)
 
     def _queue_get_with_timeout() -> Coroutine[Any, Any, State]:
         return asyncio.wait_for(queue.get(), timeout=1)
@@ -144,19 +144,17 @@ async def consumer_loop(
         # so it's only consumed when the origin check passes
         # otherwise inactive pollers could consume this prematurely.
         if timer.should_force_update():
-            flags = (
-                flags and flags | UpdateFlags.PERIODIC_UPDATE
-            ) or UpdateFlags.PERIODIC_UPDATE
+            flags |= UpdateFlag.PERIODIC_UPDATE
 
         # force update if the position seems off (seeking)
         pos: int = state.get("position", 0)
-        if abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
-            _LOGGER.debug(
+        if last_pos >= 0 and abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
+            _LOGGER.info(
                 "Seeking from %s to %s",
                 ms2timestamp(last_pos),
                 ms2timestamp(pos),
             )
-            flags = (flags and flags | UpdateFlags.SEEKING) or UpdateFlags.SEEKING
+            flags |= UpdateFlag.SEEKING
 
         try:
             last_state = presence.update(state, last_state, origin, flags=flags)
@@ -164,13 +162,15 @@ async def consumer_loop(
             _LOGGER.exception("Failed to update presence: %s", e)
             event.set()
             break
-        flags = None
+
+        flags = UpdateFlag(0)
         last_pos = pos
 
         # if last_state is empty
         # it's given up control
         if not last_state:
             last_origin = ""
+            last_pos = -1
 
 
 async def async_main() -> None:

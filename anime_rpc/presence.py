@@ -72,7 +72,7 @@ class StateOptions(TypedDict):
     display_name: str
 
 
-class UpdateFlags(Flag):
+class UpdateFlag(Flag):
     SEEKING = auto()
     PERIODIC_UPDATE = auto()
 
@@ -195,7 +195,7 @@ class Presence:
         last_state: State,
         origin: str,
         *,
-        flags: UpdateFlags | None = None,
+        flags: UpdateFlag,
     ) -> State:
         if not state:
             return self._clear(last_state)
@@ -250,10 +250,10 @@ class Presence:
         if compare_states(state, last_state):
             # if the two are the same
             # ignore update request unless flags are set
-            if flags is None:
+            if not flags:
                 return state
 
-            if UpdateFlags.PERIODIC_UPDATE in flags:
+            if UpdateFlag.PERIODIC_UPDATE in flags:
                 # if it's a periodic update just use the previous kwargs
                 # as to prevent the rich presence time from bugging
                 # for a split second
@@ -279,8 +279,10 @@ class Presence:
         self._update(application_id, **kwargs)
         self._last_kwargs = kwargs
 
-        # only log on state changes or seeking
-        if not (flags and UpdateFlags.PERIODIC_UPDATE in flags):
+        # if it's seeking or a periodic update,
+        # do not log as it's either spammy or
+        # has already been logged
+        if not flags:
             _LOGGER.info(
                 "Presence set to [%s] %s @ %s",
                 watching_state.name,
