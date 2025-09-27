@@ -22,7 +22,7 @@ CHAR_LIMITS = {
     "details": 128,
     "state": 128,
     "large_text": 128,
-    "small_text": 128,
+    "small_text": 127,  # 128 is the actual limit, but we reserve 1 char for the space trick
     "button_label": 32,
     "button_url": 512,
 }
@@ -246,6 +246,14 @@ class Presence:
 
         self._trim_kwargs(kwargs)
 
+        # discord seems to optimise identical updates away,
+        # so we add a trailing space to the `small_text` field (it can be any field, though)
+        # to trick it into thinking it's not an identical payload.
+        # this way, we can override spotify presence when `--interval n`
+        # (n > 0) is used, that is, when flag `UpdateFlag.PERIODIC_UPDATE` is set
+        assert isinstance(kwargs.get("small_text"), str)
+        kwargs["small_text"] += " "
+
         # only compare states after validating watching state
         if compare_states(state, last_state):
             # if the two are the same
@@ -261,12 +269,6 @@ class Presence:
                     "Periodic update triggered, reusing the previous kwargs...",
                 )
                 kwargs = self._last_kwargs
-
-                # discord seems to optimise identical updates away,
-                # so we add a trailing space to the `small_text` (it can be any field, though)
-                # to trick it into thinking it's not an identical payload
-                assert "small_text" in kwargs and isinstance(kwargs["small_text"], str)
-                kwargs["small_text"] += " "
 
         _LOGGER.debug(
             "Setting presence to [%s] %s @ %s",
