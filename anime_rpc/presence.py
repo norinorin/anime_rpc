@@ -81,6 +81,7 @@ class Presence:
     def __init__(self, client: Discord) -> None:
         self._client = client
         self._last_kwargs: dict[str, Any] = {}
+        self._append_space = False
 
     def _update(
         self,
@@ -246,14 +247,6 @@ class Presence:
 
         self._trim_kwargs(kwargs)
 
-        # discord seems to optimise identical updates away,
-        # so we add a trailing space to the `small_text` field (it can be any field, though)
-        # to trick it into thinking it's not an identical payload.
-        # this way, we can override spotify presence when `--interval n`
-        # (n > 0) is used, that is, when flag `UpdateFlag.PERIODIC_UPDATE` is set
-        assert isinstance(kwargs.get("small_text"), str)
-        kwargs["small_text"] += " "
-
         # only compare states after validating watching state
         if compare_states(state, last_state):
             # if the two are the same
@@ -269,6 +262,15 @@ class Presence:
                     "Periodic update triggered, reusing the previous kwargs...",
                 )
                 kwargs = self._last_kwargs
+
+                # discord seems to optimise identical updates away,
+                # so we alternate a trailing space to the `small_text` field (it can be any field, though)
+                # to trick it into thinking it's not an identical payload.
+                assert isinstance(kwargs.get("small_text"), str)
+                self._append_space ^= 1
+                kwargs["small_text"] = (
+                    kwargs["small_text"].rstrip() + " " * self._append_space
+                )
 
         _LOGGER.debug(
             "Setting presence to [%s] %s @ %s",
