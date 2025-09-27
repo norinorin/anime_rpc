@@ -1,4 +1,5 @@
 import logging
+from math import ceil
 from time import perf_counter
 
 from anime_rpc.cli import CLI_ARGS
@@ -20,7 +21,8 @@ class Timer:
             self._periodic_update_in = max(CLI_ARGS.interval - delta, 0)
             if self._periodic_update_in > 0 and self._last_log_time + 1 < now:
                 _LOGGER.debug(
-                    "%ds onto the next periodic forced update", self._periodic_update_in
+                    "%ds onto the next periodic forced update",
+                    ceil(self._periodic_update_in),
                 )
                 self._last_log_time = now
             elif self.should_force_update():
