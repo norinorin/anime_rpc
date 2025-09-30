@@ -116,14 +116,14 @@
     imageUrlInput.type = "text";
     imageUrlInput.id = "rpc-image-url";
     imageUrlInput.placeholder =
-      "cover image URL; automatically set if URL is set to MyAnimeList";
+      "Cover image URL; no need to set if Info URL is set to MyAnimeList";
     panel.appendChild(createRow("Image URL:", imageUrlInput));
 
     const infoUrlInput = document.createElement("input");
     infoUrlInput.type = "text";
     infoUrlInput.id = "rpc-mal-url";
     infoUrlInput.placeholder =
-      "put in MyAnimeList URL for automatic image and episode titles fetching";
+      "URL to fetch metadata from (currently only MyAnimeList is supported)";
     panel.appendChild(createRow("Info URL:", infoUrlInput));
 
     const rewatchingInput = document.createElement("input");
