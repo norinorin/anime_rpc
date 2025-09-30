@@ -149,6 +149,7 @@
     console.debug("getting raw title");
     if (!rawTitle) return null;
 
+    // we have to query twice cos if you open the chapters, they'll get duplicated in the DOM
     const chapterList = document
       .querySelector(
         'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-macro-markers-description-chapters"]'
