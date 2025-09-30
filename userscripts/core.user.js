@@ -168,8 +168,9 @@
   }
 
   async function updateUi(state) {
-    if (!state.title || state.title === currentTitle) return;
-    currentTitle = state.title;
+    if (state?.title === currentTitle) return;
+
+    currentTitle = state?.title || "None";
 
     const uiTitle = document.getElementById("rpc-title");
     const uiImageUrl = document.getElementById("rpc-image-url");
@@ -182,15 +183,31 @@
     uiImageUrl.value = cachedData.imageUrl || "";
     uiUrl.value = cachedData.url || "";
     uiRewatching.checked = cachedData.rewatching || false;
+
+    const container = document.getElementById("rpc-ui-container");
+    container.style.display = currentTitle === "None" ? "none" : "block";
+  }
+
+  function wsSend(data) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.debug("WebSocket is not open. Cannot send data.");
+      return;
+    }
+
+    console.debug("Sending data via WebSocket:", data);
+    ws.send(JSON.stringify(data));
   }
 
   function activate() {
+    createUi();
+
     scraperFunc = unsafeWindow.animeRPC_Scrapers[window.location.hostname];
     if (!scraperFunc) {
+      console.debug("No scraper for hostname:", window.location.hostname);
+      console.debug("Current scrapers:", unsafeWindow.animeRPC_Scrapers);
+      updateUi(null);
       return false;
     }
-
-    createUi();
 
     if (ws && ws.readyState < 2) {
       console.log(
@@ -226,9 +243,7 @@
 
     ws.onerror = (error) => {
       console.error("[RPC Core] WebSocket error:", error);
-      clearInterval(mainInterval);
-      mainInterval = null;
-      ws = null;
+      ws.close();
     };
 
     return true;
@@ -238,14 +253,21 @@
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
     const state = scraperFunc();
-    if (!state || !state.videoElement) return;
 
     updateUi(state);
+
+    if (!state || !state.videoElement) {
+      console.debug("No valid video element found.");
+
+      // clear presence on current origin
+      wsSend({ origin: window.location.hostname });
+      return;
+    }
 
     const { videoElement } = state;
     delete state.videoElement;
 
-    const { currentTime, duration, paused } = videoElement;
+    const { paused } = videoElement;
     const cachedData = await GM_getValue(state.title, {});
 
     const payload = {
@@ -261,8 +283,7 @@
       payload.watching_state = 0;
     }
 
-    console.debug("sending payload", payload);
-    ws.send(JSON.stringify(payload));
+    wsSend(payload);
   }
 
   const observer = new MutationObserver(() => {
@@ -271,6 +292,9 @@
       console.log(
         `[RPC Core] URL changed to: ${lastUrl}. Re-validating connection.`
       );
+      const lastHostname = new URL(lastUrl).hostname;
+      // clear presence on last origin
+      wsSend({ origin: lastHostname });
       setTimeout(activate, 500);
     }
   });

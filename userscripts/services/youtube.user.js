@@ -133,13 +133,15 @@
   }
 
   function getStateFromYouTube() {
+    if (!window.location.href.match(/\/watch/)) return;
+
     const videoElement = document.querySelector(
       "#container video.video-stream"
     );
     console.debug("getting video element");
-    if (!videoElement) return;
+    if (!videoElement) return null;
     console.debug("matching anime channel");
-    if (!ensureAnimeChannel()) return;
+    if (!ensureAnimeChannel()) return null;
 
     const rawTitle = document.querySelector(
       "#title .ytd-watch-metadata yt-formatted-string"
@@ -163,6 +165,7 @@
 
     if (state) {
       state.videoElement = videoElement;
+      state.display_name = "YouTube";
       return state;
     }
 
