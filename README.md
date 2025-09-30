@@ -107,11 +107,11 @@ Refer to [the example config](example.rpc) to get started.
 
 ## 🖥️ Supported Platforms
 
-| Platform | Type      | Description                                                                                                                                      |
-| -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| mpv      | poller    | Polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui).                                         |
-| mpc      | poller    | Polls MPC via its web interface.                                                                                                                 |
-| YouTube  | websocket | Click [here](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/user_scripts/services/youtube.user.js) to install userscript. |
+| Platform | Type      | Description                                                                                                                                     |
+| -------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| mpv      | poller    | Polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui).                                        |
+| mpc      | poller    | Polls MPC via its web interface.                                                                                                                |
+| YouTube  | websocket | Click [here](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/services/youtube.user.js) to install userscript. |
 
 ...and more coming!
 
