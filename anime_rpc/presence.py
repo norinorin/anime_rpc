@@ -10,7 +10,6 @@ from typing_extensions import Unpack
 from anime_rpc.cli import CLI_ARGS
 from anime_rpc.config import DEFAULT_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
-from anime_rpc.services import ORIGIN2SERVICE
 from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, WatchingState, compare_states
 
@@ -222,9 +221,7 @@ class Presence:
             "rewatching": state["rewatching"],
             "watching_state": state.get("watching_state", WatchingState.NOT_AVAILABLE),
             "origin": origin,
-            "display_name": state.get(
-                "display_name", ORIGIN2SERVICE.get(origin, origin)
-            ),
+            "display_name": state.get("display_name", origin),
         }
 
         kwargs: dict[str, Any] = {
