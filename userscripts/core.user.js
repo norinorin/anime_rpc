@@ -15,6 +15,9 @@
 (function () {
   "use strict";
 
+  const SCRIPT_INSTANCE_ID = crypto.randomUUID();
+  console.log(`[RPC Core] Instance ID: ${SCRIPT_INSTANCE_ID}`);
+
   if (!unsafeWindow.animeRPC_Scrapers) {
     unsafeWindow.animeRPC_Scrapers = {};
   }
@@ -24,6 +27,13 @@
   let mainInterval;
   let lastUrl = window.location.href;
   let currentTitle = "";
+  let lastIsEmpty = true;
+
+  function formatOrigin(origin) {
+    if (!origin) origin = window.location.hostname;
+
+    return `${origin}-${SCRIPT_INSTANCE_ID}`;
+  }
 
   function createUi() {
     if (document.getElementById("rpc-ui-container")) return;
@@ -260,7 +270,8 @@
       console.debug("No valid video element found.");
 
       // clear presence on current origin
-      wsSend({ origin: window.location.hostname });
+      !lastIsEmpty && wsSend({ origin: formatOrigin() });
+      lastIsEmpty = true;
       return;
     }
 
@@ -276,8 +287,9 @@
       url: cachedData.url,
       rewatching: cachedData.rewatching,
       watching_state: paused ? 1 : 2,
-      origin: window.location.hostname,
+      origin: formatOrigin(),
     };
+    lastIsEmpty = false;
 
     if (isNaN(payload.duration) || payload.duration === 0) {
       payload.watching_state = 0;
@@ -294,7 +306,7 @@
       );
       const lastHostname = new URL(lastUrl).hostname;
       // clear presence on last origin
-      wsSend({ origin: lastHostname });
+      wsSend({ origin: formatOrigin(lastHostname) });
       setTimeout(activate, 500);
     }
   });
