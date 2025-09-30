@@ -107,13 +107,21 @@ Refer to [the example config](example.rpc) to get started.
 
 ## 🖥️ Supported Platforms
 
-| Platform | Type      | Description                                                                                                                                     |
-| -------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| mpv      | poller    | Polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui).                                        |
-| mpc      | poller    | Polls MPC via its web interface.                                                                                                                |
-| YouTube  | websocket | Click [here](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/services/youtube.user.js) to install userscript. |
+### 1. Pollers
 
-...and more coming!
+| Platform | CLI Flag                    | Description                                                                                                    |
+| -------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| mpv      | `--poller mpv-webui:[port]` | Polls mpv via [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). Port defaults to **8080**. |
+| mpc      | `--poller mpc:[port]`       | Polls MPC via its web interface. Port defaults to **13579**.                                                   |
+
+### 2. Userscripts
+
+Userscripts require a two-step installation: (1) the [core engine](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/core.user.js), and then (2) the scraper for each website you want to use:
+
+| Website | Installation Link                                                                                                     | Description                                                                            |
+| ------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| YouTube | [Install](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/services/youtube.user.js) | Supported channels: [@MuseAsia](https://www.youtube.com/@MuseAsia), and more coming... |
+| ...     | ...                                                                                                                   | ...                                                                                    |
 
 ## 📅 Plans
 
