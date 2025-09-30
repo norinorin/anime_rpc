@@ -107,19 +107,19 @@ Refer to [the example config](example.rpc) to get started.
 
 ## 🖥️ Supported Platforms
 
-| Platform    | Type      | Description                                                                                              |
-| ----------- | --------- | -------------------------------------------------------------------------------------------------------- |
-| mpv         | poller    | Polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). |
-| mpc         | poller    | Polls MPC via its web interface.                                                                         |
-| bilibili.tv | websocket | Support for [Bstation](https://www.bilibili.tv/anime).                                                   |
+| Platform | Type      | Description                                                                                                                                 |
+| -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| mpv      | poller    | Polls mpv via native IPC socket or [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui).                                    |
+| mpc      | poller    | Polls MPC via its web interface.                                                                                                            |
+| YouTube  | websocket | Click [here](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/user_scripts/services/youtube.js) to install userscript. |
 
-and more coming!
+...and more coming!
 
 ## 📅 Plans
 
 - [x] Automatically generate a regex given filenames in a folder.
 - [x] Add formatting templates for `.rpc.match` (`%ep%`, `%title%`).
-- [ ] Rework browser extension.
+- [x] ~~Rework browser extension.~~ Migrate to userscripts.
 - [ ] Add more support for anime sites and media players.
 - [ ] Implement a customisable formatting.
 - [ ] Implement automatic MyAnimeList/AniList episode tracking.
