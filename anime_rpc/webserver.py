@@ -42,10 +42,10 @@ def ws_handler(
                         continue
 
                     data: State = json.loads(msg.data)
-                    assert "watching_state" in data
-                    data["watching_state"] = WatchingState(
-                        data["watching_state"],
-                    )
+                    if "watching_state" in data:
+                        data["watching_state"] = WatchingState(
+                            data["watching_state"],
+                        )
                     assert "origin" in data
                     origin = data["origin"]
                     await queue.put(data)
