@@ -150,7 +150,7 @@ class Presence:
         state = (
             "Paused"
             + (f" on E{ep}" * (not is_movie))
-            + " - "
+            + " \u2726 "
             + " / ".join(
                 [ms2timestamp(i) for i in (pos, dur)],
             )
