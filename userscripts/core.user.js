@@ -29,6 +29,12 @@
   let currentTitle = "";
   let lastIsEmpty = true;
 
+  let reconnectAttempts = 0;
+  const BASE_RECONNECT_DELAY = 1000;
+  const MAX_RECONNECT_DELAY = 60000;
+  let reconnectTimeout = null;
+  let intentionalClose = false;
+
   function formatOrigin(origin) {
     if (!origin) origin = window.location.hostname;
 
@@ -198,6 +204,73 @@
     container.style.display = currentTitle === "None" ? "none" : "block";
   }
 
+  function connectWebSocket() {
+    clearTimeout(reconnectTimeout);
+
+    if (ws && ws.readyState < 2) {
+      console.log(
+        "[RPC Core] WebSocket connection is already open or connecting. Reusing it."
+      );
+      reconnectAttempts = 0;
+      if (!mainInterval) {
+        mainInterval = setInterval(handleVideoStateChanges, 1500);
+      }
+      return;
+    }
+
+    console.log(
+      `[RPC Core] Attempting to establish WebSocket connection... (Attempt #${
+        reconnectAttempts + 1
+      })`
+    );
+    ws = new WebSocket("ws://localhost:56727/ws");
+
+    ws.onopen = () => {
+      console.log(
+        `[RPC Core] WebSocket connected for ${window.location.hostname}`
+      );
+      reconnectAttempts = 0;
+      createUi();
+      clearInterval(mainInterval);
+      mainInterval = setInterval(handleVideoStateChanges, 1500);
+    };
+
+    ws.onclose = (event) => {
+      console.log("[RPC Core] WebSocket disconnected.", event.reason);
+      clearInterval(mainInterval);
+      mainInterval = null;
+      ws = null;
+
+      if (intentionalClose) {
+        console.log(
+          "[RPC Core] WebSocket was closed intentionally. Not reconnecting."
+        );
+        intentionalClose = false;
+        return;
+      }
+
+      reconnectAttempts++;
+      const delay = Math.min(
+        MAX_RECONNECT_DELAY,
+        BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1)
+      );
+
+      const jitter = Math.random() * 1000;
+      const totalDelay = delay + jitter;
+
+      console.log(
+        `[RPC Core] Will attempt to reconnect in ${Math.round(
+          totalDelay / 1000
+        )}s.`
+      );
+      reconnectTimeout = setTimeout(connectWebSocket, totalDelay);
+    };
+
+    ws.onerror = (error) => {
+      console.error("[RPC Core] WebSocket error:", error);
+    };
+  }
+
   function wsSend(data) {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       console.debug("WebSocket is not open. Cannot send data.");
@@ -216,46 +289,18 @@
       console.debug("No scraper for hostname:", window.location.hostname);
       console.debug("Current scrapers:", unsafeWindow.animeRPC_Scrapers);
       updateUi(null);
+      if (ws && ws.readyState < 2) {
+        console.log(
+          "[RPC Core] No scraper found for new URL. Closing existing WebSocket."
+        );
+        ws.close();
+        intentionalClose = true;
+        ws = null;
+      }
       return false;
     }
 
-    if (ws && ws.readyState < 2) {
-      console.log(
-        "[RPC Core] WebSocket connection is already open. Reusing it."
-      );
-      if (!mainInterval) {
-        mainInterval = setInterval(handleVideoStateChanges, 1500);
-      }
-      return true;
-    }
-
-    console.log(
-      `[RPC Core] Scraper found for ${window.location.hostname}. Establishing connection...`
-    );
-
-    ws = new WebSocket("ws://localhost:56727/ws");
-
-    ws.onopen = () => {
-      console.log(
-        `[RPC Core] WebSocket connected for ${window.location.hostname}`
-      );
-      clearInterval(mainInterval);
-      mainInterval = setInterval(handleVideoStateChanges, 1500);
-    };
-
-    // FIXME: reconnect with exponential backoff
-    ws.onclose = (event) => {
-      console.log("[RPC Core] WebSocket disconnected.", event.reason);
-      clearInterval(mainInterval);
-      mainInterval = null;
-      ws = null;
-    };
-
-    ws.onerror = (error) => {
-      console.error("[RPC Core] WebSocket error:", error);
-      ws.close();
-    };
-
+    connectWebSocket();
     return true;
   }
 
