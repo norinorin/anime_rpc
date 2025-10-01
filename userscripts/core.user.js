@@ -15,6 +15,8 @@
 (function () {
   "use strict";
 
+  const WS_URL = "ws://localhost:56727/ws";
+
   const SCRIPT_INSTANCE_ID = crypto.randomUUID();
   console.log(`[RPC Core] Instance ID: ${SCRIPT_INSTANCE_ID}`);
 
@@ -223,7 +225,7 @@
         reconnectAttempts + 1
       })`
     );
-    ws = new WebSocket("ws://localhost:56727/ws");
+    ws = new WebSocket(WS_URL);
 
     ws.onopen = () => {
       console.log(
