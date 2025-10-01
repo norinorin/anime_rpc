@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    http://tampermonkey.net/
-// @version      1.1.1
+// @version      1.1.2
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -36,6 +36,7 @@
   let currentTitle = "";
   let lastIsEmpty = true;
 
+  let wsConnectionPromise = null;
   let reconnectAttempts = 0;
   const BASE_RECONNECT_DELAY = 1000;
   const MAX_RECONNECT_DELAY = 60000;
@@ -69,6 +70,7 @@
                 z-index: 99999;
                 font-family: sans-serif;
                 font-size: 14px;
+                display: none;
             }
             #rpc-hover-bar {
                 width: 100%;
@@ -219,104 +221,113 @@
   }
 
   async function updateUi(state) {
+    const container = document.getElementById("rpc-ui-container");
+    container.style.display = !currentTitle ? "none" : "block";
+
     if (state?.title === currentTitle) return;
 
-    currentTitle = state?.title || "None";
+    currentTitle = state?.title || "";
 
     const uiTitle = document.getElementById("rpc-title");
     const uiImageUrl = document.getElementById("rpc-image-url");
     const uiUrl = document.getElementById("rpc-mal-url");
     const uiRewatching = document.getElementById("rpc-rewatching");
 
-    uiTitle.textContent = currentTitle;
+    uiTitle.textContent = currentTitle || "None";
 
     const cachedData = await GM_getValue(currentTitle, {});
     uiImageUrl.value = cachedData.imageUrl || "";
     uiUrl.value = cachedData.url || "";
     uiRewatching.checked = cachedData.rewatching || false;
-
-    const container = document.getElementById("rpc-ui-container");
-    container.style.display = currentTitle === "None" ? "none" : "block";
   }
 
   function connectWebSocket() {
-    clearTimeout(reconnectTimeout);
-
-    if (ws && ws.readyState < 2) {
-      console.log(
-        "[RPC Core] WebSocket connection is already open or connecting. Reusing it."
-      );
-      reconnectAttempts = 0;
-      if (!mainInterval) {
-        mainInterval = setInterval(handleVideoStateChanges, 1500);
-      }
-      return;
+    if (wsConnectionPromise) {
+      return wsConnectionPromise;
     }
 
-    setBarColor(CONNECTING_BAR_COLOR);
-    console.log(
-      `[RPC Core] Attempting to establish WebSocket connection... (Attempt #${
-        reconnectAttempts + 1
-      })`
-    );
-    ws = new WebSocket(WS_URL);
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
 
-    ws.onopen = () => {
+    wsConnectionPromise = new Promise((resolve, reject) => {
+      clearTimeout(reconnectTimeout);
+      setBarColor(CONNECTING_BAR_COLOR);
       console.log(
-        `[RPC Core] WebSocket connected for ${window.location.hostname}`
+        `[RPC Core] Attempting to establish WebSocket connection... (Attempt #${
+          reconnectAttempts + 1
+        })`
       );
-      setBarColor(CONNECTED_BAR_COLOR);
-      reconnectAttempts = 0;
-      createUi();
-      clearInterval(mainInterval);
-      mainInterval = setInterval(handleVideoStateChanges, 1500);
-    };
+      ws = new WebSocket(WS_URL);
 
-    ws.onclose = (event) => {
-      console.log("[RPC Core] WebSocket disconnected.", event.reason);
-      clearInterval(mainInterval);
-      mainInterval = null;
-      ws = null;
-      setBarColor(DISCONNECTED_BAR_COLOR);
-
-      if (intentionalClose) {
+      ws.onopen = () => {
         console.log(
-          "[RPC Core] WebSocket was closed intentionally. Not reconnecting."
+          `[RPC Core] WebSocket connected for ${window.location.hostname}`
         );
-        intentionalClose = false;
-        return;
-      }
+        setBarColor(CONNECTED_BAR_COLOR);
+        reconnectAttempts = 0;
+        wsConnectionPromise = null;
+        resolve();
+      };
 
-      reconnectAttempts++;
-      const delay = Math.min(
-        MAX_RECONNECT_DELAY,
-        BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1)
-      );
+      ws.onclose = (event) => {
+        console.log("[RPC Core] WebSocket disconnected.", event.reason);
+        ws = null;
+        wsConnectionPromise = null;
+        setBarColor(DISCONNECTED_BAR_COLOR);
 
-      const jitter = Math.random() * 1000;
-      const totalDelay = delay + jitter;
+        reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
 
-      console.log(
-        `[RPC Core] Will attempt to reconnect in ${Math.round(
-          totalDelay / 1000
-        )}s.`
-      );
-      reconnectTimeout = setTimeout(connectWebSocket, totalDelay);
-    };
+        if (intentionalClose) {
+          console.log(
+            "[RPC Core] WebSocket was closed intentionally. Not reconnecting."
+          );
+          intentionalClose = false;
+          return;
+        }
 
-    ws.onerror = (error) => {
-      console.error("[RPC Core] WebSocket error:", error);
-    };
+        reconnectAttempts++;
+        const delay = Math.min(
+          MAX_RECONNECT_DELAY,
+          BASE_RECONNECT_DELAY * Math.pow(2, reconnectAttempts - 1)
+        );
+
+        const jitter = Math.random() * 1000;
+        const totalDelay = delay + jitter;
+
+        console.log(
+          `[RPC Core] Will attempt to reconnect in ${Math.round(
+            totalDelay / 1000
+          )}s.`
+        );
+        reconnectTimeout = setTimeout(connectWebSocket, totalDelay);
+      };
+
+      ws.onerror = (error) => {
+        console.error("[RPC Core] WebSocket error:", error);
+        wsConnectionPromise = null;
+        reject(error);
+      };
+    });
+
+    return wsConnectionPromise;
   }
 
-  function wsSend(data) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.debug("WebSocket is not open. Cannot send data.");
-      return;
-    }
+  async function wsSend(data) {
+    try {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.debug("[RPC Core] WebSocket not open. Connecting...");
+        await connectWebSocket();
+      }
 
-    console.debug("Sending data via WebSocket:", data);
-    ws.send(JSON.stringify(data));
+      console.debug("Sending data via WebSocket:", data);
+      ws.send(JSON.stringify(data));
+    } catch (error) {
+      console.error(
+        "[RPC Core] Failed to send data due to connection issue:",
+        error.message
+      );
+    }
   }
 
   function activate() {
@@ -327,6 +338,9 @@
       console.debug("No scraper for hostname:", window.location.hostname);
       console.debug("Current scrapers:", unsafeWindow.animeRPC_Scrapers);
       updateUi(null);
+      clearInterval(mainInterval);
+      mainInterval = null;
+
       if (ws && ws.readyState < 2) {
         console.log(
           "[RPC Core] No scraper found for new URL. Closing existing WebSocket."
@@ -338,13 +352,13 @@
       return false;
     }
 
-    connectWebSocket();
+    console.log("[RPC Core] Scraper found. Starting state-check loop.");
+    clearInterval(mainInterval);
+    mainInterval = setInterval(handleVideoStateChanges, 1500);
     return true;
   }
 
   async function handleVideoStateChanges() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
     const state = scraperFunc();
 
     updateUi(state);
@@ -352,8 +366,12 @@
     if (!state || !state.videoElement) {
       console.debug("No valid video element found.");
 
-      // clear presence on current origin
-      !lastIsEmpty && wsSend({ origin: formatOrigin() });
+      // do not initiate redundant clear presence commands
+      // if we're not connected in the first place
+      if (!lastIsEmpty && ws && ws.readyState === WebSocket.OPEN) {
+        console.debug("No valid video element. Clearing presence.");
+        wsSend({ origin: formatOrigin() });
+      }
       lastIsEmpty = true;
       return;
     }
@@ -395,6 +413,5 @@
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
-
   setTimeout(activate, 500);
 })();
