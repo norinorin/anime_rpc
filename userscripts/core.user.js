@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    http://tampermonkey.net/
-// @version      1.1.2
+// @version      1.2.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -120,6 +120,12 @@
             #rpc-title {
                 font-weight: bold;
             }
+            #rpc-mal-lookup {
+                color: #03a9f4;
+                text-decoration: none;
+                font-size: 12px;
+                display: none;
+            }
             #rpc-save-status {
                 color: #4caf50;
                 font-size: 12px;
@@ -147,10 +153,24 @@
       return row;
     };
 
+    const titleContainer = document.createElement("div");
+    titleContainer.style.display = "flex";
+    titleContainer.style.alignItems = "center";
+    titleContainer.style.gap = "10px";
+
     const titleSpan = document.createElement("span");
     titleSpan.id = "rpc-title";
     titleSpan.textContent = "None";
-    panel.appendChild(createRow("Detected Title:", titleSpan));
+    titleContainer.appendChild(titleSpan);
+
+    const lookupLink = document.createElement("a");
+    lookupLink.id = "rpc-mal-lookup";
+    lookupLink.textContent = "[Lookup on MAL]";
+    lookupLink.target = "_blank";
+    lookupLink.rel = "noopener noreferrer";
+    titleContainer.appendChild(lookupLink);
+
+    panel.appendChild(createRow("Detected Title:", titleContainer));
 
     const imageUrlInput = document.createElement("input");
     imageUrlInput.type = "text";
@@ -232,6 +252,16 @@
     const uiImageUrl = document.getElementById("rpc-image-url");
     const uiUrl = document.getElementById("rpc-mal-url");
     const uiRewatching = document.getElementById("rpc-rewatching");
+    const uiLookup = document.getElementById("rpc-mal-lookup");
+
+    if (currentTitle) {
+      const searchQuery = encodeURIComponent(currentTitle);
+      uiLookup.href = `https://myanimelist.net/anime.php?q=${searchQuery}&cat=anime`;
+      uiLookup.style.display = "inline";
+    } else {
+      uiLookup.href = "";
+      uiLookup.style.display = "none";
+    }
 
     uiTitle.textContent = currentTitle || "None";
 
