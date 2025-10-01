@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    http://tampermonkey.net/
-// @version      1.1.0
+// @version      1.1.1
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -75,6 +75,14 @@
                 height: 5px;
                 background-color: ${DISCONNECTED_BAR_COLOR};
                 transition: height 0.2s ease-in-out;
+                opacity: 1;
+            }
+            .fullscreen-active #rpc-hover-bar {
+                opacity: 0;
+            }
+            #rpc-ui-container:hover #rpc-hover-bar {
+                height: 10px;
+                opacity: 1;
             }
             #rpc-content-panel {
                 padding: 15px;
@@ -191,6 +199,19 @@
         }, 1500);
       });
     };
+
+    document.addEventListener("fullscreenchange", () => {
+      const uiContainer = document.getElementById("rpc-ui-container");
+      if (!uiContainer) return;
+
+      if (document.fullscreenElement) {
+        console.log("[RPC Core] Entering fullscreen, making bar transparent.");
+        uiContainer.classList.add("fullscreen-active");
+      } else {
+        console.log("[RPC Core] Exiting fullscreen, making bar visible.");
+        uiContainer.classList.remove("fullscreen-active");
+      }
+    });
 
     imageUrlInput.addEventListener("input", saveOnChange);
     infoUrlInput.addEventListener("input", saveOnChange);
