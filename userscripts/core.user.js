@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @match        *://*/*
