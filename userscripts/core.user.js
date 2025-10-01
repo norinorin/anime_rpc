@@ -16,6 +16,9 @@
   "use strict";
 
   const WS_URL = "ws://localhost:56727/ws";
+  const DISCONNECTED_BAR_COLOR = "#f44336";
+  const CONNECTING_BAR_COLOR = "#ff9800";
+  const CONNECTED_BAR_COLOR = "#03a9f4";
 
   const SCRIPT_INSTANCE_ID = crypto.randomUUID();
   console.log(`[RPC Core] Instance ID: ${SCRIPT_INSTANCE_ID}`);
@@ -43,6 +46,13 @@
     return `${origin}-${SCRIPT_INSTANCE_ID}`;
   }
 
+  function setBarColor(color) {
+    const bar = document.getElementById("rpc-hover-bar");
+    if (bar) {
+      bar.style.backgroundColor = color;
+    }
+  }
+
   function createUi() {
     if (document.getElementById("rpc-ui-container")) return;
 
@@ -61,7 +71,7 @@
             #rpc-hover-bar {
                 width: 100%;
                 height: 5px;
-                background-color: #03a9f4;
+                background-color: ${DISCONNECTED_BAR_COLOR};
                 transition: height 0.2s ease-in-out;
             }
             #rpc-content-panel {
@@ -220,6 +230,7 @@
       return;
     }
 
+    setBarColor(CONNECTING_BAR_COLOR);
     console.log(
       `[RPC Core] Attempting to establish WebSocket connection... (Attempt #${
         reconnectAttempts + 1
@@ -231,6 +242,7 @@
       console.log(
         `[RPC Core] WebSocket connected for ${window.location.hostname}`
       );
+      setBarColor(CONNECTED_BAR_COLOR);
       reconnectAttempts = 0;
       createUi();
       clearInterval(mainInterval);
@@ -242,6 +254,7 @@
       clearInterval(mainInterval);
       mainInterval = null;
       ws = null;
+      setBarColor(DISCONNECTED_BAR_COLOR);
 
       if (intentionalClose) {
         console.log(
