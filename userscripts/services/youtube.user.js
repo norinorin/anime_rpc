@@ -4,6 +4,8 @@
 // @version      1.0
 // @description  Adds YouTube support to the Anime RPC Core Engine.
 // @author       norinorin
+// @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/youtube.user.js
+// @updateURL    https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/youtube.user.js
 // @match        *://*.youtube.com/*
 // @grant        unsafeWindow
 // ==/UserScript==

@@ -4,6 +4,8 @@
 // @version      1.1.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
+// @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
+// @updateURL    https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
 // @match        *://*/*
 // @connect      localhost
 // @grant        GM_getValue
