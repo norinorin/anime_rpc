@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Anime RPC - YouTube Scraper
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/norinorin/anime_rpc
 // @version      1.0
 // @description  Adds YouTube support to the Anime RPC Core Engine.
 // @author       norinorin

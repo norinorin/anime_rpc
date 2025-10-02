@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
-// @namespace    http://tampermonkey.net/
+// @namespace    https://github.com/norinorin/anime_rpc
 // @version      1.2.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
