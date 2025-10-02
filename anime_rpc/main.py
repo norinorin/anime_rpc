@@ -147,8 +147,12 @@ async def consumer_loop(
             flags |= UpdateFlag.PERIODIC_UPDATE
 
         # force update if the position seems off (seeking)
-        pos: int = state.get("position", 0)
-        if last_pos >= 0 and abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS:
+        pos: int | None = state.get("position")
+        if (
+            pos is not None
+            and last_pos >= 0
+            and abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS
+        ):
             _LOGGER.info(
                 "Seeking from %s to %s",
                 ms2timestamp(last_pos),
@@ -164,7 +168,7 @@ async def consumer_loop(
             break
 
         flags = UpdateFlag(0)
-        last_pos = pos
+        last_pos = pos or 0
 
         # if last_state is empty
         # it's given up control
