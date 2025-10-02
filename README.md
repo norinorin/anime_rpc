@@ -69,7 +69,7 @@ There are two ways to set the metadata:
 To use the scraper, you only need to set the `url` key to the respective MAL page. This will automatically get the title, image URL, and episode titles (if run using `--fetch-episode-titles`) for the presence.
 
 ```env
-# rpc.config
+# .rpc
 url=MAL_URL_HERE
 ```
 
