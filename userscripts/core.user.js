@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.2.0
+// @version      1.2.1
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -272,6 +272,13 @@
   }
 
   function connectWebSocket() {
+    if (reconnectTimeout) {
+      console.debug(
+        "[RPC Core] Backoff in progress. Ignoring new connection attempt."
+      );
+      return Promise.reject(new Error("Backoff in progress."));
+    }
+
     if (wsConnectionPromise) {
       return wsConnectionPromise;
     }
@@ -330,7 +337,15 @@
             totalDelay / 1000
           )}s.`
         );
-        reconnectTimeout = setTimeout(connectWebSocket, totalDelay);
+        reconnectTimeout = setTimeout(() => {
+          reconnectTimeout = null;
+          connectWebSocket().catch((err) => {
+            console.debug(
+              "[RPC Core] Scheduled reconnect attempt failed:",
+              err.message
+            );
+          });
+        }, totalDelay);
       };
 
       ws.onerror = (error) => {
