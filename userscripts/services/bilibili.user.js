@@ -32,7 +32,13 @@
 
     if (!episode) return;
 
-    return { title, episode_title, episode, videoElement };
+    return {
+      title,
+      episode_title,
+      episode,
+      videoElement,
+      display_name: "BiliBili",
+    };
   }
 
   const registryInterval = setInterval(() => {
