@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC - YouTube Scraper
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.0
+// @version      1.1.0
 // @description  Adds YouTube support to the Anime RPC Core Engine.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/youtube.user.js
@@ -16,16 +16,20 @@
   const HOSTNAME = "www.youtube.com";
 
   // all handles must be in lowercase
-  // FIXME: test more channels
-  const ANIME_CHANNELS = new Set(["@museasia"]);
+  // TODO: add Ani-one
+  const ANIME_CHANNELS = {
+    "@museasia": handleMuse,
+    "@museindonesia": handleMuse,
+  };
 
-  function ensureAnimeChannel() {
+  function getChannelHandler() {
     const channelNameElement = document.querySelector(
       "ytd-channel-name #text > a"
     );
     const channelHref = channelNameElement?.getAttribute("href");
     const channelHandle = channelHref?.substring(1).toLowerCase();
-    return channelHandle && ANIME_CHANNELS.has(channelHandle);
+
+    return channelHandle && ANIME_CHANNELS[channelHandle];
   }
 
   function parseTimeToSeconds(timeStr) {
@@ -38,7 +42,11 @@
     return 0;
   }
 
-  function handleMarathonVideo(videoElement, rawTitle, chapterList) {
+  //=============================//
+  //      Handle @MuseAsia       //
+  //     and @MuseIndonesia      //
+  //=============================//
+  function handleMuseMarathonVideo(videoElement, rawTitle, chapterList) {
     const chapterData = [];
 
     chapterList.forEach((chapterEl) => {
@@ -110,7 +118,7 @@
     };
   }
 
-  function handleSingleVideo(videoElement, rawTitle) {
+  function handleMuseSingleVideo(videoElement, rawTitle) {
     const episodeMatch = rawTitle.match(
       /ep(?:isode)?\s*(\d+(?:\s*[～~-]\s*\d+)?)/i
     );
@@ -131,7 +139,24 @@
       episode: episode.replace(/\s/g, ""),
       position: Math.round(videoElement.currentTime * 1000),
       duration: Math.round(videoElement.duration * 1000),
+      display_name: "YouTube (Muse)",
     };
+  }
+
+  function handleMuse(videoElement, rawTitle) {
+    // we have to query twice cos if you open the chapters, they'll get duplicated in the DOM
+    const chapterList = document
+      .querySelector(
+        'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-macro-markers-description-chapters"]'
+      )
+      ?.querySelectorAll(
+        "#content ytd-macro-markers-list-renderer:not(.browser-mode) #contents ytd-macro-markers-list-item-renderer #endpoint #details"
+      );
+    console.debug("detected chapter list", chapterList);
+
+    return chapterList?.length > 0
+      ? handleMuseMarathonVideo(videoElement, rawTitle, chapterList)
+      : handleMuseSingleVideo(videoElement, rawTitle);
   }
 
   function getStateFromYouTube() {
@@ -143,7 +168,9 @@
     console.debug("getting video element");
     if (!videoElement) return null;
     console.debug("matching anime channel");
-    if (!ensureAnimeChannel()) return null;
+
+    let handler;
+    if (!(handler = getChannelHandler())) return null;
 
     const rawTitle = document.querySelector(
       "#title .ytd-watch-metadata yt-formatted-string"
@@ -151,24 +178,11 @@
     console.debug("getting raw title");
     if (!rawTitle) return null;
 
-    // we have to query twice cos if you open the chapters, they'll get duplicated in the DOM
-    const chapterList = document
-      .querySelector(
-        'ytd-engagement-panel-section-list-renderer[target-id="engagement-panel-macro-markers-description-chapters"]'
-      )
-      ?.querySelectorAll(
-        "#content ytd-macro-markers-list-renderer:not(.browser-mode) #contents ytd-macro-markers-list-item-renderer #endpoint #details"
-      );
-    console.debug("detected chapter list", chapterList);
-
-    let state =
-      chapterList?.length > 0
-        ? handleMarathonVideo(videoElement, rawTitle, chapterList)
-        : handleSingleVideo(videoElement, rawTitle);
+    let state = handler(videoElement, rawTitle);
 
     if (state) {
       state.videoElement = videoElement;
-      state.display_name = "YouTube";
+      state.display_name ??= "YouTube";
       return state;
     }
 
