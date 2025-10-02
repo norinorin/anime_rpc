@@ -222,7 +222,9 @@ class _CachingScraper(BaseScraper):
 
         if episodes:
             # not our first time fetching episodes
-            _LOGGER.info("Episode %s seems like a new episode, updating cache", episode)
+            _LOGGER.info(
+                "Episode %s seems to be a new episode, updating cache", episode
+            )
 
         if not (episodes_url := metadata.get("episodes_url")):
             return {}
