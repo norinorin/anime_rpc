@@ -204,7 +204,6 @@ class Presence:
         assert "episode" in state
         assert "position" in state
         assert "duration" in state
-        assert "image_url" in state
         assert "rewatching" in state
 
         application_id = int(state.get("application_id", DEFAULT_APPLICATION_ID))
@@ -228,7 +227,7 @@ class Presence:
             "large_text": self._get_large_text(**state_opts),
             "type_": 3,
             "status_display_type": StatusDisplayType.DETAILS,
-            "large_image": state["image_url"],
+            "large_image": state.get("image_url"),
         }
 
         if (url := state.get("url")) and (url_text := state.get("url_text")):
