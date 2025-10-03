@@ -89,7 +89,6 @@ def validate_state(state: State) -> bool:
             "episode",
             "position",
             "duration",
-            "image_url",
             "watching_state",
         )
     )
