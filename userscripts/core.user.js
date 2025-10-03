@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.2.1
+// @version      1.3.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -20,7 +20,8 @@
   const WS_URL = "ws://localhost:56727/ws";
   const DISCONNECTED_BAR_COLOR = "#f44336";
   const CONNECTING_BAR_COLOR = "#ff9800";
-  const CONNECTED_BAR_COLOR = "#03a9f4";
+  const CONNECTED_BAR_COLOR = "#9e9e9e";
+  const CONNECTED_WITH_PRESENCE_COLOR = "#03a9f4";
 
   const SCRIPT_INSTANCE_ID = crypto.randomUUID();
   console.log(`[RPC Core] Instance ID: ${SCRIPT_INSTANCE_ID}`);
@@ -169,7 +170,6 @@
     lookupLink.target = "_blank";
     lookupLink.rel = "noopener noreferrer";
     titleContainer.appendChild(lookupLink);
-
     panel.appendChild(createRow("Detected Title:", titleContainer));
 
     const imageUrlInput = document.createElement("input");
@@ -189,15 +189,17 @@
     const rewatchingInput = document.createElement("input");
     rewatchingInput.type = "checkbox";
     rewatchingInput.id = "rpc-rewatching";
+    panel.appendChild(createRow("Rewatching:", rewatchingInput));
+
+    const enablePresenceInput = document.createElement("input");
+    enablePresenceInput.type = "checkbox";
+    enablePresenceInput.id = "rpc-presence-enabled";
+    panel.appendChild(createRow("Show presence:", enablePresenceInput));
 
     const saveStatusSpan = document.createElement("span");
     saveStatusSpan.id = "rpc-save-status";
     saveStatusSpan.textContent = "Saved!";
-    const rewatchingContainer = document.createElement("div");
-
-    rewatchingContainer.appendChild(rewatchingInput);
-    rewatchingContainer.appendChild(saveStatusSpan);
-    panel.appendChild(createRow("Rewatching:", rewatchingContainer));
+    panel.appendChild(saveStatusSpan);
 
     container.appendChild(hoverBar);
     container.appendChild(panel);
@@ -211,6 +213,7 @@
         imageUrl: document.getElementById("rpc-image-url").value,
         url: document.getElementById("rpc-mal-url").value,
         rewatching: document.getElementById("rpc-rewatching").checked,
+        enabled: document.getElementById("rpc-presence-enabled").checked,
       };
 
       GM_setValue(title, dataToSave).then(() => {
@@ -238,6 +241,7 @@
     imageUrlInput.addEventListener("input", saveOnChange);
     infoUrlInput.addEventListener("input", saveOnChange);
     rewatchingInput.addEventListener("change", saveOnChange);
+    enablePresenceInput.addEventListener("change", saveOnChange);
   }
 
   async function updateUi(state) {
@@ -253,6 +257,7 @@
     const uiUrl = document.getElementById("rpc-mal-url");
     const uiRewatching = document.getElementById("rpc-rewatching");
     const uiLookup = document.getElementById("rpc-mal-lookup");
+    const uiPresence = document.getElementById("rpc-presence-enabled");
 
     if (currentTitle) {
       const searchQuery = encodeURIComponent(currentTitle);
@@ -269,6 +274,7 @@
     uiImageUrl.value = cachedData.imageUrl || "";
     uiUrl.value = cachedData.url || "";
     uiRewatching.checked = cachedData.rewatching || false;
+    uiPresence.checked = cachedData.enabled || false;
   }
 
   function connectWebSocket() {
@@ -403,22 +409,23 @@
     return true;
   }
 
+  async function clearPresence(origin) {
+    if (!lastIsEmpty && ws && ws.readyState === WebSocket.OPEN) {
+      console.debug("Clearing presence...");
+      wsSend({ origin: origin || formatOrigin() });
+      setBarColor(CONNECTED_BAR_COLOR);
+    }
+    lastIsEmpty = true;
+    return;
+  }
+
   async function handleVideoStateChanges() {
     const state = scraperFunc();
 
     updateUi(state);
 
     if (!state || !state.videoElement) {
-      console.debug("No valid video element found.");
-
-      // do not initiate redundant clear presence commands
-      // if we're not connected in the first place
-      if (!lastIsEmpty && ws && ws.readyState === WebSocket.OPEN) {
-        console.debug("No valid video element. Clearing presence.");
-        wsSend({ origin: formatOrigin() });
-      }
-      lastIsEmpty = true;
-      return;
+      clearPresence();
     }
 
     const { videoElement } = state;
@@ -426,6 +433,12 @@
 
     const { paused } = videoElement;
     const cachedData = await GM_getValue(state.title, {});
+
+    if (!cachedData.enabled) {
+      console.debug("Presence disabled for this title. Skipping update.");
+      clearPresence();
+      return;
+    }
 
     const payload = {
       ...state,
@@ -436,7 +449,7 @@
       origin: formatOrigin(),
     };
     lastIsEmpty = false;
-
+    setBarColor(CONNECTED_WITH_PRESENCE_COLOR);
     if (isNaN(payload.duration) || payload.duration === 0) {
       payload.watching_state = 0;
     }
@@ -451,8 +464,7 @@
         `[RPC Core] URL changed to: ${lastUrl}. Re-validating connection.`
       );
       const lastHostname = new URL(lastUrl).hostname;
-      // clear presence on last origin
-      wsSend({ origin: formatOrigin(lastHostname) });
+      clearPresence(formatOrigin(lastHostname));
       setTimeout(activate, 500);
     }
   });
