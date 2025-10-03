@@ -99,7 +99,7 @@ Refer to [the example config](example.rpc) to get started.
 | url?            | `""`                                                    | URL for the presence button. Set to a MAL URL to enable scraping for metadata and episode titles.                                                                                 |
 | url_text?       | `""`                                                    | Button label. If empty, the button will not be shown.                                                                                                                             |
 | rewatching?     | `0`                                                     | Set to `1` if you're rewatching the anime.                                                                                                                                        |
-| application_id? | `1088900742523392133`(anime)                            | Discord application ID. To display "Watching a stream" instead for non-anime use, use `1337621628179316848`. Otherwise, you can create your own app and use its `application_id`. |
+| application_id? | `1088900742523392133` (anime)                           | Discord application ID. To display "Watching a stream" instead for non-anime use, use `1337621628179316848`. Otherwise, you can create your own app and use its `application_id`. |
 
 \* If one of these is missing, the folder is ignored.
 
