@@ -137,7 +137,7 @@ async def consumer_loop(
         if state and not validate_state(state):
             _LOGGER.debug("Invalid state received: %s", state)
             _LOGGER.debug("Overriding invalid state with an empty one...")
-            state: State = {}
+            state = State()
 
         timer.tick()
 
