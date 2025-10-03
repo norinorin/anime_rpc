@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.3.0
+// @version      1.4.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -22,6 +22,7 @@
   const CONNECTING_BAR_COLOR = "#ff9800";
   const CONNECTED_BAR_COLOR = "#9e9e9e";
   const CONNECTED_WITH_PRESENCE_COLOR = "#03a9f4";
+  const SAVING_BAR_COLOR = "#4caf50";
 
   const SCRIPT_INSTANCE_ID = crypto.randomUUID();
   console.log(`[RPC Core] Instance ID: ${SCRIPT_INSTANCE_ID}`);
@@ -196,16 +197,11 @@
     enablePresenceInput.id = "rpc-presence-enabled";
     panel.appendChild(createRow("Show presence:", enablePresenceInput));
 
-    const saveStatusSpan = document.createElement("span");
-    saveStatusSpan.id = "rpc-save-status";
-    saveStatusSpan.textContent = "Saved!";
-    panel.appendChild(saveStatusSpan);
-
     container.appendChild(hoverBar);
     container.appendChild(panel);
     document.body.appendChild(container);
 
-    const saveOnChange = () => {
+    const saveOnChange = async () => {
       const title = document.getElementById("rpc-title").textContent;
       if (!title || title === "None") return;
 
@@ -216,13 +212,19 @@
         enabled: document.getElementById("rpc-presence-enabled").checked,
       };
 
-      GM_setValue(title, dataToSave).then(() => {
-        const status = document.getElementById("rpc-save-status");
-        status.style.opacity = "1";
-        setTimeout(() => {
-          status.style.opacity = "0";
-        }, 1500);
-      });
+      const maybePromise = GM_setValue(title, dataToSave);
+
+      if (maybePromise instanceof Promise) await maybePromise;
+
+      // we can call setBarColor here, but we already have the bar element so...
+      const bar = document.getElementById("rpc-hover-bar");
+      const oldColor = bar.style.backgroundColor;
+      bar.style.backgroundColor = SAVING_BAR_COLOR;
+      const saving = getComputedStyle(bar).backgroundColor;
+      setTimeout(() => {
+        if (bar.style.backgroundColor === saving)
+          bar.style.backgroundColor = oldColor;
+      }, 1500);
     };
 
     document.addEventListener("fullscreenchange", () => {
