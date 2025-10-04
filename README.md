@@ -116,7 +116,7 @@ Refer to [the example config](example.rpc) to get started.
 
 ### 2. Userscripts
 
-Userscripts require a two-step installation: (1) the [core engine](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/core.user.js), and then (2) the scraper for each website you want to use:
+Userscripts (read more on them [here](https://github.com/OpenUserJs/OpenUserJS.org/wiki/Userscript-beginners-HOWTO) if you've never heard of them) require a two-step installation: (1) the [core engine](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/core.user.js), and then (2) the scraper for each website you want to use:
 
 | Website  | Installation Link                                                                                                      | Description                                                                                                                                                                                                                                                                                                                      |
 | -------- | ---------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
