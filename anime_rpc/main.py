@@ -45,7 +45,18 @@ async def poll_player(
 
     while not event.is_set():
         state: State = poller.get_empty_state()
-        vars_ = await wait(poller.get_vars(session), event)
+        try:
+            vars_ = await wait(poller.get_vars(session), event)
+        except Exception as e:
+            # sometimes aiohttp throws a timeout error
+            # not sure what's the cause, but we're catching
+            # everything here to prevent the poller from crashing.
+
+            # probable cause: mpc zombie process preventing active mpc
+            # windows from binding to the port.
+            _LOGGER.exception("Error while polling %s: %s", poller.display_name, e)
+            continue
+
         new_filedir = vars_ and (fd := vars_.get("filedir")) and Path(fd) or None
 
         # user switches folder
@@ -179,48 +190,60 @@ async def consumer_loop(
 
 
 async def async_main() -> None:
+    discord = Discord()
     queue: asyncio.Queue[State] = asyncio.Queue()
     event = asyncio.Event()
     session = aiohttp.ClientSession()
     file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
     scraper = MALScraper(session, file_watcher_manager)
-    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
-    discord = Discord()
-    discord.start()
-
-    consumer_task = asyncio.create_task(
-        consumer_loop(event, queue, scraper, discord),
-        name="consumer",
-    )
-    poller_tasks = [
-        asyncio.create_task(
-            poll_player(poller, event, queue, session, file_watcher_manager),
-            name=poller.__class__.__name__,
-        )
-        for poller in CLI_ARGS.pollers
-    ]
-
-    _LOGGER.info("Waiting for activity feed updates...")
-
     webserver = None
-    if CLI_ARGS.enable_webserver:
-        app = await get_app(queue)
-        webserver = await start_app(app)
-    file_watcher_manager.start()
+    signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
+    tasks: list[asyncio.Task[Any]] = []
 
-    _LOGGER.info("Press CTRL+C to exit")
+    try:
+        if CLI_ARGS.enable_webserver:
+            app = await get_app(queue)
+            webserver = await start_app(app)
 
-    with suppress(Bail):
-        await asyncio.gather(consumer_task, *poller_tasks)
+        discord.start()
+        file_watcher_manager.start()
 
-    _LOGGER.info("Shutting down...")
+        tasks.append(
+            asyncio.create_task(
+                consumer_loop(event, queue, scraper, discord),
+                name="consumer",
+            )
+        )
+        tasks.extend(
+            [
+                asyncio.create_task(
+                    poll_player(poller, event, queue, session, file_watcher_manager),
+                    name=poller.__class__.__name__,
+                )
+                for poller in CLI_ARGS.pollers
+            ]
+        )
 
-    if webserver is not None:
-        await webserver.stop()
+        _LOGGER.info("Waiting for activity feed updates...")
+        _LOGGER.info("Press CTRL+C to exit")
 
-    await session.close()
-    file_watcher_manager.stop()
-    discord.stop()
+        with suppress(Bail):
+            await asyncio.gather(*tasks)
+    finally:
+        _LOGGER.info("Shutting down...")
+        event.set()
+
+        for t in tasks:
+            t.cancel()
+
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+        if webserver is not None:
+            await webserver.stop()
+
+        await session.close()
+        file_watcher_manager.stop()
+        discord.stop()
 
 
 def _sigint_callback(event: asyncio.Event) -> None:
