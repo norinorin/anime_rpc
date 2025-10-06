@@ -18,20 +18,23 @@
 
 ## 🚀 Features
 
-- 📂 **Per-folder metadata with `.rpc` files**  
-  Configure rich presence info for local media players like MPC and MPV by placing `.rpc` files in your anime folders
+- **Per-folder metadata with `.rpc` files**  
+  Configure rich presence info for local media players like MPC and MPV by placing `.rpc` files in your anime folders.
 
-- 🔄 **Real-time presence updates**  
+- **Real-time presence updates**  
   Edits to `.rpc` files are picked up instantly, so your Discord status stays in sync without restarting anything.
 
-- 🎉 **Discord Rich Presence without running Discord**  
+- **Discord Rich Presence without running Discord**  
   Show what you’re watching without needing the Discord client open via OAuth2.
 
-- 📺 **Automatic anime episode tracking & metadata scraping**  
+- **Automatic anime episode tracking & metadata scraping**  
   Scrapes anime details and episode info from MyAnimeList with caching.
 
-- 🎭 **Dynamic activity name**  
-  The activity status adapts to what you’re watching, showing the anime title instead of a generic label (see [#14](https://github.com/norinorin/anime_rpc/pull/14)).
+- **Dynamic activity name**  
+  The activity status adapts to what you’re watching, showing the anime title instead of a generic label on the member list (see [#14](https://github.com/norinorin/anime_rpc/pull/14)).
+
+- **Userscripts for power users**  
+  Easily write your own custom scripts to support any streaming service (see [examples](/userscripts/services/)).
 
 ## 📦 Installation
 
