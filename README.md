@@ -114,8 +114,8 @@ Refer to [the example config](example.rpc) to get started.
 
 | Platform | CLI Flag                    | Description                                                                                                    |
 | -------- | --------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| mpv      | `--poller mpv-webui:[port]` | Polls mpv via [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). Port defaults to **8080**. |
-| mpc      | `--poller mpc:[port]`       | Polls MPC via its web interface. Port defaults to **13579**.                                                   |
+| mpv      | `--poller mpv-webui[:port]` | Polls mpv via [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). Port defaults to **8080**. |
+| mpc      | `--poller mpc[:port]`       | Polls MPC via its web interface. Port defaults to **13579**.                                                   |
 
 ### 2. Userscripts
 
