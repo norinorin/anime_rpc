@@ -110,7 +110,7 @@ async def consumer_loop(
     def _queue_get_with_timeout() -> Coroutine[Any, Any, State]:
         return asyncio.wait_for(queue.get(), timeout=1)
 
-    states_logger = get_states_logger()
+    states_logger = get_states_logger(verbose=CLI_ARGS.verbose)
     queue_get = (
         _queue_get_with_timeout if CLI_ARGS.periodic_forced_updates else queue.get
     )

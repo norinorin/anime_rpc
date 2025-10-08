@@ -17,6 +17,7 @@ class CLIArgs(argparse.Namespace):
     interval: int
     periodic_forced_updates: bool
     use_oauth2: bool
+    verbose: bool
 
 
 _parser = argparse.ArgumentParser(
@@ -101,6 +102,13 @@ _parser.add_argument(
     "if both are running at the same time",
     default=0,
 )
+_parser.add_argument(
+    "--verbose",
+    "-V",
+    action="store_true",
+    help="enable verbose logging",
+    default=False,
+)
 CLI_ARGS, _unknown_args = _parser.parse_known_args(namespace=CLIArgs)
 CLI_ARGS.periodic_forced_updates = CLI_ARGS.interval >= _MINIMUM_INTERVAL
 
@@ -123,6 +131,7 @@ def print_cli_args() -> None:
     )
     _LOGGER.info("Fetch missing episode titles: %s", CLI_ARGS.fetch_episode_titles)
     _LOGGER.info("Update interval: %ds", CLI_ARGS.interval)
+    _LOGGER.info("Verbose logging: %s", CLI_ARGS.verbose)
 
     if 0 < CLI_ARGS.interval < _MINIMUM_INTERVAL:
         _LOGGER.warning("Interval is set too low (<%d), ignoring...", _MINIMUM_INTERVAL)
