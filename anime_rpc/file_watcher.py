@@ -58,7 +58,7 @@ class EventHandler(FileSystemEventHandler):
         file_path = next(iter(subscriptions)).file_path
         _LOGGER.info("File %s has been removed, dispatching...", file_path)
         for s in subscriptions:
-            s.put(None)
+            s.put(None, threaded=True)
 
     @staticmethod
     def dispatch_modified(
@@ -77,7 +77,7 @@ class EventHandler(FileSystemEventHandler):
                 except Exception:
                     _LOGGER.exception("Failed to parse %s, ignoring...", file_path)
                     continue
-                s.put(parsed)
+                s.put(parsed, threaded=True)
 
     def _consume_parser_queue(self) -> None:
         _LOGGER.debug("Starting config event handler thread")
@@ -173,6 +173,7 @@ class Subscription(Generic[T]):
 
         # assume loop has been running at this point
         self.queue: AsyncQueue[T | None] = AsyncQueue()
+        self.loop = asyncio.get_running_loop()
 
     def consume(self) -> T | None:
         ret = Empty()
@@ -186,7 +187,11 @@ class Subscription(Generic[T]):
         assert not isinstance(ret, Empty)
         return ret
 
-    def put(self, item: T | None) -> None:
+    def put(self, item: T | None, threaded: bool = False) -> None:
+        if threaded:
+            self.loop.call_soon_threadsafe(self.queue.put_nowait, item)
+            return
+
         self.queue.put_nowait(item)
 
 
