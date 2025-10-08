@@ -547,12 +547,17 @@ class Discord:
                 )
                 C.Discord_Activity_SetStatusDisplayType(activity, c_display_type)  # type: ignore
 
+            future_handle = ffi.NULL
+            if future:
+                future_handle = ffi.new_handle(future)  # type: ignore
+                future._handle = future_handle  # type: ignore
+
             C.Discord_Client_UpdateRichPresence(  # type: ignore
                 self.client,
                 activity,
                 _update_presence_callback,  # type: ignore
                 ffi.NULL,
-                ffi.new_handle(future) if future else ffi.NULL,
+                future_handle,
             )
             return future
         finally:
