@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import time
+from asyncio import Future
 from enum import Flag, IntEnum, auto
 from typing import Any, TypedDict, cast
 
@@ -87,9 +88,11 @@ class Presence:
         application_id: int,
         *args: tuple[Any, ...],
         **kwargs: Unpack[ActivityOptions],
-    ) -> None:
+    ) -> Future[bool]:
         self._client.set_application_id(application_id)
-        self._client.set_activity(*args, **kwargs)  # type: ignore[reportCallIssue]
+        future: Future[bool] = Future()
+        self._client.set_activity(*args, **kwargs, future=future)  # type: ignore[reportCallIssue]
+        return future
 
     def _clear(self, last_state: State) -> State:
         # only clear activity if last state is not empty
@@ -189,7 +192,7 @@ class Presence:
             if "url" in button and isinstance(button["url"], str):
                 button["url"] = _maybe_trim(button["url"], button_url_limit)
 
-    def update(
+    async def update(
         self,
         state: State,
         last_state: State,
@@ -276,13 +279,13 @@ class Presence:
             ms2timestamp(state["position"]),
         )
 
-        self._update(application_id, **kwargs)
+        success = await self._update(application_id, **kwargs)
         self._last_kwargs = kwargs
 
         # if it's seeking or a periodic update,
         # do not log as it's either spammy or
         # has already been logged
-        if not flags:
+        if success and not flags:
             _LOGGER.info(
                 "Presence set to [%s] %s @ %s",
                 watching_state.name,

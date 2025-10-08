@@ -3,9 +3,10 @@ import re
 import sys
 import threading
 import time
+from asyncio import Future
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, overload
 
 import cffi
 import keyring
@@ -214,13 +215,20 @@ def _update_token_callback(result_ptr, user_data):  # type: ignore
 def _update_presence_callback(result_ptr, user_data):  # type: ignore
     if C.Discord_ClientResult_Successful(result_ptr):  # type: ignore
         _LOGGER.debug("Presence updated!")
-        return
+        res = True
+    else:
+        _handle_discord_error(
+            "Update presence",
+            result_ptr,  # type: ignore
+            C.Discord_ClientResult_Error,  # type: ignore
+        )
+        res = False
 
-    _handle_discord_error(
-        "Update presence",
-        result_ptr,  # type: ignore
-        C.Discord_ClientResult_Error,  # type: ignore
-    )
+    future: Future[bool] | None = ffi.from_handle(user_data)  # type: ignore
+    if not future:
+        return
+    loop = future.get_loop()
+    loop.call_soon_threadsafe(future.set_result, res)
 
 
 class Discord:
@@ -372,6 +380,7 @@ class Discord:
         finally:
             C.Discord_AuthorizationArgs_Drop(args)  # type: ignore
 
+    @overload
     def set_activity(
         self,
         state: str,
@@ -385,7 +394,42 @@ class Discord:
         start: int = 0,
         end: int = 0,
         status_display_type: int = 0,
-    ) -> None:
+    ) -> None: ...
+
+    @overload
+    def set_activity(
+        self,
+        state: str,
+        details: str,
+        type_: int = 0,
+        small_text: str = "",
+        small_image: str = "",
+        large_text: str = "",
+        large_image: str = "",
+        buttons: list[dict[str, str]] | None = None,
+        start: int = 0,
+        end: int = 0,
+        status_display_type: int = 0,
+        *,
+        future: Future[bool],
+    ) -> Future[bool]: ...
+
+    def set_activity(
+        self,
+        state: str,
+        details: str,
+        type_: int = 0,
+        small_text: str = "",
+        small_image: str = "",
+        large_text: str = "",
+        large_image: str = "",
+        buttons: list[dict[str, str]] | None = None,
+        start: int = 0,
+        end: int = 0,
+        status_display_type: int = 0,
+        *,
+        future: Future[bool] | None = None,
+    ) -> Future[bool] | None:
         if self.client is None:
             raise RuntimeError("Discord client is not initialised")
 
@@ -508,8 +552,9 @@ class Discord:
                 activity,
                 _update_presence_callback,  # type: ignore
                 ffi.NULL,
-                self.self_handle,
+                ffi.new_handle(future) if future else ffi.NULL,
             )
+            return future
         finally:
             for buffer, drop in reversed(garbages):
                 _ = drop and drop(buffer)

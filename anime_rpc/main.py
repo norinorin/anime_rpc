@@ -175,7 +175,7 @@ async def consumer_loop(
             flags |= UpdateFlag.SEEKING
 
         try:
-            last_state = presence.update(state, last_state, origin, flags=flags)
+            last_state = await presence.update(state, last_state, origin, flags=flags)
         except Exception as e:
             _LOGGER.exception("Failed to update presence: %s", e)
             event.set()
