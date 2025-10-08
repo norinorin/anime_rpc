@@ -4,6 +4,8 @@
 // @version      1.0.0
 // @description  Sends video data from the AniWatch iframe to the main page.
 // @author       norinorin
+// @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/aniwatch/iframehelper.user.js
+// @updateURL    https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/aniwatch/iframehelper.user.js
 // @match        *://megacloud.blog/*
 // TODO: add more mirror sites
 // @grant        none

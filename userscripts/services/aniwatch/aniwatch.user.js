@@ -4,8 +4,8 @@
 // @version      1.0.0
 // @description  Adds AniWatch support to the Anime RPC Core Engine.
 // @author       norinorin
-// @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/aniwatch.user.js
-// @updateURL    https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/aniwatch.user.js
+// @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/aniwatch/aniwatch.user.js
+// @updateURL    https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/aniwatch/aniwatch.user.js
 // @match        *://*.aniwatchtv.to/*
 // @grant        unsafeWindow
 // ==/UserScript==
