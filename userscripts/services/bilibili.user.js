@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC - BiliBili Scraper
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.0.0
+// @version      2.0.0
 // @description  Adds BiliBili support to the Anime RPC Core Engine.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/bilibili.user.js
@@ -36,7 +36,9 @@
       title,
       episode_title,
       episode,
-      videoElement,
+      duration: Math.round(videoElement.duration * 1000),
+      position: Math.round(videoElement.currentTime * 1000),
+      paused: videoElement.paused,
       display_name: "BiliBili",
     };
   }

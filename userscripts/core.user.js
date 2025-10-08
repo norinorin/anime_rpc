@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC Core Engine
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.4.0
+// @version      2.0.0
 // @description  Handles WebSocket connection and state management for site-specific scrapers.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/core.user.js
@@ -426,14 +426,17 @@
 
     updateUi(state);
 
-    if (!state || !state.videoElement) {
+    if (
+      !state?.title ||
+      !state?.episode ||
+      !state?.duration ||
+      !state?.position ||
+      typeof state.paused !== "boolean"
+    ) {
       clearPresence();
+      return;
     }
 
-    const { videoElement } = state;
-    delete state.videoElement;
-
-    const { paused } = videoElement;
     const cachedData = await GM_getValue(state.title, {});
 
     if (!cachedData.enabled) {
@@ -442,20 +445,19 @@
       return;
     }
 
+    const { paused } = state;
+    delete state.paused;
+
     const payload = {
       ...state,
       image_url: cachedData.imageUrl,
       url: cachedData.url,
       rewatching: cachedData.rewatching,
-      watching_state: paused ? 1 : 2,
+      watching_state: 1 + !paused,
       origin: formatOrigin(),
     };
     lastIsEmpty = false;
     setBarColor(CONNECTED_WITH_PRESENCE_COLOR);
-    if (isNaN(payload.duration) || payload.duration === 0) {
-      payload.watching_state = 0;
-    }
-
     wsSend(payload);
   }
 

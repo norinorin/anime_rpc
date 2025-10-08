@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Anime RPC - YouTube Scraper
 // @namespace    https://github.com/norinorin/anime_rpc
-// @version      1.1.0
+// @version      2.0.0
 // @description  Adds YouTube support to the Anime RPC Core Engine.
 // @author       norinorin
 // @downloadURL  https://raw.githubusercontent.com/norinorin/anime_rpc/main/userscripts/services/youtube.user.js
@@ -115,6 +115,7 @@
       episode_title: episodeTitle,
       position: Math.round(chapterPosition * 1000),
       duration: Math.round(chapterDuration * 1000),
+      paused: videoElement.paused,
     };
   }
 
@@ -139,7 +140,7 @@
       episode: episode.replace(/\s/g, ""),
       position: Math.round(videoElement.currentTime * 1000),
       duration: Math.round(videoElement.duration * 1000),
-      display_name: "YouTube (Muse)",
+      paused: videoElement.paused,
     };
   }
 
@@ -154,9 +155,13 @@
       );
     console.debug("detected chapter list", chapterList);
 
-    return chapterList?.length > 0
-      ? handleMuseMarathonVideo(videoElement, rawTitle, chapterList)
-      : handleMuseSingleVideo(videoElement, rawTitle);
+    const state =
+      chapterList?.length > 0
+        ? handleMuseMarathonVideo(videoElement, rawTitle, chapterList)
+        : handleMuseSingleVideo(videoElement, rawTitle);
+
+    state["display_name"] = "YouTube (Muse)";
+    return state;
   }
 
   function getStateFromYouTube() {
@@ -181,7 +186,6 @@
     let state = handler(videoElement, rawTitle);
 
     if (state) {
-      state.videoElement = videoElement;
       state.display_name ??= "YouTube";
       return state;
     }
