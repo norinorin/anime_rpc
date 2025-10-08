@@ -47,6 +47,8 @@ async def poll_player(
         state: State = poller.get_empty_state()
         try:
             vars_ = await wait(poller.get_vars(session), event)
+        except Bail:
+            break
         except Exception as e:
             # sometimes aiohttp throws a timeout error
             # not sure what's the cause, but we're catching
