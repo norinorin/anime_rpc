@@ -224,11 +224,11 @@ def _update_presence_callback(result_ptr, user_data):  # type: ignore
         )
         res = False
 
-    future: Future[bool] | None = ffi.from_handle(user_data)  # type: ignore
-    if not future:
+    if not user_data:
         return
-    loop = future.get_loop()
-    loop.call_soon_threadsafe(future.set_result, res)
+
+    future: Future[bool] = ffi.from_handle(user_data)  # type: ignore
+    future.get_loop().call_soon_threadsafe(future.set_result, res)
 
 
 class Discord:
