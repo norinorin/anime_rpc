@@ -203,6 +203,16 @@ class Presence:
         if not state:
             return self._clear(last_state)
 
+        if not all(
+            k in state
+            for k in ("title", "episode", "position", "duration", "rewatching")
+        ):
+            _LOGGER.warning(
+                "Invalid state provided, missing required keys, ignoring..."
+            )
+            return last_state
+
+        # still gotta keep this for typecheckers
         assert "title" in state
         assert "episode" in state
         assert "position" in state
