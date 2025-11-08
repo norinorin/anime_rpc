@@ -12,7 +12,7 @@ import cffi
 import keyring
 
 from anime_rpc.cli import CLI_ARGS
-from anime_rpc.config import DEFAULT_APPLICATION_ID
+from anime_rpc.config import DEFAULT_ANIME_APPLICATION_ID
 
 DISCORD_API_PATTERN = re.compile(r"\bDISCORD_API\b")
 PREPROCESSOR_LINE_PATTERN = re.compile("^#.*$", re.MULTILINE)
@@ -254,7 +254,7 @@ class Discord:
             self.self_handle = ffi.new_handle(self)  # type: ignore
 
         _LOGGER.debug(
-            "Initializing Discord client, with app id: %d", DEFAULT_APPLICATION_ID
+            "Initializing Discord client, with app id: %d", DEFAULT_ANIME_APPLICATION_ID
         )
         self.client = ffi.new("Discord_Client*")  # type: ignore
         options = self._create_options()
@@ -273,7 +273,7 @@ class Discord:
                 ffi.NULL,
                 self.self_handle,
             )
-            self.set_application_id(DEFAULT_APPLICATION_ID)
+            self.set_application_id(DEFAULT_ANIME_APPLICATION_ID)
         finally:
             C.Discord_ClientCreateOptions_Drop(options)  # type: ignore
 
