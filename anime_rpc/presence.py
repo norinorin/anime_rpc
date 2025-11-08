@@ -9,7 +9,7 @@ from typing import Any, TypedDict, cast
 from typing_extensions import Unpack
 
 from anime_rpc.cli import CLI_ARGS
-from anime_rpc.config import DEFAULT_APPLICATION_ID
+from anime_rpc.config import DEFAULT_ANIME_APPLICATION_ID
 from anime_rpc.formatting import ms2timestamp, quote
 from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, WatchingState, compare_states
@@ -209,7 +209,7 @@ class Presence:
         assert "duration" in state
         assert "rewatching" in state
 
-        application_id = int(state.get("application_id", DEFAULT_APPLICATION_ID))
+        application_id = int(state.get("application_id", DEFAULT_ANIME_APPLICATION_ID))
         watching_state = state.get("watching_state", WatchingState.NOT_AVAILABLE)
 
         state_opts: StateOptions = {
