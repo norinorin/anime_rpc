@@ -12,7 +12,18 @@ import cffi
 import keyring
 
 from anime_rpc.cli import CLI_ARGS
-from anime_rpc.config import DEFAULT_ANIME_APPLICATION_ID
+
+DEFAULT_ANIME_APPLICATION_ID = 1088900742523392133
+GENERIC_STREAM_APPLICATION_ID = 1337621628179316848
+
+# can't make my mind up on the naming
+# so allow for aliases
+APPLICATION_ID_REPLACE_MAP: dict[str, int] = {
+    "default": DEFAULT_ANIME_APPLICATION_ID,
+    "anime": DEFAULT_ANIME_APPLICATION_ID,
+    "stream": GENERIC_STREAM_APPLICATION_ID,
+    "generic": GENERIC_STREAM_APPLICATION_ID,
+}
 
 DISCORD_API_PATTERN = re.compile(r"\bDISCORD_API\b")
 PREPROCESSOR_LINE_PATTERN = re.compile("^#.*$", re.MULTILINE)
@@ -277,9 +288,18 @@ class Discord:
         finally:
             C.Discord_ClientCreateOptions_Drop(options)  # type: ignore
 
-    def set_application_id(self, application_id: int) -> None:
+    def set_application_id(self, application_id: int | str) -> None:
         if self.client is None:
             raise RuntimeError("Discord client is not initialised")
+
+        try:
+            application_id = int(
+                APPLICATION_ID_REPLACE_MAP.get(
+                    str(application_id).lower(), application_id
+                )
+            )
+        except (ValueError, TypeError):
+            application_id = DEFAULT_ANIME_APPLICATION_ID
 
         if application_id != self.last_application_id:
             _LOGGER.debug("Setting application id: %d", application_id)
