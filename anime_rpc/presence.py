@@ -27,6 +27,9 @@ CHAR_LIMITS = {
 }
 _LOGGER = logging.getLogger("presence")
 
+UTF8_CONT_MASK = 0xC0
+UTF8_CONT_VALUE = 0x80
+
 
 class ActivityType(IntEnum):
     PLAYING = 0
@@ -168,14 +171,20 @@ class Presence:
             },
         )
 
-    def _maybe_trim(self, text: str, max_length: int) -> str:
-        if not text:
-            return ""
+    @staticmethod
+    def _maybe_trim_utf8_bytes(text: str, max_bytes: int) -> str:
+        b = text.encode("utf-8")
+        if len(b) <= max_bytes:
+            return text
 
-        return len(text) <= max_length and text or text[: max_length - 1] + "…"
+        cut = max_bytes - 3
+        while cut > 0 and (b[cut] & UTF8_CONT_MASK) == UTF8_CONT_VALUE:
+            cut -= 1
+
+        return b[:cut].decode("utf-8") + "\u2026"
 
     def _trim_kwargs(self, kwargs: dict[str, Any]) -> None:
-        _maybe_trim = self._maybe_trim
+        _maybe_trim = self._maybe_trim_utf8_bytes
 
         for key, limit in CHAR_LIMITS.items():
             if key == "button_label" or key == "button_url":
@@ -280,6 +289,7 @@ class Presence:
                     kwargs["small_text"].rstrip() + " " * self._append_space
                 )
 
+        _LOGGER.debug("Updating presence with kwargs: %s", kwargs)
         _LOGGER.debug(
             "Setting presence to [%s] %s @ %s",
             watching_state.name,
