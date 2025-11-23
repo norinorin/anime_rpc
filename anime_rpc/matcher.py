@@ -115,9 +115,6 @@ def infer_episode_pattern(
                 after,
             )
 
-        if len(nums) < MIN_N_SEQUENCE:
-            continue
-
         increasing_score = sum(b > a for a, b in zip(nums, nums[1:]))
         before_common = commonsuffix(befores)
         after_common = commonprefix(afters)
