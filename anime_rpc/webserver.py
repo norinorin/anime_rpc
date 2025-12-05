@@ -4,6 +4,8 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable
 
+from aiohttp.web_response import json_response
+
 if TYPE_CHECKING:
     import asyncio
     from collections.abc import Coroutine
@@ -61,9 +63,15 @@ def ws_handler(
     return wrapper
 
 
+async def status_handler(request: Request) -> Response:
+    return json_response(request.app["current_state"])
+
+
 async def get_app(queue: asyncio.Queue[State]) -> Application:
     app = Application()
+    app["current_state"] = {}
     app.router.add_get("/ws", ws_handler(queue))
+    app.router.add_get("/status", status_handler)
     return app
 
 

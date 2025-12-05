@@ -9,6 +9,7 @@ from queue import Empty as QueueEmptyError
 from typing import Any
 
 import aiohttp
+from aiohttp.web_app import Application
 
 from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
@@ -99,12 +100,13 @@ async def consumer_loop(
     queue: asyncio.Queue[State],
     scraper: MALScraper,
     discord: Discord,
+    app: Application | None,
 ) -> None:
     presence = Presence(discord)
     timer = Timer()
 
     # internal states
-    last_state: State = {}
+    last_state = State()
     last_pos: int = -1
     last_origin: str = ""
     flags = UpdateFlag(0)
@@ -184,6 +186,9 @@ async def consumer_loop(
         flags = UpdateFlag(0)
         last_pos = pos or 0
 
+        if app:
+            app["current_state"] = last_state
+
         # if last_state is empty
         # it's given up control
         if not last_state:
@@ -198,7 +203,7 @@ async def async_main() -> None:
     session = aiohttp.ClientSession()
     file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
     scraper = MALScraper(session, file_watcher_manager)
-    webserver = None
+    webserver, app = None, None
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
     tasks: list[asyncio.Task[Any]] = []
 
@@ -212,7 +217,7 @@ async def async_main() -> None:
 
         tasks.append(
             asyncio.create_task(
-                consumer_loop(event, queue, scraper, discord),
+                consumer_loop(event, queue, scraper, discord, app),
                 name="consumer",
             )
         )
