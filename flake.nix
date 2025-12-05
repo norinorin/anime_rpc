@@ -41,17 +41,17 @@
 
     devShells = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
+      animeRpcPkg = pkgs.callPackage ./nix/package.nix {};
     in {
       default = pkgs.mkShell {
+        inputsFrom = [animeRpcPkg];
         packages = with pkgs; [
           python3
           python3Packages.pip
-          python3Packages.venv
           python3Packages.ruff
-          python3Packages.basedpyright
+          basedpyright
           libmediainfo
         ];
-
         LD_LIBRARY_PATH = "${pkgs.libmediainfo}/lib";
       };
     });
