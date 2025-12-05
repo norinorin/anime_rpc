@@ -16,13 +16,7 @@
 
 ---
 
-## 🚀 Features
-
-- **Per-folder metadata with `.rpc` files**  
-  Configure rich presence info for local media players like MPC and MPV by placing `.rpc` files in your anime folders.
-
-- **Real-time presence updates**  
-  Edits to `.rpc` files are picked up instantly, so your Discord status stays in sync without restarting anything.
+## Features
 
 - **Discord Rich Presence without running Discord**  
   Show what you’re watching without needing the Discord client open via OAuth2.
@@ -36,7 +30,7 @@
 - **Userscripts for power users**  
   Easily write your own custom scripts to support any streaming service (see [examples](/userscripts/services/)).
 
-## 📦 Installation
+## Installation
 
 1. Clone the repository:
 
@@ -57,7 +51,7 @@ pip install -e .
 anime_rpc -h
 ```
 
-## ⚙️ Local Playback Configuration
+## Local Playback Configuration
 
 **anime_rpc** looks for a configuration file named `.rpc` (short for Rich Presence Config—not to be confused with Remote Procedure Call, or even Rich Presence Client :p) in the anime folder you're watching. If no such file is found, the folder is ignored.
 
@@ -108,7 +102,7 @@ Refer to [the example config](example.rpc) to get started.
 
 ? Optional.
 
-## 🖥️ Supported Platforms
+## Supported Platforms
 
 ### 1. Pollers
 
@@ -128,15 +122,6 @@ Userscripts (read more on them [here](https://github.com/OpenUserJs/OpenUserJS.o
 | AniWatch | [Install scraper](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/services/aniwatch/aniwatch.user.js)<br>[Install iframe helper](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/services/aniwatch/iframehelper.user.js) | Both scraper and iframe helper userscripts need to be installed.                                                                                                                                                                                                                                                                 |
 | ...      | ...                                                                                                                                                                                                                                                                                          | ...                                                                                                                                                                                                                                                                                                                              |
 
-## 📅 Plans
-
-- [x] Automatically generate a regex given filenames in a folder.
-- [x] Add formatting templates for `.rpc.match` (`%ep%`, `%title%`).
-- [x] ~~Rework browser extension.~~ Migrate to userscripts.
-- [ ] Add more support for anime sites and media players.
-- [ ] Implement a customisable formatting.
-- [ ] Implement automatic MyAnimeList/AniList episode tracking.
-
-## 📝 License
+## License
 
 MIT
