@@ -46,7 +46,7 @@ def exclude_non_media_files(filenames: list[str]) -> list[str]:
 
 
 def build_filename_pattern(filenames: list[str]) -> str | None:
-    filenames = exclude_non_media_files(filenames)
+    filenames = sorted(exclude_non_media_files(filenames))
     if len(filenames) < MIN_N_SEQUENCE:
         return None
 

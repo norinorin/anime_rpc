@@ -208,6 +208,10 @@ MIZUZOKUSEI = [
     "The.Water.Magician.S01E09.Nils.and.the.Mysterious.Town.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
     "The.Water.Magician.S01E10.The.Open.Port.Festival.1080p.CR.WEB-DL.JPN.AAC2.0.H.264.MSubs-ToonsHub.mkv",
 ]
+INITIAL_D_ARBITRARY_ORDER = [
+    "[Judas] Initial D - Extra Stage 02 - Sentimental White.mkv",
+    "[Judas] Initial D - Extra Stage 01 - Beyond The Impact Blue.mkv",
+]
 
 
 @pytest.mark.parametrize(
@@ -223,6 +227,7 @@ MIZUZOKUSEI = [
         ("bokuyaba", BOKUYABA, [1, *range(1, 14)]),
         ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES, [1, 2, 3, 4]),
         ("mizuzokusei", MIZUZOKUSEI, [*range(1, 11)]),
+        ("initial_d", INITIAL_D_ARBITRARY_ORDER, [2, 1]),
     ],
 )
 def test_ordered_filenames(
