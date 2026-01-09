@@ -49,6 +49,7 @@
           python3
           python3Packages.pip
           python3Packages.ruff
+          python3Packages.pytest
           basedpyright
           libmediainfo
         ];
