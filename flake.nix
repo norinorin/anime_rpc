@@ -51,9 +51,17 @@
           python3Packages.ruff
           python3Packages.pytest
           basedpyright
-          libmediainfo
         ];
-        LD_LIBRARY_PATH = "${pkgs.libmediainfo}/lib";
+
+        LD_LIBRARY_PATH =
+          pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux
+          (pkgs.lib.makeLibraryPath [
+            pkgs.libgccjit
+            pkgs.libmediainfo
+            pkgs.alsa-lib
+            pkgs.libpulseaudio
+            pkgs.xorg.libX11
+          ]);
       };
     });
   };
