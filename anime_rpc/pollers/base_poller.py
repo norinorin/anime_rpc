@@ -4,7 +4,7 @@ import re
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, cast
 
 from pymediainfo import MediaInfo
 
@@ -35,6 +35,7 @@ class BasePoller(ABC):
 
     def __init__(self, port: int | None = None) -> None:
         self.port = port if port is not None else self.default_port
+        self._last_parsed_media_info: tuple[Path, str] = (Path("/"), "")
 
     @classmethod
     @abstractmethod
@@ -47,8 +48,26 @@ class BasePoller(ABC):
     @abstractmethod
     def display_name(self) -> str: ...
 
-    @staticmethod
+    def parse_media_info(self, file: str, filedir: str) -> str:
+        path = Path(filedir) / file
+        if self._last_parsed_media_info[0] == path:
+            return self._last_parsed_media_info[1]
+
+        title = ""
+
+        # sometimes "file" and "filedir" are out of sync when fetching from MPC
+        # so we may get the old file name with the new filedir, or vice versa
+        # in that case, suppress FileNotFoundError
+        with suppress(FileNotFoundError):
+            metadata = MediaInfo.parse(Path(filedir) / file)
+            if metadata.general_tracks:
+                title = cast(str, metadata.general_tracks[0].title or "").strip()
+
+        self._last_parsed_media_info = (path, title)
+        return title
+
     def get_ep_title(
+        self,
         pattern: str,
         file: str,
         filedir: str,
@@ -57,19 +76,11 @@ class BasePoller(ABC):
             return "Movie", None
 
         pattern = pattern.replace(*EP_TEMPLATE, 1).replace(*EP_TITLE_TEMPLATE, 1)
-        candidates: list[str] = [file]
-
-        # sometimes "file" and "filedir" are out of sync when fetching from MPC
-        # so we may get the old file name with the new filedir, or vice versa
-        # in that case, suppress FileNotFoundError
-        with suppress(FileNotFoundError):
-            metadata = MediaInfo.parse(Path(filedir) / file)
-            if metadata.general_tracks and (
-                title := (metadata.general_tracks[0].title or "").strip()
-            ):
-                candidates.insert(0, title)
+        candidates: list[str] = [self.parse_media_info(file, filedir), file]
 
         for f in candidates:
+            if not f:
+                continue
             if match := re.search(pattern, f):
                 break
         else:
