@@ -58,6 +58,10 @@ async def poll_player(
             # probable cause: mpc zombie process preventing active mpc
             # windows from binding to the port.
             _LOGGER.exception("Error while polling %s: %s", poller.display_name, e)
+
+            # assume the player is dead
+            # clear presence now
+            await queue.put(state)
             continue
 
         new_filedir = vars_ and (fd := vars_.get("filedir")) and Path(fd) or None
