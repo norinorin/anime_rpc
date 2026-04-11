@@ -51,6 +51,21 @@
           python3Packages.pytest
           basedpyright
           uv
+
+          cargo
+          rustc
+          rustfmt
+          rust-analyzer
+          clippy
+
+          pkg-config
+          vulkan-loader
+          glib
+          gtk3
+          atk
+          gdk-pixbuf
+          cairo
+          xdotool
         ];
 
         LD_LIBRARY_PATH =
@@ -61,6 +76,9 @@
             pkgs.alsa-lib
             pkgs.libpulseaudio
             pkgs.xorg.libX11
+            pkgs.wayland
+            pkgs.libxkbcommon
+            pkgs.libayatana-appindicator
           ]);
       };
     });
