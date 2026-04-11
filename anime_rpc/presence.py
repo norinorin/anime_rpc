@@ -204,7 +204,6 @@ class Presence:
         self,
         state: State,
         last_state: State,
-        origin: str,
         *,
         flags: UpdateFlag,
     ) -> State:
@@ -226,7 +225,9 @@ class Presence:
         assert "position" in state
         assert "duration" in state
         assert "rewatching" in state
+        assert "origin" in state
 
+        origin = state["origin"]
         application_id = state.get("application_id", DEFAULT_ANIME_APPLICATION_ID)
         watching_state = state.get("watching_state", WatchingState.NOT_AVAILABLE)
 

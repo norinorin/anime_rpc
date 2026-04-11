@@ -6,7 +6,7 @@ from collections.abc import Coroutine
 from contextlib import suppress
 from pathlib import Path
 from queue import Empty as QueueEmptyError
-from typing import Any
+from typing import Any, Awaitable, Callable
 
 import aiohttp
 from aiohttp.web_app import Application
@@ -99,6 +99,48 @@ async def poll_player(
             await asyncio.wait_for(event.wait(), timeout=POLLING_INTERVAL)
 
 
+async def drain_queue(
+    event: asyncio.Event,
+    queue: asyncio.Queue[State],
+    queue_getter: Callable[[], Awaitable[State]],
+    last_origin: str,
+    last_state: State,
+) -> tuple[State | None, str]:
+    try:
+        first_state = await wait(queue_getter(), event)
+    except asyncio.TimeoutError:
+        first_state = State({**last_state, "origin": last_origin})
+
+    batch: list[State] = [first_state]
+    while not queue.empty():
+        batch.append(queue.get_nowait())
+
+    origin = last_origin
+    state = None
+
+    for s in batch:
+        s_origin = s.get("origin", "")
+        if not s_origin:
+            continue
+
+        is_empty = len(s) <= 1
+
+        if not is_empty and not origin:
+            origin = s_origin
+
+        # since multiple pollers can be used, one of them may return empty states,
+        # which will interrupt an "active" poller, i.e., clear its presence.
+        # ensure that exactly only one origin can occupy the rich presence at a time.
+        if s_origin == origin:
+            state = s
+            # if last_state is empty
+            # it's given up control
+            if is_empty:
+                origin = ""
+
+    return state, origin
+
+
 async def consumer_loop(
     event: asyncio.Event,
     queue: asyncio.Queue[State],
@@ -124,26 +166,11 @@ async def consumer_loop(
     )
 
     while not event.is_set():
-        try:
-            state = await wait(queue_get(), event)
-        except asyncio.TimeoutError:
-            state = last_state
+        state, last_origin = await drain_queue(
+            event, queue, queue_get, last_origin, last_state
+        )
 
-        # state fed should always contain origin
-        if "origin" not in state:
-            continue
-
-        origin = state.pop("origin")
-
-        # since multiple pollers can be used, one of them may return empty states,
-        # which will interrupt an "active" poller, i.e., clear its presence.
-        # ensure that exactly only one origin can occupy the rich presence at a time.
-        if state and not last_origin:
-            last_origin = origin
-
-        # rich presence is occupied
-        # ignore current state
-        if last_origin != origin:
+        if state is None:
             continue
 
         states_logger.send(state)
@@ -160,9 +187,6 @@ async def consumer_loop(
 
         timer.tick()
 
-        # store this in a variable outside of the while loop
-        # so it's only consumed when the origin check passes
-        # otherwise inactive pollers could consume this prematurely.
         if timer.should_force_update():
             flags |= UpdateFlag.PERIODIC_UPDATE
 
@@ -181,23 +205,17 @@ async def consumer_loop(
             flags |= UpdateFlag.SEEKING
 
         try:
-            last_state = await presence.update(state, last_state, origin, flags=flags)
+            last_state = await presence.update(state, last_state, flags=flags)
         except Exception as e:
             _LOGGER.exception("Failed to update presence: %s", e)
             event.set()
             break
 
         flags = UpdateFlag(0)
-        last_pos = pos or 0
+        last_pos = pos or -1
 
         if app:
             app["current_state"] = last_state
-
-        # if last_state is empty
-        # it's given up control
-        if not last_state:
-            last_origin = ""
-            last_pos = -1
 
 
 async def async_main() -> None:
