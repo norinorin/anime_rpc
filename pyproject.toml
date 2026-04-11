@@ -35,5 +35,12 @@ dependencies = [
     "aiohttp-cors==0.8.1"
 ]
 
+[dependency-groups]
+dev = [
+      "ruff",
+      "basedpyright",
+      "pytest",
+]
+
 [project.scripts]
 anime_rpc = "anime_rpc.main:main"
