@@ -10,11 +10,12 @@ from contextlib import suppress
 from http import HTTPStatus
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeVar, TypedDict
 
+from aiohttp import ClientResponse
 from bs4 import BeautifulSoup
 
-from anime_rpc.cache import SCRAPING_CACHE_DIR
+from anime_rpc.cache import METADATA_CACHE_DIR
 from anime_rpc.file_watcher import FileWatcherManager, Subscription
 
 if TYPE_CHECKING:
@@ -22,10 +23,11 @@ if TYPE_CHECKING:
 
     from anime_rpc.states import State
 
-_LOGGER = logging.getLogger("scraper")
+_LOGGER = logging.getLogger("metadata_provider")
+T = TypeVar("T")
 
 
-class Scraped(TypedDict, total=False):
+class Metadata(TypedDict, total=False):
     id: str
     episodes: dict[str, str]
     title: str
@@ -34,25 +36,71 @@ class Scraped(TypedDict, total=False):
     last_updated: int
 
 
-class BaseScraper(ABC):
-    def __init__(self, session: aiohttp.ClientSession) -> None:
-        self.session = session
+class SearchResult(TypedDict):
+    id: str
+    title: str
+    url: str
+    image_url: str
 
+
+class SearchProvider(ABC):
+    @abstractmethod
+    async def search(self, query: str) -> list[SearchResult] | HTTPStatus: ...
+
+
+class HTTPMixin:
+    def __init__(self, session: aiohttp.ClientSession, **kwargs: Any) -> None:
+        self.session = session
+        super().__init__(**kwargs)
+
+    async def _make_request(
+        self, url: str, parser: Callable[[ClientResponse], Awaitable[T]]
+    ) -> T | HTTPStatus:
+        async with self.session.get(url) as response:
+            if response.status != HTTPStatus.OK:
+                status = HTTPStatus(response.status)
+                _LOGGER.error(
+                    "Failed to fetch %s. Reason: %s. Code: %d (%s)",
+                    url,
+                    status.description,
+                    status.value,
+                    status.phrase,
+                )
+                return status
+
+            return await parser(response)
+
+    async def _get_text(self, url: str) -> str | HTTPStatus:
+        response_or_status = await self._make_request(url, lambda r: r.text())
+        if isinstance(response_or_status, HTTPStatus):
+            return response_or_status
+        return response_or_status
+
+    async def _get_json(
+        self, url: str, json_type: Callable[[Any], T]
+    ) -> T | HTTPStatus:
+        response_or_status = await self._make_request(url, lambda r: r.json())
+        if isinstance(response_or_status, HTTPStatus):
+            return response_or_status
+        return json_type(response_or_status)
+
+
+class BaseMetadataProvider(HTTPMixin, ABC):
     def get_cache_path(self, id_: str | None = None) -> Path:
-        cache_dir = SCRAPING_CACHE_DIR / self.subdir
+        cache_dir = METADATA_CACHE_DIR / self.name
         if id_ is not None:
             return cache_dir / f"{id_}.json"
         return cache_dir
 
     @property
     @abstractmethod
-    def subdir(self) -> str: ...
+    def name(self) -> str: ...
 
     @abstractmethod
     async def get_episodes(self, url: str, episode: str) -> dict[str, str]: ...
 
     @abstractmethod
-    async def get_metadata(self, url: str) -> Scraped: ...
+    async def get_metadata(self, url: str) -> Metadata: ...
 
     @classmethod
     @abstractmethod
@@ -98,31 +146,16 @@ class BaseScraper(ABC):
 
         return state
 
-    async def _get_text(self, url: str) -> str | HTTPStatus:
-        async with self.session.get(url) as response:
-            if response.status != HTTPStatus.OK:
-                status = HTTPStatus(response.status)
-                _LOGGER.error(
-                    "Failed to fetch %s. Reason: %s. Code: %d (%s)",
-                    url,
-                    status.description,
-                    status.value,
-                    status.phrase,
-                )
-                return status
 
-            return await response.text()
-
-
-class _CachingScraper(BaseScraper):
+class _CachingMetadataProvider(BaseMetadataProvider):
     def __init__(
         self, session: aiohttp.ClientSession, file_watcher_manager: FileWatcherManager
     ) -> None:
         super().__init__(session)
 
         self.file_watcher_manager = file_watcher_manager
-        self._last_queried: tuple[str, Scraped | None] | None = None
-        self._subscription: Subscription[Scraped] | None = None
+        self._last_queried: tuple[str, Metadata | None] | None = None
+        self._subscription: Subscription[Metadata] | None = None
         self._consumer_task: asyncio.Task[None] | None = None
         self._cache_ready_event = asyncio.Event()
 
@@ -130,10 +163,10 @@ class _CachingScraper(BaseScraper):
     async def fetch_episodes(self, url: str, episode: str) -> dict[str, str]: ...
 
     @abstractmethod
-    async def fetch_metadata(self, url: str) -> Scraped: ...
+    async def fetch_metadata(self, url: str) -> Metadata: ...
 
     async def _consume_queue(
-        self, id_: str, queue: asyncio.Queue[Scraped | None]
+        self, id_: str, queue: asyncio.Queue[Metadata | None]
     ) -> None:
         _LOGGER.debug("Starting consumer for %s", id_)
         while 1:
@@ -172,12 +205,12 @@ class _CachingScraper(BaseScraper):
         await self._cache_ready_event.wait()
 
     @property
-    def last_queried(self) -> Scraped | None:
+    def last_queried(self) -> Metadata | None:
         return self._last_queried[1] if self._last_queried else None
 
-    async def get_metadata(self: "_CachingScraper", url: str) -> Scraped:
+    async def get_metadata(self: "_CachingMetadataProvider", url: str) -> Metadata:
         if not (id_ := self.extract_id(url)):
-            return Scraped()
+            return Metadata()
 
         path = self.get_cache_path(id_)
         task = asyncio.create_task(self.subscribe(id_, path))
@@ -211,7 +244,7 @@ class _CachingScraper(BaseScraper):
         return metadata
 
     async def get_episodes(
-        self: "_CachingScraper", url: str, episode: str
+        self: "_CachingMetadataProvider", url: str, episode: str
     ) -> dict[str, str]:
         if not (metadata := await self.get_metadata(url)):
             _LOGGER.debug("Failed to get metadata for %s. Is URL valid?", url)
@@ -265,12 +298,12 @@ class _CachingScraper(BaseScraper):
         return episodes
 
 
-class MALScraper(_CachingScraper):
+class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
     ID_PATTERN = re.compile(r"https?://myanimelist\.net/anime/(?P<id>\d+)")
 
     @property
-    def subdir(self) -> str:
-        return "mal"
+    def name(self) -> str:
+        return "myanimelist"
 
     @classmethod
     def extract_id(cls, url: str) -> str | None:
@@ -280,8 +313,8 @@ class MALScraper(_CachingScraper):
 
         return match.group("id")
 
-    async def fetch_metadata(self, url: str) -> Scraped:
-        ret = Scraped()
+    async def fetch_metadata(self, url: str) -> Metadata:
+        ret = Metadata()
 
         if isinstance(html := await self._get_text(url), HTTPStatus):
             return ret
@@ -327,3 +360,23 @@ class MALScraper(_CachingScraper):
             ret[episode_number] = episode_title
 
         return ret
+
+    async def search(self, query: str) -> list[SearchResult] | HTTPStatus:
+        url = f"https://myanimelist.net/search/prefix.json?type=anime&keyword={query}"
+
+        data = await self._get_json(url, dict[str, Any])
+        if isinstance(data, HTTPStatus):
+            return data
+
+        items = data.get("categories", [{}])[0].get("items", [])
+        return [
+            SearchResult(
+                {
+                    "id": str(item.get("id")),
+                    "title": item.get("name"),
+                    "url": item.get("url"),
+                    "image_url": item.get("image_url"),
+                }
+            )
+            for item in items
+        ]

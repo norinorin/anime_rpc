@@ -5,6 +5,9 @@ import logging
 from typing import TYPE_CHECKING, Any, Callable
 
 from aiohttp.web_response import json_response
+import aiohttp_cors
+
+from anime_rpc.cli import CLI_ARGS
 
 if TYPE_CHECKING:
     import asyncio
@@ -21,6 +24,7 @@ from aiohttp.web import (
 )
 
 from anime_rpc.states import State, WatchingState
+from anime_rpc.metadata_provider import BaseMetadataProvider
 
 PORT = 56727
 _LOGGER = logging.getLogger("webserver")
@@ -63,15 +67,54 @@ def ws_handler(
     return wrapper
 
 
-async def status_handler(request: Request) -> Response:
-    return json_response(request.app["current_state"])
+async def search_handler(request: Request) -> Response:
+    query = request.query.get("q")
+    if not query:
+        return json_response({"error": "Missing query parameter 'q'"}, status=400)
+
+    provider_name = request.query.get("provider", "myanimelist").lower()
+    providers = request.app["metadata_providers"]
+    provider = providers.get(provider_name)
+    if not provider:
+        return json_response(
+            {
+                "error": f"Unkown provider '{provider_name}'.",
+                "provider_names": list(providers.keys()),
+            }
+        )
+
+    results = await provider.search(query)
+    return json_response(results)
 
 
-async def get_app(queue: asyncio.Queue[State]) -> Application:
+async def pollers_handler(request: Request) -> Response:
+    return json_response(request.app["pollers"])
+
+
+async def get_app(
+    queue: asyncio.Queue[State], metadata_providers: dict[str, BaseMetadataProvider]
+) -> Application:
     app = Application()
     app["current_state"] = {}
+    app["metadata_providers"] = metadata_providers
+    app["pollers"] = {
+        p.origin(): {"active": False, "filedir": None, "display_name": p.display_name}
+        for p in CLI_ARGS.pollers
+    }
+
     app.router.add_get("/ws", ws_handler(queue))
-    app.router.add_get("/status", status_handler)
+    app.router.add_get("/search", search_handler)
+    app.router.add_get("/pollers", pollers_handler)
+    cors = aiohttp_cors.setup(
+        app,
+        defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True, expose_headers="*", allow_headers="*"
+            )
+        },
+    )
+    for route in list(app.router.routes()):
+        cors.add(route)  # type: ignore
     return app
 
 

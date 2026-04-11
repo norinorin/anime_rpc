@@ -19,7 +19,7 @@ from anime_rpc.formatting import ms2timestamp
 from anime_rpc.matcher import generate_regex_pattern
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlag
-from anime_rpc.scraper import MALScraper
+from anime_rpc.metadata_provider import BaseMetadataProvider, MALMetadataProvider
 from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, get_states_logger, validate_state
 from anime_rpc.timer import Timer
@@ -39,6 +39,7 @@ async def poll_player(
     queue: asyncio.Queue[State],
     session: aiohttp.ClientSession,
     file_watcher_manager: FileWatcherManager,
+    app: Application | None,
 ) -> None:
     config: Config | None = None
     filedir: Path | None = None
@@ -65,6 +66,12 @@ async def poll_player(
             continue
 
         new_filedir = vars_ and (fd := vars_.get("filedir")) and Path(fd) or None
+
+        if app:
+            app["pollers"][poller.origin()]["active"] = bool(vars_)
+            app["pollers"][poller.origin()]["filedir"] = (
+                str(new_filedir) if new_filedir else None
+            )
 
         # user switches folder
         if filedir != new_filedir:
@@ -144,7 +151,7 @@ async def drain_queue(
 async def consumer_loop(
     event: asyncio.Event,
     queue: asyncio.Queue[State],
-    scraper: MALScraper,
+    metadata_providers: dict[str, BaseMetadataProvider],
     discord: Discord,
     app: Application | None,
 ) -> None:
@@ -175,10 +182,18 @@ async def consumer_loop(
 
         states_logger.send(state)
 
-        if CLI_ARGS.fetch_episode_titles:
-            state = await wait(scraper.update_episode_title_in(state), event)
+        url = state.get("url", "")
+        for provider in metadata_providers.values():
+            # the naming may be unclear but this checks if the provider can
+            # handle the url
+            if not provider.extract_id(url):
+                continue
 
-        state = await wait(scraper.update_missing_metadata_in(state), event)
+            if CLI_ARGS.fetch_episode_titles:
+                state = await wait(provider.update_episode_title_in(state), event)
+
+            state = await wait(provider.update_missing_metadata_in(state), event)
+            break
 
         if state and not validate_state(state):
             _LOGGER.debug("Invalid state received: %s", state)
@@ -224,14 +239,19 @@ async def async_main() -> None:
     event = asyncio.Event()
     session = aiohttp.ClientSession()
     file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
-    scraper = MALScraper(session, file_watcher_manager)
+
+    _metadata_providers = [MALMetadataProvider(session, file_watcher_manager)]
+    metadata_providers: dict[str, BaseMetadataProvider] = {}
+    for p in _metadata_providers:
+        metadata_providers[p.name] = p
+
     webserver, app = None, None
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
     tasks: list[asyncio.Task[Any]] = []
 
     try:
         if CLI_ARGS.enable_webserver:
-            app = await get_app(queue)
+            app = await get_app(queue, metadata_providers)
             webserver = await start_app(app)
 
         discord.start()
@@ -239,14 +259,16 @@ async def async_main() -> None:
 
         tasks.append(
             asyncio.create_task(
-                consumer_loop(event, queue, scraper, discord, app),
+                consumer_loop(event, queue, metadata_providers, discord, app),
                 name="consumer",
             )
         )
         tasks.extend(
             [
                 asyncio.create_task(
-                    poll_player(poller, event, queue, session, file_watcher_manager),
+                    poll_player(
+                        poller, event, queue, session, file_watcher_manager, app
+                    ),
                     name=poller.__class__.__name__,
                 )
                 for poller in CLI_ARGS.pollers

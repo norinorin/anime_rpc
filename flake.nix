@@ -47,10 +47,10 @@
         inputsFrom = [animeRpcPkg];
         packages = with pkgs; [
           python3
-          python3Packages.pip
           python3Packages.ruff
           python3Packages.pytest
           basedpyright
+          uv
         ];
 
         LD_LIBRARY_PATH =
