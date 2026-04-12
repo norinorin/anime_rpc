@@ -18,7 +18,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                                 .align_x(Center)
                                 .into()
                         } else {
-                            container(LoadingSpinner::view(8., state.animation_progress))
+                            container(LoadingSpinner::view(state.elapsed_time, 2., 15., 60., 3.))
+                                .width(Length::Fixed(60.))
+                                .height(Length::Fixed(60.))
                                 .align_x(Center)
                                 .align_y(Center)
                                 .into()

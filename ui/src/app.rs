@@ -10,7 +10,7 @@ use iced::widget::image::Handle;
 use iced::{Element, Length, Task, window};
 use lru::LruCache;
 use std::collections::HashMap;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tray_icon::TrayIconBuilder;
 use tray_icon::menu::{Menu, MenuItem};
 
@@ -28,9 +28,12 @@ pub struct AnimeRpc {
     pub search_results: Vec<SearchResult>,
     pub image_cache: LruCache<String, Handle>,
     pub window_visible: bool,
-    pub animation_progress: f32,
     #[allow(dead_code)]
     pub tray_icon: tray_icon::TrayIcon,
+
+    // animation
+    start_time: Instant,
+    pub elapsed_time: f32,
 }
 
 impl AnimeRpc {
@@ -67,7 +70,8 @@ impl AnimeRpc {
                 search_results: Vec::new(),
                 image_cache: LruCache::new(image_cache_size()),
                 window_visible: false,
-                animation_progress: 0.0,
+                elapsed_time: 0.0,
+                start_time: Instant::now(),
                 tray_icon,
             },
             Task::perform(fetch_pollers(), Message::PollersFetched),
@@ -82,10 +86,9 @@ impl AnimeRpc {
                 loop {
                     if let Ok(tray_icon::TrayIconEvent::Click { button, .. }) =
                         tray_receiver.try_recv()
+                        && button == tray_icon::MouseButton::Left
                     {
-                        if button == tray_icon::MouseButton::Left {
-                            let _ = output.send(Message::ToggleWindow).await;
-                        }
+                        let _ = output.send(Message::ToggleWindow).await;
                     }
                     if let Ok(event) = menu_receiver.try_recv() {
                         match event.id.as_ref() {
@@ -103,7 +106,7 @@ impl AnimeRpc {
             })
         });
 
-        let tick = iced::time::every(Duration::from_millis(TICK_RATE_MS)).map(|_| Message::Tick);
+        let tick = iced::window::frames().map(|_| Message::Tick);
 
         let keyboard_sub = iced::keyboard::listen().filter_map(|event| match event {
             iced::keyboard::Event::KeyPressed {
@@ -254,7 +257,7 @@ impl AnimeRpc {
                     gtk::main_iteration_do(false);
                 }
 
-                self.animation_progress = (self.animation_progress + 0.02) % 1.0;
+                self.elapsed_time = self.start_time.elapsed().as_secs_f32();
             }
             Message::Quit => {
                 return iced::exit();
