@@ -1,6 +1,11 @@
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
-use iced::{Color, Element, Length, Radians, Theme};
+use iced::widget::{Space, column, container, text, text_input};
+use iced::{Background, Color, Element, Length, Radians, Theme};
 use std::f32::consts::{PI, TAU};
+
+use crate::curves::ease_in_out_cubic;
+use crate::styles::{self, hex};
+use crate::types::Message;
 
 pub struct LoadingSpinner {
     radius: f32,
@@ -26,15 +31,6 @@ impl LoadingSpinner {
         .width(Length::Fixed(size))
         .height(Length::Fixed(size))
         .into()
-    }
-}
-
-fn ease_in_out_cubic(t: f32) -> f32 {
-    let t = t % 1.0;
-    if t < 0.5 {
-        4.0 * t * t * t
-    } else {
-        1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
     }
 }
 
@@ -102,4 +98,31 @@ impl<Message> Program<Message> for LoadingSpinner {
         );
         vec![frame.into_geometry()]
     }
+}
+
+pub fn divider() -> Element<'static, Message> {
+    container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
+        .style(|_theme| container::Style {
+            background: Some(Background::Color(hex(0x2A2A2C))),
+            ..Default::default()
+        })
+        .into()
+}
+
+pub fn underlined_input<'a>(
+    label: &'a str,
+    placeholder: &'a str,
+    value: &'a str,
+    on_change: impl Fn(String) -> Message + 'a,
+) -> Element<'a, Message> {
+    column![
+        text(label).size(13).color(hex(0x888888)),
+        text_input(placeholder, value)
+            .on_input(on_change)
+            .style(styles::transparent_text_input_style)
+            .padding([8, 0]),
+        divider(),
+    ]
+    .spacing(4)
+    .into()
 }

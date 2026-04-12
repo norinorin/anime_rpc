@@ -1,10 +1,11 @@
 use crate::app::AnimeRpc;
+use crate::components::{divider, underlined_input};
+use crate::styles::{self, hex, secondary_button_style};
 use crate::types::{Message, View};
-use crate::utils::clean_dir_name;
 use iced::widget::{
-    Space, button, checkbox, column, container, image, pick_list, row, text, text_input,
+    Space, button, column, container, image, pick_list, row, text, text_input, toggler,
 };
-use iced::{Center, Element, Length};
+use iced::{Center, Element, Font, Length};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let poller_list: Vec<String> = state
@@ -25,7 +26,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         state.active_id.clone(),
         Message::PollerSelected,
     )
-    .placeholder("Select Poller...")
+    .placeholder("Select...")
     .width(Length::Fill);
 
     let is_active = state
@@ -34,36 +35,53 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .and_then(|id| state.pollers.get(id))
         .is_some_and(|p| p.active);
 
-    let search_btn = button("🔍");
+    let search_btn = button("🔍").style(secondary_button_style);
     let search_btn = if is_active {
         search_btn.on_press(Message::SwitchView(View::Search))
     } else {
         search_btn
     };
 
-    let title_placeholder = if let Some(filedir) = &state.active_filedir {
-        clean_dir_name(filedir)
-    } else {
-        "Title...".to_string()
-    };
-
-    column![
-        text("Available Pollers").size(18),
-        poller_select,
-        text("Media Title").size(14),
-        text_input(&title_placeholder, &state.title).on_input(Message::TitleChanged),
-        text("Media URL").size(14),
-        row![
-            text_input("URL...", &state.url).on_input(Message::UrlChanged),
-            search_btn
+    let card_content = column![
+        row![text("Poller").width(Length::Fill).size(16), poller_select].align_y(Center),
+        divider(),
+        underlined_input(
+            "Media title",
+            &state.title_placeholder,
+            &state.title,
+            Message::TitleChanged
+        ),
+        column![
+            row![
+                column![
+                    text("Media URL").size(13).color(hex(0x888888)),
+                    text_input("URL...", &state.url)
+                        .on_input(Message::UrlChanged)
+                        .style(styles::transparent_text_input_style)
+                        .padding([8, 0]),
+                ],
+                search_btn
+            ]
+            .spacing(10),
+            divider(),
         ]
-        .spacing(10),
-        text("Image URL").size(14),
-        text_input("Image URL...", &state.image_url).on_input(Message::ImageUrlChanged),
-        checkbox(state.rewatching)
-            .label("Rewatching")
-            .on_toggle(Message::ToggleRewatching),
-        Space::new().height(Length::Fill),
+        .spacing(4),
+        underlined_input(
+            "Image URL",
+            "URL...",
+            &state.image_url,
+            Message::ImageUrlChanged
+        ),
+        row![
+            text("Rewatching").width(Length::Fill).size(16),
+            toggler(state.rewatching).on_toggle(Message::ToggleRewatching)
+        ]
+        .align_y(Center),
+        divider(),
+        text("Image preview")
+            .width(Length::Fill)
+            .size(12)
+            .align_x(Center),
         if !state.image_url.is_empty()
             && let Some(handle) = state.image_cache.peek(&state.image_url)
         {
@@ -71,22 +89,43 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .width(Length::Fill)
                 .align_x(Center)
         } else {
-            container(Space::new().height(Length::Fill).width(Length::Fill))
+            container(Space::new().height(Length::Shrink).width(Length::Fill))
         },
+    ]
+    .spacing(16);
+
+    let card = container(card_content)
+        .style(styles::card_container_style)
+        .padding(24)
+        .width(Length::Fill);
+
+    let root = column![
+        container(text("Anime RPC").size(34).font(Font {
+            weight: iced::font::Weight::Bold,
+            ..Default::default()
+        }))
+        .padding([0., 24.]),
+        Space::new().height(10),
+        card,
         Space::new().height(Length::Fill),
         row![
-            button("Save Changes")
+            button(text("Save Changes").align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::SaveClicked)
-                .style(button::success)
+                .style(styles::success_button_style)
                 .width(Length::Fill),
-            button("Refresh")
+            button(text("Refresh").align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::RefreshClicked)
-                .style(button::primary)
+                .style(styles::primary_button_style)
                 .width(Length::Shrink)
         ]
         .spacing(10)
+        .padding([0, 24])
     ]
-    .spacing(12)
-    .padding(20)
-    .into()
+    .padding([40., 0.]);
+
+    container(root)
+        .style(styles::black_container_style)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
 }

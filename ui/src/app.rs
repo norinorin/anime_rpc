@@ -20,6 +20,7 @@ pub struct AnimeRpc {
     pub active_id: Option<String>,
     pub active_filedir: Option<String>,
     pub title: String,
+    pub title_placeholder: String,
     pub url: String,
     pub image_url: String,
     pub rewatching: bool,
@@ -62,6 +63,7 @@ impl AnimeRpc {
                 active_id: None,
                 active_filedir: None,
                 title: String::new(),
+                title_placeholder: "Title...".to_string(),
                 url: String::new(),
                 image_url: String::new(),
                 rewatching: false,
@@ -183,6 +185,11 @@ impl AnimeRpc {
                         self.url.clear();
                         self.image_url.clear();
                         self.active_filedir = p.filedir.clone();
+                        self.title_placeholder = if let Some(dir) = &self.active_filedir {
+                            clean_dir_name(dir)
+                        } else {
+                            "Title...".to_string()
+                        }
                     }
 
                     if p.active {

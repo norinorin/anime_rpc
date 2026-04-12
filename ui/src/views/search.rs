@@ -1,11 +1,19 @@
-use crate::animations::LoadingSpinner;
 use crate::app::AnimeRpc;
+use crate::components::LoadingSpinner;
+use crate::styles::{self, hex};
 use crate::types::{Message, View};
-use iced::widget::{button, column, container, image, row, scrollable, text, text_input};
-use iced::{Alignment, Center, Element, Length};
+use iced::widget::{Space, button, column, container, image, row, scrollable, text, text_input};
+use iced::{Alignment, Center, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
-    let results = scrollable(
+    let results_content: Element<'_, Message> = if state.search_results.is_empty() {
+        container(text("No results").color(hex(0x666666)))
+            .width(Length::Fill)
+            .height(Length::Fixed(100.0))
+            .align_x(Center)
+            .align_y(Center)
+            .into()
+    } else {
         column(
             state
                 .search_results
@@ -13,56 +21,85 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .map(|res| {
                     let img_widget: Element<'_, Message> =
                         if let Some(handle) = state.image_cache.peek(&res.image_url) {
-                            container(image(handle.clone()).width(Length::Fixed(60.0)))
-                                .width(Length::Fixed(60.0))
-                                .align_x(Center)
-                                .into()
-                        } else {
-                            container(LoadingSpinner::view(state.elapsed_time, 2., 15., 60., 3.))
-                                .width(Length::Fixed(60.))
-                                .height(Length::Fixed(60.))
+                            container(image(handle.clone()).width(Length::Fixed(50.0)))
+                                .width(Length::Fixed(50.0))
+                                .height(Length::Fixed(50.0))
                                 .align_x(Center)
                                 .align_y(Center)
                                 .into()
+                        } else {
+                            LoadingSpinner::view(state.elapsed_time, 1.5, 10., 50.0, 3.)
                         };
 
                     button(
                         row![
                             img_widget,
                             column![
-                                text(&res.title).size(16).font(iced::Font {
+                                text(&res.title).size(15).font(Font {
                                     weight: iced::font::Weight::Bold,
                                     ..Default::default()
                                 }),
-                                text("MyAnimeList").size(12).color([0.5, 0.5, 0.5]),
+                                text("MyAnimeList").size(12).color(hex(0x888888)),
                             ]
-                            .spacing(5)
+                            .spacing(2)
                         ]
-                        .spacing(15)
-                        .align_y(Alignment::Center)
-                        .padding(5),
+                        .spacing(12)
+                        .align_y(Alignment::Center),
                     )
                     .width(Length::Fill)
+                    .padding([8, 12])
+                    .style(styles::ghost_button_style)
                     .on_press(Message::ResultSelected(res.clone()))
                     .into()
                 })
                 .collect::<Vec<Element<Message>>>(),
         )
-        .spacing(10),
-    );
-
-    column![
-        button("<- Back").on_press(Message::SwitchView(View::Config)),
+        .spacing(4)
+        .into()
+    };
+    let results_scroll = scrollable(results_content);
+    let card = container(results_scroll)
+        .style(styles::card_container_style)
+        .padding(0)
+        .width(Length::Fill)
+        .height(Length::Fill);
+    let root = column![
         row![
-            text_input("Search anime...", &state.search_query)
-                .on_input(Message::SearchQueryChanged)
-                .on_submit(Message::PerformSearch),
-            button("Go").on_press(Message::PerformSearch)
+            button(text("<").size(28).font(Font {
+                weight: iced::font::Weight::Light,
+                ..Default::default()
+            }))
+            .style(styles::ghost_button_style)
+            .on_press(Message::SwitchView(View::Config)),
+            text("Search").size(34).font(Font {
+                weight: iced::font::Weight::Bold,
+                ..Default::default()
+            })
         ]
-        .spacing(10),
-        results,
+        .spacing(12)
+        .align_y(Center)
+        .padding([0, 12]),
+        row![
+            text_input("Search title...", &state.search_query)
+                .on_input(Message::SearchQueryChanged)
+                .on_submit(Message::PerformSearch)
+                .style(styles::search_input_style)
+                .padding([12, 16]),
+            button("Go")
+                .on_press(Message::PerformSearch)
+                .style(styles::ghost_button_style)
+                .padding([12, 16])
+        ]
+        .spacing(8)
+        .padding([0, 24]),
+        Space::new().height(10),
+        card
     ]
-    .spacing(15)
-    .padding(20)
-    .into()
+    .spacing(16)
+    .padding(Padding::new(0.).top(40).right(0).bottom(20).left(0));
+    container(root)
+        .style(styles::black_container_style)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .into()
 }

@@ -1,7 +1,9 @@
-mod animations;
 mod api;
 mod app;
+mod components;
 mod constants;
+mod curves;
+mod styles;
 mod types;
 mod utils;
 mod views;
