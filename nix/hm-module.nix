@@ -6,11 +6,14 @@ self: {
 }: let
   cfg = config.services.anime_rpc;
   pkg = self.packages.${pkgs.system}.default;
+  uiPkg = self.packages.${pkgs.system}.ui;
 in {
   options.services.anime_rpc = {
     enable = lib.mkEnableOption "Anime RPC Service";
 
     enableWebserver = lib.mkEnableOption "the webserver for browser userscripts (extension integration)";
+
+    enableUI = lib.mkEnableOption "the UI editor for .rpc files";
 
     clearOnPause = lib.mkEnableOption "clearing rich presence on media pause";
 
@@ -47,7 +50,7 @@ in {
   };
 
   config = lib.mkIf cfg.enable {
-    home.packages = [pkg];
+    home.packages = [pkg] ++ lib.optional cfg.enableUI uiPkg;
 
     systemd.user.services.anime_rpc = {
       Unit = {

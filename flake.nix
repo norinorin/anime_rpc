@@ -16,6 +16,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
     in {
       default = pkgs.callPackage ./nix/package.nix {};
+      ui = pkgs.callPackage ./nix/ui.nix {};
     });
 
     overlays.default = final: prev: {
@@ -42,9 +43,10 @@
     devShells = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
       animeRpcPkg = pkgs.callPackage ./nix/package.nix {};
+      animeRpcUiPkg = pkgs.callPackage ./nix/ui.nix {};
     in {
       default = pkgs.mkShell {
-        inputsFrom = [animeRpcPkg];
+        inputsFrom = [animeRpcPkg animeRpcUiPkg];
         packages = with pkgs; [
           python3
           python3Packages.ruff

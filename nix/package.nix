@@ -41,6 +41,7 @@ in
 
     propagatedBuildInputs = with python3Packages; [
       aiohttp
+      aiohttp-cors
       pymediainfo
       beautifulsoup4
       coloredlogs
@@ -56,16 +57,6 @@ in
       ]
       ++ lib.optionals stdenv.hostPlatform.isLinux linuxSystemDeps
       ++ lib.optionals stdenv.hostPlatform.isDarwin darwinSystemDeps;
-
-    postInstall = ''
-      site_packages=$out/${python3Packages.python.sitePackages}
-
-      mkdir -p $site_packages/lib
-      mkdir -p $site_packages/include
-
-      cp -r lib/* $site_packages/lib/
-      cp -r include/* $site_packages/include/
-    '';
 
     makeWrapperArgs = [
       "--prefix ${libEnvVar} : ${lib.makeLibraryPath [libmediainfo]}"

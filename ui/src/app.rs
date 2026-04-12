@@ -1,5 +1,5 @@
 use crate::api::{fetch_img, fetch_pollers, perform_search};
-use crate::constants::{ICON_PATH, TICK_RATE_MS, image_cache_size};
+use crate::constants::{TICK_RATE_MS, image_cache_size};
 use crate::types::{Message, Poller, SearchResult, View};
 use crate::utils::{clean_dir_name, load_icon, load_rpc, save_rpc};
 use crate::views;
@@ -52,7 +52,7 @@ impl AnimeRpc {
             .with_menu(Box::new(tray_menu))
             .with_menu_on_left_click(false)
             .with_tooltip("Anime RPC")
-            .with_icon(load_icon(ICON_PATH))
+            .with_icon(load_icon())
             .build()
             .unwrap();
 

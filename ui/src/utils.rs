@@ -1,15 +1,19 @@
 use std::fs;
 use tray_icon::Icon;
 
-pub fn load_icon(path: &str) -> Icon {
+pub fn load_icon() -> Icon {
     let (icon_rgba, icon_width, icon_height) = {
-        let image = ::image::open(path).expect("Failed to open icon path").into_rgba8();
+        let image_bytes = include_bytes!("../assets/icon.png");
+        let image = ::image::load_from_memory(image_bytes)
+            .expect("Failed to parse embedded icon")
+            .into_rgba8();
+
         let (width, height) = image.dimensions();
         (image.into_raw(), width, height)
     };
+
     Icon::from_rgba(icon_rgba, icon_width, icon_height).expect("Failed to create icon")
 }
-
 pub async fn load_rpc(dir: String) -> Result<String, String> {
     let path = format!("{}/.rpc", dir);
     fs::read_to_string(path).map_err(|e| e.to_string())
