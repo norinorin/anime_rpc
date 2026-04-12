@@ -5,7 +5,6 @@ import threading
 import time
 from asyncio import Future
 from enum import IntEnum
-from pathlib import Path
 from typing import Any, Callable, overload
 from importlib.resources import files
 
