@@ -42,6 +42,25 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         search_btn
     };
 
+    let image_preview: Element<'_, Message> = if !state.image_url.is_empty()
+        && let Some(handle) = state.image_cache.peek(&state.image_url)
+    {
+        column![
+            divider(),
+            text("Image preview")
+                .width(Length::Fill)
+                .size(12)
+                .align_x(Center)
+                .color(hex(0x888888)),
+            container(image(handle).width(Length::Fixed(200.0)))
+                .width(Length::Fill)
+                .align_x(Center),
+        ]
+        .into()
+    } else {
+        Space::new().height(0).width(0).into()
+    };
+
     let card_content = column![
         row![text("Poller").width(Length::Fill).size(16), poller_select].align_y(Center),
         divider(),
@@ -77,22 +96,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             toggler(state.rewatching).on_toggle(Message::ToggleRewatching)
         ]
         .align_y(Center),
-        divider(),
-        text("Image preview")
-            .width(Length::Fill)
-            .size(12)
-            .align_x(Center),
-        if !state.image_url.is_empty()
-            && let Some(handle) = state.image_cache.peek(&state.image_url)
-        {
-            container(image(handle).width(Length::Fixed(200.0)))
-                .width(Length::Fill)
-                .align_x(Center)
-        } else {
-            container(Space::new().height(Length::Shrink).width(Length::Fill))
-        },
+        image_preview
     ]
-    .spacing(16);
+    .spacing(10);
 
     let card = container(card_content)
         .style(styles::card_container_style)
