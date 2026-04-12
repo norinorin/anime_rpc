@@ -32,24 +32,43 @@
 
 ## Installation
 
-1. Clone the repository:
+<details>
+
+<summary>Using uv</summary>
+
+Make sure [uv](https://docs.astral.sh/uv/getting-started/installation/#pypi) is installed, then run:
 
 ```sh
-git clone https://github.com/norinorin/anime_rpc.git
-cd anime_rpc
-```
+# Install it
+uv tool install https://github.com/norinorin/anime_rpc
 
-2. Install the package:
-
-```sh
-pip install -e .
-```
-
-3. Run the app:
-
-```sh
+# Run it
 anime_rpc -h
+
+# Or if it's not in PATH
+uv tool run anime_rpc -h
 ```
+
+</details>
+
+<details>
+
+<summary>Using Nix + Flake + Home Manager</summary>
+
+1. Add `anime_rpc.url = "github:norinorin/anime_rpc"` to your inputs.
+2. Import the home module `inputs.anime_rpc.homeModules.anime_rpc`.
+3. Enable the service:
+
+```nix
+services.anime_rpc = {
+  enable = true;
+  enableWebserver = true;
+  pollers = ["mpv-webui:14567" "mpc"];
+  fetchEpisodeTitles = true;
+};
+```
+
+</details>
 
 ## Local Playback Configuration
 

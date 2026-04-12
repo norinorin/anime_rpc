@@ -7,6 +7,7 @@ from asyncio import Future
 from enum import IntEnum
 from pathlib import Path
 from typing import Any, Callable, overload
+from importlib.resources import files
 
 import cffi
 import keyring
@@ -45,8 +46,8 @@ def strip_preprocessor_directives(header_text: str) -> str:
 
 
 _LOGGER = logging.getLogger("social_sdk")
-INCLUDE_PATH = Path(__file__).parent / "../include"
-LIB_PATH = Path(__file__).parent / "../lib"
+INCLUDE_PATH = files("anime_rpc") / "include"
+LIB_PATH = files("anime_rpc") / "lib"
 
 if sys.platform == "win32":
     LIB_NAME = "discord_partner_sdk.dll"

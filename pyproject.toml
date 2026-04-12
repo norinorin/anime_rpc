@@ -1,46 +1,49 @@
-[tool.ruff.lint]
-ignore = ["S101", "D100", "D101", "D102", "D103", "D107"]
-
-[tool.pyright]
-typeCheckingMode = "strict"
-
-[build-system]
-requires = ["setuptools>=61", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-packages = ["anime_rpc"]
-
-[tool.setuptools_scm]
-write_to = "anime_rpc/_version.py"
-version_scheme = "guess-next-dev"
-local_scheme = "node-and-date"
-
 [project]
 name = "anime_rpc"
 description = "Anime Rich Presence integration via Discord RPC"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [{ name = "norinorin" }]
-dynamic = ["version"]
 dependencies = [
-    "aiohttp>=3.10.11",
-    "pymediainfo>=7.0.1",
-    "beautifulsoup4>=4.13.3",
-    "coloredlogs>=15.0.1",
-    "platformdirs>=4.3.7",
-    "watchdog>=6.0.0",
-    "cffi>=2.0.0",
-    "keyring>=25.6.0",
-    "aiohttp-cors==0.8.1"
+  "aiohttp>=3.10.11",
+  "aiohttp-cors==0.8.1",
+  "beautifulsoup4>=4.13.3",
+  "cffi>=2.0.0",
+  "coloredlogs>=15.0.1",
+  "keyring>=25.6.0",
+  "platformdirs>=4.3.7",
+  "pymediainfo>=7.0.1",
+  "watchdog>=6.0.0",
 ]
-
-[dependency-groups]
-dev = [
-      "ruff",
-      "basedpyright",
-      "pytest",
-]
+dynamic = ["version"]
 
 [project.scripts]
 anime_rpc = "anime_rpc.main:main"
+
+[dependency-groups]
+dev = [
+  "basedpyright",
+  "pytest",
+  "ruff",
+]
+
+[build-system]
+requires = ["setuptools>=61", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[tool.pyright]
+typeCheckingMode = "strict"
+
+[tool.ruff.lint]
+ignore = ["S101", "D100", "D101", "D102", "D103", "D107"]
+
+[tool.setuptools]
+packages = ["anime_rpc"]
+
+[tool.setuptools.package-data]
+"anime_rpc" = ["include/*", "lib/*"]
+
+[tool.setuptools_scm]
+write_to = "anime_rpc/_version.py"
+version_scheme = "calver-by-date"
+local_scheme = "node-and-date"
