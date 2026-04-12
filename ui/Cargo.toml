@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 gtk = "0.18.2"
-iced = { version = "0.14.0", features = ["tokio", "wgpu", "image"] }
+iced = { version = "0.14.0", features = ["tokio", "wgpu", "image", "canvas"] }
 image = "0.25.10"
 lru = "0.16.3"
 reqwest = { version = "0.13.2", features = ["json"] }
