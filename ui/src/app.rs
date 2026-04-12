@@ -159,17 +159,17 @@ impl AnimeRpc {
             }
             Message::PollersFetched(Ok(data)) => {
                 self.pollers = data;
-                if let Some(id) = &self.active_id {
-                    if !self.pollers.contains_key(id) {
-                        self.active_id = None;
-                        self.active_filedir = None;
-                    }
+                if let Some(id) = &self.active_id
+                    && !self.pollers.contains_key(id)
+                {
+                    self.active_id = None;
+                    self.active_filedir = None;
                 }
 
-                if self.active_id.is_none() {
-                    if let Some((id, _)) = self.pollers.iter().find(|(_, p)| p.active) {
-                        self.active_id = Some(id.clone());
-                    }
+                if self.active_id.is_none()
+                    && let Some((id, _)) = self.pollers.iter().find(|(_, p)| p.active)
+                {
+                    self.active_id = Some(id.clone());
                 }
 
                 if let Some(id) = &self.active_id {
