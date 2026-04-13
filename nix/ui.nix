@@ -64,7 +64,7 @@ rustPlatform.buildRustPackage {
   ];
 
   postInstall = ''
-    install -Dm644 assets/icon.png $out/share/icons/anime-rpc-ui.png
+    install -Dm644 assets/icon.png $out/share/icons/anime-rpc.png
   '';
 
   postFixup = ''
