@@ -56,6 +56,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .width(Length::Fill)
                 .align_x(Center),
         ]
+        .spacing(10)
         .into()
     } else {
         Space::new().height(0).width(0).into()
