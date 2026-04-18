@@ -1,6 +1,6 @@
 use crate::api::{fetch_img, fetch_pollers, perform_search};
 use crate::constants::{TICK_RATE_MS, image_cache_size};
-use crate::types::{Message, Poller, SearchResult, View};
+use crate::types::{Message, Poller, SaveStatus, SearchResult, View};
 use crate::utils::{clean_dir_name, load_icon, load_rpc, save_rpc};
 use crate::views;
 use iced::futures::SinkExt;
@@ -31,6 +31,7 @@ pub struct AnimeRpc {
     pub window_visible: bool,
     #[allow(dead_code)]
     pub tray_icon: tray_icon::TrayIcon,
+    pub save_status: SaveStatus,
 
     // animation
     start_time: Instant,
@@ -72,6 +73,7 @@ impl AnimeRpc {
                 search_results: Vec::new(),
                 image_cache: LruCache::new(image_cache_size()),
                 window_visible: false,
+                save_status: SaveStatus::Idle,
                 elapsed_time: 0.0,
                 start_time: Instant::now(),
                 tray_icon,
@@ -254,7 +256,19 @@ impl AnimeRpc {
                         self.image_url.clone(),
                         self.rewatching,
                     );
+
+                    self.save_status = SaveStatus::Saved;
+
+                    return Task::perform(
+                        async {
+                            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        },
+                        |_| Message::ResetSaveStatus,
+                    );
                 }
+            }
+            Message::ResetSaveStatus => {
+                self.save_status = SaveStatus::Idle;
             }
             Message::ImageLoaded(url, Some(handle)) => {
                 self.image_cache.put(url, handle);

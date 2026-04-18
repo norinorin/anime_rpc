@@ -1,7 +1,7 @@
 use crate::app::AnimeRpc;
 use crate::components::{divider, underlined_input};
 use crate::styles::{self, hex, secondary_button_style};
-use crate::types::{Message, View};
+use crate::types::{Message, SaveStatus, View};
 use iced::widget::{
     Space, button, column, container, image, pick_list, row, text, text_input, toggler,
 };
@@ -62,6 +62,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         Space::new().height(0).width(0).into()
     };
 
+    let save_text = if state.save_status == SaveStatus::Saved {
+        "✔ Saved"
+    } else {
+        "Save Changes"
+    };
+
     let card_content = column![
         row![text("Poller").width(Length::Fill).size(16), poller_select].align_y(Center),
         divider(),
@@ -116,7 +122,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         card,
         Space::new().height(Length::Fill),
         row![
-            button(text("Save Changes").align_x(iced::alignment::Horizontal::Center))
+            button(text(save_text).align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::SaveClicked)
                 .style(styles::success_button_style)
                 .width(Length::Fill),

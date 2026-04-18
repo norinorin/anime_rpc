@@ -38,10 +38,18 @@ pub enum Message {
     SearchFinished(Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
     SaveClicked,
+    ResetSaveStatus,
     PerformSearch,
     ImageLoaded(String, Option<Handle>),
     ToggleWindow,
     RefreshClicked,
     Tick,
     Quit,
+}
+
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SaveStatus {
+    #[default]
+    Idle,
+    Saved,
 }
