@@ -44,6 +44,7 @@ pub enum Message {
     ImageLoaded(String, Option<Handle>),
     ToggleWindow,
     RefreshClicked,
+    TabPressed { shift: bool },
     Tick,
     Quit,
 }

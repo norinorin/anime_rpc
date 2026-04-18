@@ -117,6 +117,13 @@ impl AnimeRpc {
                 key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
                 ..
             } => Some(Message::ToggleWindow),
+            iced::keyboard::Event::KeyPressed {
+                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Tab),
+                modifiers,
+                ..
+            } => Some(Message::TabPressed {
+                shift: modifiers.shift(),
+            }),
             _ => None,
         });
 
@@ -330,6 +337,13 @@ impl AnimeRpc {
             }
             Message::Quit => {
                 return iced::exit();
+            }
+            Message::TabPressed { shift } => {
+                if shift {
+                    return iced::widget::operation::focus_previous();
+                } else {
+                    return iced::widget::operation::focus_next();
+                }
             }
             _ => {}
         }
