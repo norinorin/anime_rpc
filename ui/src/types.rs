@@ -38,6 +38,7 @@ pub enum Message {
     SearchFinished(Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
     SaveClicked,
+    OpenUrlClicked,
     ResetSaveStatus,
     PerformSearch,
     ImageLoaded(String, Option<Handle>),

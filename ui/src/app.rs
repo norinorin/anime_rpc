@@ -267,6 +267,54 @@ impl AnimeRpc {
                     );
                 }
             }
+            Message::OpenUrlClicked => {
+                if !self.url.is_empty() {
+                    let cloned_url = self.url.clone();
+                    return Task::perform(
+                        async move {
+                            #[cfg(target_os = "windows")]
+                            let _ = std::process::Command::new("cmd")
+                                .args(["/C", "start", &cloned_url])
+                                .spawn();
+
+                            #[cfg(target_os = "macos")]
+                            let _ = std::process::Command::new("open").arg(&cloned_url).spawn();
+
+                            #[cfg(target_os = "linux")]
+                            {
+                                {
+                                    // This will not activate the uri handler
+                                    // But I'll keep it here for when iced supports xdg-activation-v1
+                                    let opened_via_portal = async {
+                                        if let Ok(parsed_url) = ashpd::Uri::parse(&cloned_url)
+                                            && let Ok(proxy) =
+                                                ashpd::desktop::open_uri::OpenURIProxy::new().await
+                                            && let Ok(request) = proxy.open_uri(
+                                                None,
+                                                &parsed_url,
+                                                ashpd::desktop::open_uri::OpenFileOptions::default()
+                                            ).await {
+                                                    return request.response().is_ok();
+                                        }
+                                        false
+                                    }
+                                    .await;
+
+                                    if !opened_via_portal {
+                                        println!("Falling back");
+                                        let _ = std::process::Command::new("xdg-open")
+                                            .arg(&cloned_url)
+                                            .spawn();
+                                    } else {
+                                        println!("XDG success");
+                                    }
+                                }
+                            }
+                        },
+                        |_| Message::Tick,
+                    );
+                }
+            }
             Message::ResetSaveStatus => {
                 self.save_status = SaveStatus::Idle;
             }

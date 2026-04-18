@@ -42,6 +42,13 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         search_btn
     };
 
+    let open_btn = button("🌐").style(secondary_button_style);
+    let open_btn = if !state.url.is_empty() {
+        open_btn.on_press(Message::OpenUrlClicked)
+    } else {
+        open_btn
+    };
+
     let image_preview: Element<'_, Message> = if !state.image_url.is_empty()
         && let Some(handle) = state.image_cache.peek(&state.image_url)
     {
@@ -83,10 +90,11 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     text("Media URL").size(13).color(hex(0x888888)),
                     text_input("URL...", &state.url)
                         .on_input(Message::UrlChanged)
+                        .on_submit(Message::OpenUrlClicked)
                         .style(styles::transparent_text_input_style)
                         .padding([8, 0]),
                 ],
-                search_btn
+                row![open_btn, search_btn].spacing(8)
             ]
             .spacing(10),
             divider(),
