@@ -307,13 +307,11 @@ impl AnimeRpc {
                                     }
                                     .await;
 
+                                    // Fallback
                                     if !opened_via_portal {
-                                        println!("Falling back");
                                         let _ = std::process::Command::new("xdg-open")
                                             .arg(&cloned_url)
                                             .spawn();
-                                    } else {
-                                        println!("XDG success");
                                     }
                                 }
                             }
