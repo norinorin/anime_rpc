@@ -25,7 +25,6 @@ from anime_rpc.timer import Timer
 from anime_rpc.ux import init_logging
 from anime_rpc.webserver import get_app, start_app
 
-TIME_DISCREPANCY_TOLERANCE_MS = 3_000
 # fetch vars every 1 second
 POLLING_INTERVAL = 1.0
 
