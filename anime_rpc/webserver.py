@@ -95,7 +95,6 @@ async def get_app(
     queue: asyncio.Queue[State], metadata_providers: dict[str, BaseMetadataProvider]
 ) -> Application:
     app = Application()
-    app["current_state"] = {}
     app["metadata_providers"] = metadata_providers
     app["pollers"] = {
         p.origin(): {"active": False, "filedir": None, "display_name": p.display_name}

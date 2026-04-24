@@ -77,6 +77,7 @@ class StateOptions(TypedDict):
 class UpdateFlag(Flag):
     SEEKING = auto()
     PERIODIC_UPDATE = auto()
+    SPED_UP = auto()
 
 
 class Presence:

@@ -15,7 +15,6 @@ from anime_rpc.asyncio_helper import Bail, wait
 from anime_rpc.cli import CLI_ARGS, print_cli_args
 from anime_rpc.config import Config, parse_rpc_config
 from anime_rpc.file_watcher import FileWatcherManager, Subscription
-from anime_rpc.formatting import ms2timestamp
 from anime_rpc.matcher import generate_regex_pattern
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlag
@@ -153,14 +152,12 @@ async def consumer_loop(
     queue: asyncio.Queue[State],
     metadata_providers: dict[str, BaseMetadataProvider],
     discord: Discord,
-    app: Application | None,
 ) -> None:
     presence = Presence(discord)
     timer = Timer()
 
     # internal states
     last_state = State()
-    last_pos: int = -1
     last_origin: str = ""
     flags = UpdateFlag(0)
 
@@ -200,24 +197,7 @@ async def consumer_loop(
             _LOGGER.debug("Overriding invalid state with an empty one...")
             state = State()
 
-        timer.tick()
-
-        if timer.should_force_update():
-            flags |= UpdateFlag.PERIODIC_UPDATE
-
-        # force update if the position seems off (seeking)
-        pos: int | None = state.get("position")
-        if (
-            pos is not None
-            and last_pos >= 0
-            and abs(pos - last_pos) > TIME_DISCREPANCY_TOLERANCE_MS
-        ):
-            _LOGGER.info(
-                "Seeking from %s to %s",
-                ms2timestamp(last_pos),
-                ms2timestamp(pos),
-            )
-            flags |= UpdateFlag.SEEKING
+        flags = timer.tick(state, flags)
 
         try:
             last_state = await presence.update(state, last_state, flags=flags)
@@ -227,10 +207,6 @@ async def consumer_loop(
             break
 
         flags = UpdateFlag(0)
-        last_pos = pos or -1
-
-        if app:
-            app["current_state"] = last_state
 
 
 async def async_main() -> None:
@@ -259,7 +235,7 @@ async def async_main() -> None:
 
         tasks.append(
             asyncio.create_task(
-                consumer_loop(event, queue, metadata_providers, discord, app),
+                consumer_loop(event, queue, metadata_providers, discord),
                 name="consumer",
             )
         )
