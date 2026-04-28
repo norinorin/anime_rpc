@@ -48,8 +48,8 @@ class GroupedStreamHandler(logging.StreamHandler[TextIO]):
                     return
 
                 # \033[{N}A : move up N terminal rows
-                # \033[J : clear from the cursor to the end of the screen
-                # \033[90m: gray colour
+                # \033[J    : clear from the cursor to the end of the screen
+                # \033[90m  : gray colour
                 formatted_msg = f"{msg} \033[90m[{self.count}x]\033[0m"
                 self.stream.write(
                     f"\033[{self.last_visual_lines}A\033[J{formatted_msg}\n"
