@@ -30,18 +30,11 @@ class GroupedStreamHandler(logging.StreamHandler[TextIO]):
             for line in clean_msg.split("\n")
         )
 
-    def _maybe_flush_non_tty_dupes(self) -> None:
-        if self.is_tty:
-            return
-
-        if self.count <= 1:
-            return
-
-        if self.last_record is None:
+    def _maybe_write_non_tty_summary(self) -> None:
+        if self.is_tty or self.count <= 1 or self.last_record is None:
             return
 
         self.stream.write(f"--- Last message repeated {self.count - 1} times ---\n")
-        self.stream.flush()
 
     def emit(self, record: logging.LogRecord) -> None:
         try:
@@ -65,8 +58,7 @@ class GroupedStreamHandler(logging.StreamHandler[TextIO]):
                 self.last_visual_lines = self._get_visual_lines(formatted_msg)
                 return
 
-            self._maybe_flush_non_tty_dupes()
-
+            self._maybe_write_non_tty_summary()
             self.stream.write(f"{msg}\n")
             self.stream.flush()
             self.last_record = current_record
@@ -77,7 +69,7 @@ class GroupedStreamHandler(logging.StreamHandler[TextIO]):
 
     def close(self) -> None:
         try:
-            self._maybe_flush_non_tty_dupes()
+            self._maybe_write_non_tty_summary()
         finally:
             super().close()
 
