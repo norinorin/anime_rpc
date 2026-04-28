@@ -7,11 +7,6 @@ from anime_rpc.cli import CLI_ARGS
 
 
 def init_logging():
-    # get rid of discord-rpc default logger
-    for handler in logging.root.handlers[:]:
-        logging.root.removeHandler(handler)
-
-    logging.getLogger("Discord RPC").disabled = True
     logging.getLogger("watchdog").setLevel(logging.WARNING)
 
     level = (
