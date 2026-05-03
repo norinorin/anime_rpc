@@ -40,7 +40,7 @@ Make sure [uv](https://docs.astral.sh/uv/getting-started/installation/#pypi) is 
 
 ```sh
 # Install it
-uv tool install https://github.com/norinorin/anime_rpc
+uv tool install https://github.com/norinorin/anime_rpc.git
 
 # Run it
 anime_rpc -h
