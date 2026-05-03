@@ -6,7 +6,7 @@
 </h1>
 
 <p align="center">
-  A Discord Rich Presence integration that shows what (anime) you are watching.
+  A Discord Rich Presence integration that shows what anime (or anything, really) you are watching.
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 - **Discord Rich Presence without running Discord**  
   Show what you’re watching without needing the Discord client open via OAuth2.
 
-- **Automatic anime episode tracking & metadata scraping**  
+- **Automatic anime episode & metadata scraping**  
   Scrapes anime details and episode info from MyAnimeList with caching.
 
 - **Dynamic activity name**  
@@ -70,7 +70,7 @@ services.anime_rpc = {
 
 </details>
 
-## Local Playback Configuration
+## Local Playback Configuration (Downloaded Episodes)
 
 **anime_rpc** looks for a configuration file named `.rpc` (short for Rich Presence Config—not to be confused with Remote Procedure Call, or even Rich Presence Client :p) in the anime folder you're watching. If no such file is found, the folder is ignored.
 
@@ -84,9 +84,11 @@ There are two ways to set the metadata:
 
 To use the scraper, you only need to set the `url` key to the respective MAL page. This will automatically get the title, image URL, and episode titles (if run using `--fetch-episode-titles`) for the presence.
 
+Example:
+
 ```env
-# .rpc
-url=MAL_URL_HERE
+# /home/<user>/Videos/One Piece/.rpc
+url=https://myanimelist.net/anime/21/One_Piece
 ```
 
 ---
@@ -130,7 +132,7 @@ Refer to [the example config](example.rpc) to get started.
 | mpv      | `--poller mpv-webui[:port]` | Polls mpv via [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui). Port defaults to **8080**. |
 | mpc      | `--poller mpc[:port]`       | Polls MPC via its web interface. Port defaults to **13579**.                                                   |
 
-### 2. Userscripts
+### 2. Userscripts (Web Streaming)
 
 Userscripts (read more on them [here](https://github.com/OpenUserJs/OpenUserJS.org/wiki/Userscript-beginners-HOWTO) if you've never heard of them) require a two-step installation: (1) the [core engine](https://raw.githubusercontent.com/norinorin/anime_rpc/refs/heads/main/userscripts/core.user.js), and then (2) the scraper for each website you want to use:
 
