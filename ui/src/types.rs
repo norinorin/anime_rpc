@@ -46,7 +46,6 @@ pub enum Message {
     RefreshClicked,
     TabPressed { shift: bool },
     Tick,
-    Quit,
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]

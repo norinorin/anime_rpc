@@ -19,7 +19,7 @@ pub fn main() -> iced::Result {
         .window(window::Settings {
             size: Size::new(constants::WINDOW_WIDTH, constants::WINDOW_HEIGHT),
             resizable: false,
-            visible: false,
+            visible: true,
             ..Default::default()
         })
         .theme(|_state: &AnimeRpc| iced::Theme::Dark)

@@ -1,18 +1,14 @@
 use crate::api::{fetch_img, fetch_pollers, perform_search};
-use crate::constants::{TICK_RATE_MS, image_cache_size};
+use crate::constants::image_cache_size;
 use crate::types::{Message, Poller, SaveStatus, SearchResult, View};
-use crate::utils::{clean_dir_name, load_icon, load_rpc, save_rpc};
+use crate::utils::{clean_dir_name, load_rpc, save_rpc};
 use crate::views;
-use iced::futures::SinkExt;
-use iced::futures::channel::mpsc::Sender;
 use iced::widget::container;
 use iced::widget::image::Handle;
 use iced::{Element, Length, Task, window};
 use lru::LruCache;
 use std::collections::HashMap;
-use std::time::{Duration, Instant};
-use tray_icon::TrayIconBuilder;
-use tray_icon::menu::{Menu, MenuItem};
+use std::time::Instant;
 
 pub struct AnimeRpc {
     pub current_view: View,
@@ -29,8 +25,6 @@ pub struct AnimeRpc {
     pub search_results: Vec<SearchResult>,
     pub image_cache: LruCache<String, Handle>,
     pub window_visible: bool,
-    #[allow(dead_code)]
-    pub tray_icon: tray_icon::TrayIcon,
     pub save_status: SaveStatus,
 
     // animation
@@ -40,23 +34,6 @@ pub struct AnimeRpc {
 
 impl AnimeRpc {
     pub fn init() -> (Self, Task<Message>) {
-        let _ = gtk::init();
-        let tray_menu = Menu::new();
-        tray_menu
-            .append_items(&[
-                &MenuItem::with_id("show", "Show/Hide", true, None),
-                &MenuItem::with_id("quit", "Quit", true, None),
-            ])
-            .unwrap();
-
-        let tray_icon = TrayIconBuilder::new()
-            .with_menu(Box::new(tray_menu))
-            .with_menu_on_left_click(false)
-            .with_tooltip("Anime RPC")
-            .with_icon(load_icon())
-            .build()
-            .unwrap();
-
         (
             Self {
                 current_view: View::Config,
@@ -76,40 +53,12 @@ impl AnimeRpc {
                 save_status: SaveStatus::Idle,
                 elapsed_time: 0.0,
                 start_time: Instant::now(),
-                tray_icon,
             },
             Task::perform(fetch_pollers(), Message::PollersFetched),
         )
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
-        let tray_sub = iced::Subscription::run(|| {
-            iced::stream::channel(10, |mut output: Sender<Message>| async move {
-                let tray_receiver = tray_icon::TrayIconEvent::receiver();
-                let menu_receiver = tray_icon::menu::MenuEvent::receiver();
-                loop {
-                    if let Ok(tray_icon::TrayIconEvent::Click { button, .. }) =
-                        tray_receiver.try_recv()
-                        && button == tray_icon::MouseButton::Left
-                    {
-                        let _ = output.send(Message::ToggleWindow).await;
-                    }
-                    if let Ok(event) = menu_receiver.try_recv() {
-                        match event.id.as_ref() {
-                            "show" => {
-                                let _ = output.send(Message::ToggleWindow).await;
-                            }
-                            "quit" => {
-                                let _ = output.send(Message::Quit).await;
-                            }
-                            _ => {}
-                        }
-                    }
-                    tokio::time::sleep(Duration::from_millis(TICK_RATE_MS)).await;
-                }
-            })
-        });
-
         let tick = iced::window::frames().map(|_| Message::Tick);
 
         let keyboard_sub = iced::keyboard::listen().filter_map(|event| match event {
@@ -127,7 +76,7 @@ impl AnimeRpc {
             _ => None,
         });
 
-        iced::Subscription::batch([tray_sub, tick, keyboard_sub])
+        iced::Subscription::batch([tick, keyboard_sub])
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -327,14 +276,7 @@ impl AnimeRpc {
                 self.image_cache.put(url, handle);
             }
             Message::Tick => {
-                while gtk::events_pending() {
-                    gtk::main_iteration_do(false);
-                }
-
                 self.elapsed_time = self.start_time.elapsed().as_secs_f32();
-            }
-            Message::Quit => {
-                return iced::exit();
             }
             Message::TabPressed { shift } => {
                 if shift {
