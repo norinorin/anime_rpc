@@ -14,8 +14,16 @@
   in {
     packages = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
+      y = toString (pkgs.lib.toIntBase10 (pkgs.lib.substring 2 2 self.lastModifiedDate));
+      m = toString (pkgs.lib.toIntBase10 (pkgs.lib.substring 4 2 self.lastModifiedDate));
+      d = toString (pkgs.lib.toIntBase10 (pkgs.lib.substring 6 2 self.lastModifiedDate));
+      version = "${y}.${m}.${d}.0.dev${
+        if self ? shortRev
+        then "0+${self.shortRev}"
+        else "0"
+      }";
     in {
-      default = pkgs.callPackage ./nix/package.nix {};
+      default = pkgs.callPackage ./nix/package.nix {inherit version;};
       ui = pkgs.callPackage ./nix/ui.nix {};
     });
 

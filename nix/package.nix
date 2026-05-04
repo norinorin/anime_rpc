@@ -3,6 +3,7 @@
   stdenv,
   python3Packages,
   libmediainfo,
+  version ? "0.0.0+unknown",
   autoPatchelfHook ? null,
   alsa-lib ? null,
   libpulseaudio ? null,
@@ -27,7 +28,7 @@
 in
   python3Packages.buildPythonApplication {
     pname = "anime_rpc";
-    version = "0.0.0+git";
+    inherit version;
 
     src = ../.;
     format = "pyproject";
@@ -40,6 +41,7 @@ in
       ++ lib.optionals stdenv.hostPlatform.isLinux linuxNativeDeps;
 
     propagatedBuildInputs = with python3Packages; [
+      setuptools-scm
       aiohttp
       aiohttp-cors
       pymediainfo
@@ -60,6 +62,7 @@ in
 
     makeWrapperArgs = [
       "--prefix ${libEnvVar} : ${lib.makeLibraryPath [libmediainfo]}"
+      "--set SETUPTOOLS_SCM_PRETEND_VERSION ${version}"
     ];
 
     meta = with lib; {
