@@ -15,15 +15,14 @@ SPACE_NORMALIZER = re.compile(r"\\\s+")
 NUM_NORMALIZER = re.compile(r"\d+")
 HANGING_BACKSLASH = re.compile(r"(?<!\\)\\$")
 STRUCTURAL_PENALTY = -5
+SEQUENCE_WEIGHT = 100
 
 NumberPosition: TypeAlias = list[tuple[tuple[int, int], str]]
-Span: TypeAlias = tuple[int, int]
 
 
 class Candidate(TypedDict):
     index: int
-    increasing_score: float
-    structural_score: float
+    score: float
     before: str
     after: str
 
@@ -46,7 +45,7 @@ def exclude_non_media_files(filenames: list[str]) -> list[str]:
 
 
 def build_filename_pattern(filenames: list[str]) -> str | None:
-    filenames = sorted(exclude_non_media_files(filenames))
+    filenames = exclude_non_media_files(filenames)
     if len(filenames) < MIN_N_SEQUENCE:
         return None
 
@@ -93,15 +92,10 @@ def infer_episode_pattern(
         if len(valid_entries) < MIN_N_SEQUENCE:
             continue
 
-        nums: list[int] = []
-        spans: list[tuple[int, Span]] = []
         befores: list[str] = []
         afters: list[str] = []
 
-        for file_idx, (span, num) in valid_entries:
-            nums.append(int(num))
-            spans.append((file_idx, span))
-
+        for file_idx, (span, _) in valid_entries:
             start, end = span
             filename = filenames[file_idx]
             before = filename[:start]
@@ -115,26 +109,53 @@ def infer_episode_pattern(
                 after,
             )
 
-        increasing_score = sum(b > a for a, b in zip(nums, nums[1:]))
-        before_common = commonsuffix(befores)
-        after_common = commonprefix(afters)
-        structural_score = (
-            len(before_common) + len(after_common)
-            if (before_common + after_common).strip()
-            else STRUCTURAL_PENALTY
-        )
+        candidate_anchors: set[tuple[str, str]] = set()
+        candidate_anchors.add((commonsuffix(befores), commonprefix(afters)))
+        for i in range(len(befores)):
+            for j in range(i + 1, len(befores)):
+                bc = commonsuffix([befores[i], befores[j]])
+                ac = commonprefix([afters[i], afters[j]])
+                candidate_anchors.add((bc, ac))
 
-        if increasing_score == 0:
+        best_before, best_after = "", ""
+        best_inc_score = 0
+        best_baked_score = -float("inf")
+
+        for bc, ac in candidate_anchors:
+            ss = len(bc) + len(ac) if (bc + ac).strip() else STRUCTURAL_PENALTY
+            pat = f"{_escape_normalise_regex(bc)}\\d+{_escape_normalise_regex(ac)}"
+            try:
+                compiled = re.compile(pat)
+            except re.error:
+                continue
+
+            matched_nums: list[int] = []
+            for file_idx, (_, num) in valid_entries:
+                if compiled.search(filenames[file_idx]):
+                    matched_nums.append(int(num))
+
+            if len(matched_nums) < MIN_N_SEQUENCE:
+                continue
+
+            sorted_nums = sorted(matched_nums)
+            inc_score = sum(b > a for a, b in zip(sorted_nums, sorted_nums[1:]))
+            baked_score = inc_score * SEQUENCE_WEIGHT + ss
+
+            if baked_score > best_baked_score:
+                best_baked_score = baked_score
+                best_before, best_after = bc, ac
+                best_inc_score = inc_score
+
+        if best_inc_score == 0:
             _LOGGER.debug("No increasing sequence found for index %d, ignoring...", idx)
             continue
 
         candidates.append(
             Candidate(
                 index=idx,
-                increasing_score=increasing_score,
-                structural_score=structural_score,
-                before=before_common,
-                after=after_common,
+                score=best_baked_score,
+                before=best_before,
+                after=best_after,
             ),
         )
 
@@ -142,11 +163,7 @@ def infer_episode_pattern(
         return None
 
     _LOGGER.debug("Candidates: %s", candidates)
-    best = sorted(
-        candidates,
-        key=lambda x: (-x["increasing_score"] - x["structural_score"]),
-    )[0]
-
+    best = sorted(candidates, key=lambda x: x["score"], reverse=True)[0]
     pattern = (
         f"{_escape_normalise_regex(best['before'])}{EP}"
         f"{_escape_normalise_regex(best['after'])}"

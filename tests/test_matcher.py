@@ -212,6 +212,22 @@ INITIAL_D_ARBITRARY_ORDER = [
     "[Judas] Initial D - Extra Stage 02 - Sentimental White.mkv",
     "[Judas] Initial D - Extra Stage 01 - Beyond The Impact Blue.mkv",
 ]
+TOKYO_MAGNITUDE_8 = [
+    "[Judas] Tokyo Magnitude 8.0 - S01E01.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E02.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E03.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E04.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E05.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E06.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E07.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E08.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E09.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E10.mkv",
+    "[Judas] Tokyo Magnitude 8.0 - S01E11.mkv",
+    # this is an outlier and should be ignored when
+    # building the regex pattern
+    "[Judas] Tokyo Magnitude 8.0 - S01S01 - Digest.mkv",
+]
 
 
 @pytest.mark.parametrize(
@@ -228,6 +244,7 @@ INITIAL_D_ARBITRARY_ORDER = [
         ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES, [1, 2, 3, 4]),
         ("mizuzokusei", MIZUZOKUSEI, [*range(1, 11)]),
         ("initial_d", INITIAL_D_ARBITRARY_ORDER, [2, 1]),
+        ("tokyo_magnitude_8", TOKYO_MAGNITUDE_8, [*range(1, 12)]),
     ],
 )
 def test_ordered_filenames(
