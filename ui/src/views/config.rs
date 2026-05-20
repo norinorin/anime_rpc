@@ -83,25 +83,26 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         open_btn
     };
 
-    let image_preview: Element<'_, Message> = if !state.rpc.image_url.is_empty()
-        && let Some(handle) = state.rpc.image_cache.peek(&state.rpc.image_url)
-    {
-        column![
-            divider(),
-            text("Image preview")
-                .width(Length::Fill)
-                .size(typography::CAPTION_SIZE)
-                .align_x(Center)
-                .color(hex(colours::TEXT_MUTED)),
-            container(image(handle).width(Length::Fixed(layout::IMAGE_PREVIEW_WIDTH)))
-                .width(Length::Fill)
-                .align_x(Center),
-        ]
-        .spacing(layout::INNER_COLUMN_SPACING)
-        .into()
-    } else {
-        Space::new().height(0).width(0).into()
-    };
+    let image_preview: Element<'_, Message> =
+        if let Some(handle) = state.rpc.image_cache.peek(&state.rpc.image_url) {
+            column![
+                divider(),
+                text("Image preview")
+                    .width(Length::Fill)
+                    .size(typography::CAPTION_SIZE)
+                    .align_x(Center)
+                    .color(hex(colours::TEXT_MUTED)),
+                container(image(handle).width(Length::Fixed(layout::IMAGE_PREVIEW_WIDTH)))
+                    .width(Length::Fill)
+                    .align_x(Center),
+            ]
+            .spacing(layout::INNER_COLUMN_SPACING)
+            .into()
+        } else if !state.rpc.image_url.is_empty() {
+            LoadingSpinner::view(state.view.elapsed_time, 1.5, 10., 50., 3.)
+        } else {
+            Space::new().height(0).width(0).into()
+        };
 
     let (save_text, save_style): (
         &str,
