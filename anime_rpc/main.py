@@ -51,7 +51,7 @@ async def poll_player(
             break
         except Exception as e:
             # sometimes aiohttp throws a timeout error
-            # not sure what's the cause, but we're catching
+            # not sure what the cause is, but we're catching
             # everything here to prevent the poller from crashing.
 
             # probable cause: mpc zombie process preventing active mpc
@@ -66,10 +66,16 @@ async def poll_player(
         new_filedir = vars_ and (fd := vars_.get("filedir")) and Path(fd) or None
 
         if app:
-            app["pollers"][poller.origin()]["active"] = bool(vars_)
-            app["pollers"][poller.origin()]["filedir"] = (
-                str(new_filedir) if new_filedir else None
-            )
+            current = app["pollers"][poller.origin()]
+            new_active = bool(vars_)
+            new_filedir_str = str(new_filedir) if new_filedir else None
+
+            if current["active"] != new_active or current["filedir"] != new_filedir_str:
+                current["active"] = new_active
+                current["filedir"] = new_filedir_str
+
+                for cq in app["sse_clients"]:
+                    cq.put_nowait(app["pollers"])
 
         # user switches folder
         if filedir != new_filedir:

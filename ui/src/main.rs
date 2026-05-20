@@ -5,6 +5,7 @@ mod app;
 mod components;
 mod constants;
 mod curves;
+mod sse;
 mod styles;
 mod types;
 mod utils;

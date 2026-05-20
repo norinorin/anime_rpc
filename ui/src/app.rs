@@ -1,11 +1,11 @@
-use crate::api::{fetch_img, fetch_pollers, perform_search};
+use crate::api::{fetch_img, perform_search};
 use crate::constants::image_cache_size;
 use crate::types::{
-    DaemonStatus, IoMessage, Message, Poller, RpcMessage, SaveStatus, SearchMessage, SearchResult,
-    View, ViewMessage,
+    IoMessage, Message, PollerStatePayload, RpcMessage, SaveStatus, SearchMessage, SearchResult,
+    SseMessage, View, ViewMessage,
 };
 use crate::utils::{clean_dir_name, load_rpc, save_rpc};
-use crate::views;
+use crate::{sse, views};
 use iced::widget::container;
 use iced::widget::image::Handle;
 use iced::{Element, Length, Task, window};
@@ -17,6 +17,7 @@ pub struct AnimeRpc {
     pub view: ViewState,
     pub rpc: RpcState,
     pub search: SearchState,
+    pub sse: SseState,
 }
 
 pub struct ViewState {
@@ -26,11 +27,10 @@ pub struct ViewState {
     pub elapsed_time: f32,
     pub start_time: Instant,
     pub save_status: SaveStatus,
-    pub daemon_status: DaemonStatus,
 }
 
 pub struct RpcState {
-    pub pollers: HashMap<String, Poller>,
+    pub pollers: PollerStatePayload,
     pub active_id: Option<String>,
     pub active_filedir: Option<String>,
     pub title: String,
@@ -47,6 +47,12 @@ pub struct SearchState {
     pub results: Vec<SearchResult>,
 }
 
+pub enum SseState {
+    Connecting { attempt: u32 },
+    Connected,
+    WaitingToReconnect { seconds_left: u64, attempt: u32 },
+}
+
 impl AnimeRpc {
     pub fn init() -> (Self, Task<Message>) {
         (
@@ -58,7 +64,6 @@ impl AnimeRpc {
                     elapsed_time: 0.0,
                     start_time: Instant::now(),
                     save_status: SaveStatus::default(),
-                    daemon_status: DaemonStatus::default(),
                 },
                 rpc: RpcState {
                     pollers: HashMap::new(),
@@ -76,10 +81,9 @@ impl AnimeRpc {
                     query: String::new(),
                     results: Vec::new(),
                 },
+                sse: SseState::Connecting { attempt: 1 },
             },
-            Task::perform(fetch_pollers(), |res| {
-                Message::Io(IoMessage::PollersFetched(res))
-            }),
+            Task::none(),
         )
     }
 
@@ -101,7 +105,15 @@ impl AnimeRpc {
             _ => None,
         });
 
-        iced::Subscription::batch([tick, keyboard_sub])
+        let sse = match self.sse {
+            SseState::Connecting { .. } | SseState::Connected => sse::listen().map(Message::Sse),
+            SseState::WaitingToReconnect { .. } => {
+                iced::time::every(std::time::Duration::from_secs(1))
+                    .map(|_| Message::Sse(SseMessage::Tick))
+            }
+        };
+
+        iced::Subscription::batch([tick, keyboard_sub, sse])
     }
 
     pub fn update(&mut self, message: Message) -> Task<Message> {
@@ -110,6 +122,7 @@ impl AnimeRpc {
             Message::Rpc(msg) => self.handle_rpc(msg),
             Message::Search(msg) => self.handle_search(msg),
             Message::Io(msg) => self.handle_io(msg),
+            Message::Sse(msg) => self.handle_sse(msg),
         }
     }
 
@@ -260,34 +273,8 @@ impl AnimeRpc {
 
     fn handle_io(&mut self, message: IoMessage) -> Task<Message> {
         match message {
-            IoMessage::RefreshClicked => Task::perform(fetch_pollers(), |res| {
-                Message::Io(IoMessage::PollersFetched(res))
-            }),
-            IoMessage::PollersFetched(res) => {
-                if res.is_err() {
-                    self.view.daemon_status = DaemonStatus::Disconnected;
-                    return Task::none();
-                }
-
-                self.view.daemon_status = DaemonStatus::Connected;
-                self.rpc.pollers = res.unwrap();
-                if let Some(id) = &self.rpc.active_id
-                    && !self.rpc.pollers.contains_key(id)
-                {
-                    self.rpc.active_id = None;
-                    self.rpc.active_filedir = None;
-                }
-
-                if self.rpc.active_id.is_none()
-                    && let Some((id, _)) = self.rpc.pollers.iter().find(|(_, p)| p.active)
-                {
-                    self.rpc.active_id = Some(id.clone());
-                }
-
-                if let Some(id) = &self.rpc.active_id {
-                    return Task::done(Message::Io(IoMessage::PollerSelected(id.clone())));
-                }
-
+            IoMessage::ReconnectClicked => {
+                self.sse = SseState::Connecting { attempt: 1 };
                 Task::none()
             }
             IoMessage::PollerSelected(id) => {
@@ -300,11 +287,12 @@ impl AnimeRpc {
                         self.rpc.url.clear();
                         self.rpc.image_url.clear();
                         self.rpc.active_filedir = p.filedir.clone();
-                        self.rpc.title_placeholder = if let Some(dir) = &self.rpc.active_filedir {
-                            clean_dir_name(dir)
-                        } else {
-                            "Title...".to_string()
-                        }
+                        self.rpc.title_placeholder = self
+                            .rpc
+                            .active_filedir
+                            .as_ref()
+                            .map(|dir| clean_dir_name(dir))
+                            .unwrap_or_default();
                     }
 
                     if p.active {
@@ -386,6 +374,77 @@ impl AnimeRpc {
                 Task::none()
             }
             _ => Task::none(),
+        }
+    }
+
+    fn handle_sse(&mut self, message: SseMessage) -> Task<Message> {
+        match message {
+            SseMessage::Connected => {
+                self.sse = SseState::Connected;
+                Task::none()
+            }
+            SseMessage::Data(json_str) => {
+                match serde_json::from_str::<PollerStatePayload>(&json_str) {
+                    Ok(payload) => {
+                        self.rpc.pollers = payload;
+
+                        if let Some(id) = &self.rpc.active_id {
+                            let is_active = self.rpc.pollers.get(id).map_or(false, |p| p.active);
+                            if !is_active {
+                                self.rpc.active_id = None;
+                                self.rpc.active_filedir = None;
+
+                                self.rpc.title_placeholder.clear();
+                                self.rpc.title.clear();
+                                self.rpc.url.clear();
+                                self.rpc.image_url.clear();
+                                self.rpc.rewatching = false;
+                            }
+                        }
+
+                        if self.rpc.active_id.is_none()
+                            && let Some((id, _)) = self.rpc.pollers.iter().find(|(_, p)| p.active)
+                        {
+                            self.rpc.active_id = Some(id.clone());
+                        }
+
+                        if let Some(id) = &self.rpc.active_id {
+                            return Task::done(Message::Io(IoMessage::PollerSelected(id.clone())));
+                        }
+                    }
+                    Err(err) => eprintln!("Failed to parse poller payload: {:?}", err),
+                }
+
+                Task::none()
+            }
+            SseMessage::Disconnected => {
+                let attempt = match self.sse {
+                    SseState::Connecting { attempt: a } => a,
+                    SseState::WaitingToReconnect { attempt: a, .. } => a,
+                    _ => 1,
+                };
+                let backoff = (2u64.pow(attempt)).min(60);
+                self.sse = SseState::WaitingToReconnect {
+                    seconds_left: backoff,
+                    attempt: attempt + 1,
+                };
+                Task::none()
+            }
+            SseMessage::Tick => {
+                if let SseState::WaitingToReconnect {
+                    seconds_left,
+                    attempt,
+                } = &mut self.sse
+                {
+                    if *seconds_left > 0 {
+                        *seconds_left -= 1;
+                    } else {
+                        self.sse = SseState::Connecting { attempt: *attempt };
+                    }
+                }
+
+                Task::none()
+            }
         }
     }
 
