@@ -118,7 +118,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         divider(),
         underlined_input(
             "Media title",
-            &state.rpc.title_placeholder,
+            state
+                .rpc
+                .title_placeholder
+                .is_empty()
+                .then_some("Title...")
+                .unwrap_or(&state.rpc.title_placeholder),
             &state.rpc.title,
             |res| Message::Rpc(RpcMessage::TitleChanged(res))
         ),
