@@ -1,7 +1,7 @@
 use crate::app::AnimeRpc;
 use crate::components::LoadingSpinner;
 use crate::styles::{self, hex};
-use crate::types::{Message, View};
+use crate::types::{Message, SearchMessage, View, ViewMessage};
 use iced::widget::{Space, button, column, container, image, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Element, Font, Length, Padding};
 
@@ -50,7 +50,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     .width(Length::Fill)
                     .padding([8, 12])
                     .style(styles::ghost_button_style)
-                    .on_press(Message::ResultSelected(res.clone()))
+                    .on_press(Message::Search(SearchMessage::ResultSelected(res.clone())))
                     .into()
                 })
                 .collect::<Vec<Element<Message>>>(),
@@ -71,7 +71,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 ..Default::default()
             }))
             .style(styles::ghost_button_style)
-            .on_press(Message::SwitchView(View::Config)),
+            .on_press(Message::View(ViewMessage::Switch(View::Config))),
             text("Search").size(34).font(Font {
                 weight: iced::font::Weight::Bold,
                 ..Default::default()
@@ -82,12 +82,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .padding([0, 12]),
         row![
             text_input("Search title...", &state.search.query)
-                .on_input(Message::SearchQueryChanged)
-                .on_submit(Message::PerformSearch)
+                .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
+                .on_submit(Message::Search(SearchMessage::Perform))
                 .style(styles::search_input_style)
                 .padding([12, 16]),
             button("Go")
-                .on_press(Message::PerformSearch)
+                .on_press(Message::Search(SearchMessage::Perform))
                 .style(styles::ghost_button_style)
                 .padding([12, 16])
         ]

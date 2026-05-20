@@ -1,7 +1,7 @@
 use crate::app::AnimeRpc;
 use crate::components::{divider, underlined_input};
 use crate::styles::{self, hex, secondary_button_style};
-use crate::types::{Message, SaveStatus, View};
+use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{
     Space, button, column, container, image, pick_list, row, text, text_input, toggler,
 };
@@ -22,11 +22,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         })
         .collect();
 
-    let poller_select = pick_list(
-        poller_list,
-        state.rpc.active_id.clone(),
-        Message::PollerSelected,
-    )
+    let poller_select = pick_list(poller_list, state.rpc.active_id.clone(), |res| {
+        Message::Io(IoMessage::PollerSelected(res))
+    })
     .placeholder("Select...")
     .width(Length::Fill);
 
@@ -39,14 +37,14 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
 
     let search_btn = button("🔍").style(secondary_button_style);
     let search_btn = if is_active {
-        search_btn.on_press(Message::SwitchView(View::Search))
+        search_btn.on_press(Message::View(ViewMessage::Switch(View::Search)))
     } else {
         search_btn
     };
 
     let open_btn = button("🌐").style(secondary_button_style);
     let open_btn = if !state.rpc.url.is_empty() {
-        open_btn.on_press(Message::OpenUrlClicked)
+        open_btn.on_press(Message::Rpc(RpcMessage::OpenUrlClicked))
     } else {
         open_btn
     };
@@ -87,15 +85,15 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             "Media title",
             &state.rpc.title_placeholder,
             &state.rpc.title,
-            Message::TitleChanged
+            |res| Message::Rpc(RpcMessage::TitleChanged(res))
         ),
         column![
             row![
                 column![
                     text("Media URL").size(13).color(hex(0x888888)),
                     text_input("URL...", &state.rpc.url)
-                        .on_input(Message::UrlChanged)
-                        .on_submit(Message::OpenUrlClicked)
+                        .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
+                        .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
                         .style(styles::transparent_text_input_style)
                         .padding([8, 0]),
                 ],
@@ -105,15 +103,13 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             divider(),
         ]
         .spacing(4),
-        underlined_input(
-            "Image URL",
-            "URL...",
-            &state.rpc.image_url,
-            Message::ImageUrlChanged
-        ),
+        underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
+            Message::Rpc(RpcMessage::ImageUrlChanged(res))
+        }),
         row![
             text("Rewatching").width(Length::Fill).size(16),
-            toggler(state.rpc.rewatching).on_toggle(Message::ToggleRewatching)
+            toggler(state.rpc.rewatching)
+                .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
         ]
         .align_y(Center),
         image_preview
@@ -136,11 +132,11 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         Space::new().height(Length::Fill),
         row![
             button(text(save_text).align_x(iced::alignment::Horizontal::Center))
-                .on_press(Message::SaveClicked)
+                .on_press(Message::Io(IoMessage::SaveClicked))
                 .style(save_style)
                 .width(Length::Fill),
             button(text("Refresh").align_x(iced::alignment::Horizontal::Center))
-                .on_press(Message::RefreshClicked)
+                .on_press(Message::Io(IoMessage::RefreshClicked))
                 .style(styles::primary_button_style)
                 .width(Length::Shrink)
         ]

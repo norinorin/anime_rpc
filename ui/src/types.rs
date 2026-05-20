@@ -26,27 +26,47 @@ pub enum View {
 
 #[derive(Debug, Clone)]
 pub enum Message {
+    View(ViewMessage),
+    Rpc(RpcMessage),
+    Search(SearchMessage),
+    Io(IoMessage),
+}
+
+#[derive(Debug, Clone)]
+pub enum ViewMessage {
+    ToggleWindow,
+    Switch(View),
+    TabPressed { shift: bool },
+    Tick,
+}
+
+#[derive(Debug, Clone)]
+pub enum RpcMessage {
     TitleChanged(String),
     UrlChanged(String),
     ImageUrlChanged(String),
     ToggleRewatching(bool),
-    SwitchView(View),
-    SearchQueryChanged(String),
-    PollerSelected(String),
-    PollersFetched(Result<HashMap<String, Poller>, String>),
-    RpcLoaded(Result<String, String>),
-    SearchFinished(Result<Vec<SearchResult>, String>),
+    OpenUrlClicked,
+}
+
+#[derive(Debug, Clone)]
+pub enum SearchMessage {
+    QueryChanged(String),
+    Perform,
+    Finished(Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
+}
+
+#[derive(Debug, Clone)]
+pub enum IoMessage {
+    PollersFetched(Result<HashMap<String, Poller>, String>),
+    PollerSelected(String),
+    RpcLoaded(Result<String, String>),
+    RefreshClicked,
     SaveClicked,
     SaveCompleted(Result<(), String>),
     ResetSaveStatus,
-    OpenUrlClicked,
-    PerformSearch,
     ImageLoaded(String, Option<Handle>),
-    ToggleWindow,
-    RefreshClicked,
-    TabPressed { shift: bool },
-    Tick,
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
