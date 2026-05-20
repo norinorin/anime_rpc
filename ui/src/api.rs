@@ -1,16 +1,6 @@
 use crate::constants::API_BASE_URL;
-use crate::types::{Poller, SearchResult};
+use crate::types::SearchResult;
 use iced::widget::image::Handle;
-use std::collections::HashMap;
-
-pub async fn fetch_pollers() -> Result<HashMap<String, Poller>, String> {
-    reqwest::get(&format!("{}/pollers", API_BASE_URL))
-        .await
-        .map_err(|e| e.to_string())?
-        .json()
-        .await
-        .map_err(|e| e.to_string())
-}
 
 pub async fn fetch_img(url: String) -> Option<Handle> {
     reqwest::get(&url)
