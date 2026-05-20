@@ -3,6 +3,7 @@ use iced::widget::{Space, column, container, text, text_input};
 use iced::{Background, Color, Element, Length, Radians, Theme};
 use std::f32::consts::{PI, TAU};
 
+use crate::constants::{colours, layout};
 use crate::curves::ease_in_out_cubic;
 use crate::styles::{self, hex};
 use crate::types::Message;
@@ -103,7 +104,7 @@ impl<Message> Program<Message> for LoadingSpinner {
 pub fn divider() -> Element<'static, Message> {
     container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
         .style(|_theme| container::Style {
-            background: Some(Background::Color(hex(0x2A2A2C))),
+            background: Some(Background::Color(hex(colours::DIVIDER))),
             ..Default::default()
         })
         .into()
@@ -116,11 +117,11 @@ pub fn underlined_input<'a>(
     on_change: impl Fn(String) -> Message + 'a,
 ) -> Element<'a, Message> {
     column![
-        text(label).size(13).color(hex(0x888888)),
+        text(label).size(13).color(hex(colours::TEXT_MUTED)),
         text_input(placeholder, value)
             .on_input(on_change)
             .style(styles::transparent_text_input_style)
-            .padding([8, 0]),
+            .padding([layout::SPACING, 0.]),
         divider(),
     ]
     .spacing(4)

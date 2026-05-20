@@ -1,13 +1,14 @@
 use crate::app::AnimeRpc;
 use crate::components::LoadingSpinner;
+use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::{Message, SearchMessage, View, ViewMessage};
-use iced::widget::{Space, button, column, container, image, row, scrollable, text, text_input};
+use iced::widget::{button, column, container, image, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let results_content: Element<'_, Message> = if state.search.results.is_empty() {
-        container(text("No results").color(hex(0x666666)))
+        container(text("No results").color(hex(colours::TEXT_DARK_MUTED)))
             .width(Length::Fill)
             .height(Length::Fixed(100.0))
             .align_x(Center)
@@ -40,22 +41,24 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                                     weight: iced::font::Weight::Bold,
                                     ..Default::default()
                                 }),
-                                text("MyAnimeList").size(12).color(hex(0x888888)),
+                                text("MyAnimeList")
+                                    .size(typography::STATUS_SIZE)
+                                    .color(hex(colours::TEXT_MUTED)),
                             ]
-                            .spacing(2)
+                            .spacing(layout::XS_SPACING)
                         ]
-                        .spacing(12)
+                        .spacing(layout::L_SPACING)
                         .align_y(Alignment::Center),
                     )
                     .width(Length::Fill)
-                    .padding([8, 12])
+                    .padding([layout::SPACING, layout::L_SPACING])
                     .style(styles::ghost_button_style)
                     .on_press(Message::Search(SearchMessage::ResultSelected(res.clone())))
                     .into()
                 })
                 .collect::<Vec<Element<Message>>>(),
         )
-        .spacing(4)
+        .spacing(layout::S_SPACING)
         .into()
     };
     let results_scroll = scrollable(results_content);
@@ -77,26 +80,25 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 ..Default::default()
             })
         ]
-        .spacing(12)
+        .spacing(layout::L_SPACING)
         .align_y(Center)
-        .padding([0, 12]),
+        .padding([0., layout::L_SPACING]),
         row![
             text_input("Search title...", &state.search.query)
                 .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
                 .on_submit(Message::Search(SearchMessage::Perform))
                 .style(styles::search_input_style)
-                .padding([12, 16]),
+                .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]),
             button("Go")
                 .on_press(Message::Search(SearchMessage::Perform))
                 .style(styles::ghost_button_style)
-                .padding([12, 16])
+                .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING])
         ]
-        .spacing(8)
-        .padding([0, 24]),
-        Space::new().height(10),
+        .spacing(layout::S_SPACING)
+        .padding([0., layout::S_SPACING]),
         card
     ]
-    .spacing(16)
+    .spacing(layout::L_SPACING)
     .padding(Padding::new(0.).top(40).right(0).bottom(20).left(0));
     container(root)
         .style(styles::black_container_style)

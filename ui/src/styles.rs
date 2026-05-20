@@ -2,6 +2,8 @@ use iced::widget::button::{self, Status};
 use iced::widget::{container, text_input};
 use iced::{Background, Border, Color, Shadow, Theme};
 
+use crate::constants::{colours, layout};
+
 pub fn hex(c: u32) -> Color {
     Color::from_rgba8(
         ((c >> 16) & 0xFF) as u8,
@@ -17,10 +19,10 @@ fn rgb(r: f32, g: f32, b: f32) -> Color {
 
 pub fn primary_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
-        background: Some(Background::Color(rgb(59.0, 130.0, 246.0))),
+        background: Some(Background::Color(hex(colours::SELECTION))),
         text_color: Color::WHITE,
         border: Border {
-            radius: 8.0.into(),
+            radius: layout::INNER_COLUMN_SPACING.into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
@@ -48,10 +50,10 @@ pub fn primary_button_style(_theme: &Theme, status: Status) -> button::Style {
 
 pub fn success_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
-        background: Some(Background::Color(rgb(16.0, 185.0, 129.0))),
+        background: Some(Background::Color(hex(colours::GREEN))),
         text_color: Color::WHITE,
         border: Border {
-            radius: 8.0.into(),
+            radius: layout::INNER_COLUMN_SPACING.into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
@@ -75,10 +77,10 @@ pub fn success_button_style(_theme: &Theme, status: Status) -> button::Style {
 
 pub fn danger_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
-        background: Some(Background::Color(rgb(239.0, 68.0, 68.0))),
+        background: Some(Background::Color(hex(colours::RED))),
         text_color: Color::WHITE,
         border: Border {
-            radius: 8.0.into(),
+            radius: layout::INNER_COLUMN_SPACING.into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
@@ -103,11 +105,11 @@ pub fn danger_button_style(_theme: &Theme, status: Status) -> button::Style {
 pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
         background: Some(Background::Color(Color::TRANSPARENT)),
-        text_color: rgb(156.0, 163.0, 175.0),
+        text_color: hex(colours::TEXT_MUTED),
         border: Border {
-            radius: 8.0.into(),
+            radius: layout::INNER_COLUMN_SPACING.into(),
             width: 1.0,
-            color: rgb(75.0, 85.0, 99.0),
+            color: hex(colours::TEXT_DARK_MUTED),
         },
         shadow: Shadow::default(),
         ..Default::default()
@@ -130,10 +132,10 @@ pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
 
 pub fn card_container_style(_theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(hex(0x151515))),
+        background: Some(Background::Color(hex(colours::SOFT_DARK))),
         text_color: Some(Color::WHITE),
         border: Border {
-            radius: 24.0.into(),
+            radius: layout::XL_SPACING.into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
@@ -159,8 +161,8 @@ pub fn transparent_text_input_style(
         border: Border::default(),
         icon: Color::WHITE,
         value: Color::WHITE,
-        placeholder: hex(0x666666),
-        selection: hex(0x3E91FF),
+        placeholder: hex(colours::TEXT_DARK_MUTED),
+        selection: hex(colours::SELECTION),
     }
 }
 
@@ -188,15 +190,15 @@ pub fn ghost_button_style(_theme: &Theme, status: button::Status) -> button::Sty
 
 pub fn search_input_style(_theme: &Theme, _status: text_input::Status) -> text_input::Style {
     text_input::Style {
-        background: Background::Color(hex(0x151515)),
+        background: Background::Color(hex(colours::SOFT_DARK)),
         border: Border {
-            radius: 20.0.into(),
+            radius: (layout::XL_SPACING - layout::S_SPACING).into(),
             width: 0.0,
             color: Color::TRANSPARENT,
         },
         icon: Color::WHITE,
         value: Color::WHITE,
-        placeholder: hex(0x666666),
-        selection: hex(0x3E91FF),
+        placeholder: hex(colours::TEXT_DARK_MUTED),
+        selection: hex(colours::SELECTION),
     }
 }

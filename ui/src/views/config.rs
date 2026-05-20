@@ -1,5 +1,6 @@
 use crate::app::AnimeRpc;
 use crate::components::{divider, underlined_input};
+use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex, secondary_button_style};
 use crate::types::{DaemonStatus, IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{
@@ -56,14 +57,14 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             divider(),
             text("Image preview")
                 .width(Length::Fill)
-                .size(12)
+                .size(typography::CAPTION_SIZE)
                 .align_x(Center)
-                .color(hex(0x888888)),
-            container(image(handle).width(Length::Fixed(200.0)))
+                .color(hex(colours::TEXT_MUTED)),
+            container(image(handle).width(Length::Fixed(layout::IMAGE_PREVIEW_WIDTH)))
                 .width(Length::Fill)
                 .align_x(Center),
         ]
-        .spacing(10)
+        .spacing(layout::INNER_COLUMN_SPACING)
         .into()
     } else {
         Space::new().height(0).width(0).into()
@@ -79,7 +80,13 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     };
 
     let card_content = column![
-        row![text("Poller").width(Length::Fill).size(16), poller_select].align_y(Center),
+        row![
+            text("Poller")
+                .width(Length::Fill)
+                .size(typography::BODY_SIZE),
+            poller_select
+        ]
+        .align_y(Center),
         divider(),
         underlined_input(
             "Media title",
@@ -90,66 +97,80 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         column![
             row![
                 column![
-                    text("Media URL").size(13).color(hex(0x888888)),
+                    text("Media URL")
+                        .size(typography::CAPTION_SIZE)
+                        .color(hex(colours::TEXT_MUTED)),
                     text_input("URL...", &state.rpc.url)
                         .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
                         .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
                         .style(styles::transparent_text_input_style)
-                        .padding([8, 0]),
+                        .padding([layout::SPACING, 0.]),
                 ],
-                row![open_btn, search_btn].spacing(8)
+                row![open_btn, search_btn].spacing(layout::SPACING)
             ]
-            .spacing(10),
+            .spacing(layout::VERTICAL_SPACING),
             divider(),
         ]
-        .spacing(4),
+        .spacing(layout::INNER_COLUMN_SPACING),
         underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
             Message::Rpc(RpcMessage::ImageUrlChanged(res))
         }),
         row![
-            text("Rewatching").width(Length::Fill).size(16),
+            text("Rewatching")
+                .width(Length::Fill)
+                .size(typography::BODY_SIZE),
             toggler(state.rpc.rewatching)
                 .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
         ]
         .align_y(Center),
         image_preview
     ]
-    .spacing(10);
+    .spacing(layout::VERTICAL_SPACING);
 
     let card = container(card_content)
         .style(styles::card_container_style)
-        .padding(24)
+        .padding(layout::XL_SPACING)
         .width(Length::Fill);
 
     let status_indicator: Element<'_, Message> = match state.view.daemon_status {
         DaemonStatus::Checking => row![
-            text("●").size(10).color(hex(0x666666)),
+            text("●")
+                .size(typography::INDICATOR_DOT_SIZE)
+                .color(hex(colours::TEXT_DARK_MUTED)),
             text(" Connecting to daemon...")
-                .size(12)
-                .color(hex(0x888888))
+                .size(typography::STATUS_SIZE)
+                .color(hex(colours::TEXT_MUTED))
         ],
         DaemonStatus::Connected => row![
-            text("●").size(10).color(hex(0x10B981)),
-            text(" Daemon active").size(12).color(hex(0x888888))
+            text("●")
+                .size(typography::INDICATOR_DOT_SIZE)
+                .color(hex(colours::GREEN)),
+            text(" Daemon active")
+                .size(typography::STATUS_SIZE)
+                .color(hex(colours::TEXT_MUTED))
         ],
         DaemonStatus::Disconnected => row![
-            text("●").size(10).color(hex(0xEF4444)),
-            text(" Daemon offline").size(12).color(hex(0xEF4444))
+            text("●")
+                .size(typography::INDICATOR_DOT_SIZE)
+                .color(hex(colours::RED)),
+            text(" Daemon offline")
+                .size(typography::STATUS_SIZE)
+                .color(hex(colours::RED))
         ],
     }
     .align_y(iced::alignment::Vertical::Center)
-    .spacing(6)
-    .padding([4, 24])
+    .spacing(layout::SPACING)
+    .padding([layout::S_SPACING, layout::XL_SPACING])
     .into();
 
     let root = column![
         status_indicator,
-        container(text("Anime RPC").size(34).font(Font {
+        container(text("Anime RPC").size(typography::TITLE_SIZE).font(Font {
             weight: iced::font::Weight::Bold,
             ..Default::default()
         }))
-        .padding([0., 24.]),
-        Space::new().height(10),
+        .padding([0., layout::XL_SPACING]),
+        Space::new().height(layout::VERTICAL_SPACING),
         card,
         Space::new().height(Length::Fill),
         row![
@@ -162,10 +183,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .style(styles::primary_button_style)
                 .width(Length::Shrink)
         ]
-        .spacing(10)
-        .padding([0, 24])
+        .spacing(layout::VERTICAL_SPACING)
+        .padding([0., layout::XL_SPACING])
     ]
-    .padding([40., 0.]);
+    .padding([layout::ROOT_PADDING_TOP, 0]);
 
     container(root)
         .style(styles::black_container_style)
