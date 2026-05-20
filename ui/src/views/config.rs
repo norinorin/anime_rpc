@@ -204,6 +204,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             )
             .on_press(Message::Io(IoMessage::ReconnectClicked))
             .padding(0)
+            .style(styles::text_link_style)
         ],
     }
     .align_y(iced::alignment::Vertical::Center)
