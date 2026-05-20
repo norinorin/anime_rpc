@@ -18,3 +18,10 @@ tokio = { version = "1.51.1", features = ["full"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 ashpd = { version = "0.13.10", features = ["open_uri"] }
+
+[profile.release]
+opt-level = "z"
+strip = true
+lto = true
+panic = "abort"
+codegen-units = 1
