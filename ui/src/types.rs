@@ -76,3 +76,11 @@ pub enum SaveStatus {
     Saved,
     Failed,
 }
+
+#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DaemonStatus {
+    #[default]
+    Checking,
+    Disconnected,
+    Connected,
+}

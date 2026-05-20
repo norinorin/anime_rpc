@@ -1,8 +1,8 @@
 use crate::api::{fetch_img, fetch_pollers, perform_search};
 use crate::constants::image_cache_size;
 use crate::types::{
-    IoMessage, Message, Poller, RpcMessage, SaveStatus, SearchMessage, SearchResult, View,
-    ViewMessage,
+    DaemonStatus, IoMessage, Message, Poller, RpcMessage, SaveStatus, SearchMessage, SearchResult,
+    View, ViewMessage,
 };
 use crate::utils::{clean_dir_name, load_rpc, save_rpc};
 use crate::views;
@@ -25,6 +25,7 @@ pub struct ViewState {
     pub elapsed_time: f32,
     pub start_time: Instant,
     pub save_status: SaveStatus,
+    pub daemon_status: DaemonStatus,
 }
 
 pub struct RpcState {
@@ -54,7 +55,8 @@ impl AnimeRpc {
                     window_visible: true,
                     elapsed_time: 0.0,
                     start_time: Instant::now(),
-                    save_status: SaveStatus::Idle,
+                    save_status: SaveStatus::default(),
+                    daemon_status: DaemonStatus::default(),
                 },
                 rpc: RpcState {
                     pollers: HashMap::new(),
@@ -255,8 +257,14 @@ impl AnimeRpc {
             IoMessage::RefreshClicked => Task::perform(fetch_pollers(), |res| {
                 Message::Io(IoMessage::PollersFetched(res))
             }),
-            IoMessage::PollersFetched(Ok(data)) => {
-                self.rpc.pollers = data;
+            IoMessage::PollersFetched(res) => {
+                if res.is_err() {
+                    self.view.daemon_status = DaemonStatus::Disconnected;
+                    return Task::none();
+                }
+
+                self.view.daemon_status = DaemonStatus::Connected;
+                self.rpc.pollers = res.unwrap();
                 if let Some(id) = &self.rpc.active_id
                     && !self.rpc.pollers.contains_key(id)
                 {

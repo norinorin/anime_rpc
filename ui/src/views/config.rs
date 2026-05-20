@@ -1,7 +1,7 @@
 use crate::app::AnimeRpc;
 use crate::components::{divider, underlined_input};
 use crate::styles::{self, hex, secondary_button_style};
-use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
+use crate::types::{DaemonStatus, IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{
     Space, button, column, container, image, pick_list, row, text, text_input, toggler,
 };
@@ -121,7 +121,29 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .padding(24)
         .width(Length::Fill);
 
+    let status_indicator: Element<'_, Message> = match state.view.daemon_status {
+        DaemonStatus::Checking => row![
+            text("●").size(10).color(hex(0x666666)),
+            text(" Connecting to daemon...")
+                .size(12)
+                .color(hex(0x888888))
+        ],
+        DaemonStatus::Connected => row![
+            text("●").size(10).color(hex(0x10B981)),
+            text(" Daemon active").size(12).color(hex(0x888888))
+        ],
+        DaemonStatus::Disconnected => row![
+            text("●").size(10).color(hex(0xEF4444)),
+            text(" Daemon offline").size(12).color(hex(0xEF4444))
+        ],
+    }
+    .align_y(iced::alignment::Vertical::Center)
+    .spacing(6)
+    .padding([4, 24])
+    .into();
+
     let root = column![
+        status_indicator,
         container(text("Anime RPC").size(34).font(Font {
             weight: iced::font::Weight::Bold,
             ..Default::default()
