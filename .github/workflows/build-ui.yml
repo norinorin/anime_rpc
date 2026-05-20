@@ -6,6 +6,7 @@ on:
     paths:
       - 'ui/**'
   pull_request:
+    types: [labeled, synchronize, opened]
     branches: [main]
     paths:
       - 'ui/**'
@@ -13,6 +14,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    if: |
+      github.event_name == 'push' || 
+      contains(github.event.pull_request.labels.*.name, 'ci-test')
     defaults:
       run:
         working-directory: ./ui
