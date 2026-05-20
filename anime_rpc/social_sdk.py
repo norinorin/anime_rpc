@@ -47,14 +47,17 @@ def strip_preprocessor_directives(header_text: str) -> str:
 _LOGGER = logging.getLogger("social_sdk")
 INCLUDE_PATH = files("anime_rpc") / "include"
 LIB_PATH = files("anime_rpc") / "lib"
+LIB_NAME = (
+    "discord_partner_sdk.dll"
+    if sys.platform == "win32"
+    else "libdiscord_partner_sdk.so"
+    if sys.platform == "linux"
+    else "libdiscord_partner_sdk.dylib"
+    if sys.platform == "darwin"
+    else ""
+)
 
-if sys.platform == "win32":
-    LIB_NAME = "discord_partner_sdk.dll"
-elif sys.platform == "linux":
-    LIB_NAME = "libdiscord_partner_sdk.so"  # type: ignore[reportConstantRedefinition]
-elif sys.platform == "darwin":
-    LIB_NAME = "libdiscord_partner_sdk.dylib"  # type: ignore[reportConstantRedefinition]
-else:
+if not LIB_NAME:
     raise RuntimeError(f"Unsupported platform: {sys.platform}")
 
 ffi = cffi.FFI()
