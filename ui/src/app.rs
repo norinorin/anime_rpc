@@ -65,7 +65,7 @@ impl AnimeRpc {
                     active_id: None,
                     active_filedir: None,
                     title: String::new(),
-                    title_placeholder: "Title...".to_string(),
+                    title_placeholder: String::new(),
                     url: String::new(),
                     image_url: String::new(),
                     rewatching: false,
