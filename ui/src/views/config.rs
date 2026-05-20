@@ -9,6 +9,7 @@ use iced::{Center, Element, Font, Length};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let poller_list: Vec<String> = state
+        .rpc
         .pollers
         .values()
         .map(|p| {
@@ -23,16 +24,17 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
 
     let poller_select = pick_list(
         poller_list,
-        state.active_id.clone(),
+        state.rpc.active_id.clone(),
         Message::PollerSelected,
     )
     .placeholder("Select...")
     .width(Length::Fill);
 
     let is_active = state
+        .rpc
         .active_id
         .as_ref()
-        .and_then(|id| state.pollers.get(id))
+        .and_then(|id| state.rpc.pollers.get(id))
         .is_some_and(|p| p.active);
 
     let search_btn = button("🔍").style(secondary_button_style);
@@ -43,14 +45,14 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     };
 
     let open_btn = button("🌐").style(secondary_button_style);
-    let open_btn = if !state.url.is_empty() {
+    let open_btn = if !state.rpc.url.is_empty() {
         open_btn.on_press(Message::OpenUrlClicked)
     } else {
         open_btn
     };
 
-    let image_preview: Element<'_, Message> = if !state.image_url.is_empty()
-        && let Some(handle) = state.image_cache.peek(&state.image_url)
+    let image_preview: Element<'_, Message> = if !state.rpc.image_url.is_empty()
+        && let Some(handle) = state.rpc.image_cache.peek(&state.rpc.image_url)
     {
         column![
             divider(),
@@ -72,7 +74,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let (save_text, save_style): (
         &str,
         fn(&iced::Theme, iced::widget::button::Status) -> iced::widget::button::Style,
-    ) = match state.save_status {
+    ) = match state.view.save_status {
         SaveStatus::Idle => ("Save Changes", styles::primary_button_style),
         SaveStatus::Saved => ("✔ Saved", styles::success_button_style),
         SaveStatus::Failed => ("Failed to Save", styles::danger_button_style),
@@ -83,15 +85,15 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         divider(),
         underlined_input(
             "Media title",
-            &state.title_placeholder,
-            &state.title,
+            &state.rpc.title_placeholder,
+            &state.rpc.title,
             Message::TitleChanged
         ),
         column![
             row![
                 column![
                     text("Media URL").size(13).color(hex(0x888888)),
-                    text_input("URL...", &state.url)
+                    text_input("URL...", &state.rpc.url)
                         .on_input(Message::UrlChanged)
                         .on_submit(Message::OpenUrlClicked)
                         .style(styles::transparent_text_input_style)
@@ -106,12 +108,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         underlined_input(
             "Image URL",
             "URL...",
-            &state.image_url,
+            &state.rpc.image_url,
             Message::ImageUrlChanged
         ),
         row![
             text("Rewatching").width(Length::Fill).size(16),
-            toggler(state.rewatching).on_toggle(Message::ToggleRewatching)
+            toggler(state.rpc.rewatching).on_toggle(Message::ToggleRewatching)
         ]
         .align_y(Center),
         image_preview

@@ -6,7 +6,7 @@ use iced::widget::{Space, button, column, container, image, row, scrollable, tex
 use iced::{Alignment, Center, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
-    let results_content: Element<'_, Message> = if state.search_results.is_empty() {
+    let results_content: Element<'_, Message> = if state.search.results.is_empty() {
         container(text("No results").color(hex(0x666666)))
             .width(Length::Fill)
             .height(Length::Fixed(100.0))
@@ -16,11 +16,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     } else {
         column(
             state
-                .search_results
+                .search
+                .results
                 .iter()
                 .map(|res| {
                     let img_widget: Element<'_, Message> =
-                        if let Some(handle) = state.image_cache.peek(&res.image_url) {
+                        if let Some(handle) = state.rpc.image_cache.peek(&res.image_url) {
                             container(image(handle.clone()).width(Length::Fixed(50.0)))
                                 .width(Length::Fixed(50.0))
                                 .height(Length::Fixed(50.0))
@@ -28,7 +29,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                                 .align_y(Center)
                                 .into()
                         } else {
-                            LoadingSpinner::view(state.elapsed_time, 1.5, 10., 50.0, 3.)
+                            LoadingSpinner::view(state.view.elapsed_time, 1.5, 10., 50.0, 3.)
                         };
 
                     button(
@@ -80,7 +81,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .align_y(Center)
         .padding([0, 12]),
         row![
-            text_input("Search title...", &state.search_query)
+            text_input("Search title...", &state.search.query)
                 .on_input(Message::SearchQueryChanged)
                 .on_submit(Message::PerformSearch)
                 .style(styles::search_input_style)
