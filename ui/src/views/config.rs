@@ -112,52 +112,49 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         SaveStatus::Failed => ("Failed to Save", styles::danger_button_style),
     };
 
-    let card_content = scrollable(
+    let card_content = column![
+        poller_section,
+        divider(),
+        underlined_input(
+            "Media title",
+            &state.rpc.title_placeholder,
+            &state.rpc.title,
+            |res| Message::Rpc(RpcMessage::TitleChanged(res))
+        ),
         column![
-            poller_section,
-            divider(),
-            underlined_input(
-                "Media title",
-                &state.rpc.title_placeholder,
-                &state.rpc.title,
-                |res| Message::Rpc(RpcMessage::TitleChanged(res))
-            ),
-            column![
-                row![
-                    column![
-                        text("Media URL")
-                            .size(typography::CAPTION_SIZE)
-                            .color(hex(colours::TEXT_MUTED)),
-                        text_input("URL...", &state.rpc.url)
-                            .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
-                            .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
-                            .style(styles::transparent_text_input_style)
-                            .padding([layout::SPACING, 0.]),
-                    ],
-                    row![open_btn, search_btn].spacing(layout::SPACING)
-                ]
-                .spacing(layout::VERTICAL_SPACING),
-                divider(),
-            ]
-            .spacing(layout::INNER_COLUMN_SPACING),
-            underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
-                Message::Rpc(RpcMessage::ImageUrlChanged(res))
-            }),
             row![
-                text("Rewatching")
-                    .width(Length::Fill)
-                    .size(typography::BODY_SIZE),
-                toggler(state.rpc.rewatching)
-                    .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
+                column![
+                    text("Media URL")
+                        .size(typography::CAPTION_SIZE)
+                        .color(hex(colours::TEXT_MUTED)),
+                    text_input("URL...", &state.rpc.url)
+                        .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
+                        .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
+                        .style(styles::transparent_text_input_style)
+                        .padding([layout::SPACING, 0.]),
+                ],
+                row![open_btn, search_btn].spacing(layout::SPACING)
             ]
-            .align_y(Center),
-            image_preview
+            .spacing(layout::VERTICAL_SPACING),
+            divider(),
         ]
-        .spacing(layout::VERTICAL_SPACING)
-        .padding(layout::XL_SPACING),
-    )
-    .height(Length::Fill)
-    .direction(styles::slim_scrollbar());
+        .spacing(layout::INNER_COLUMN_SPACING),
+        underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
+            Message::Rpc(RpcMessage::ImageUrlChanged(res))
+        }),
+        row![
+            text("Rewatching")
+                .width(Length::Fill)
+                .size(typography::BODY_SIZE),
+            toggler(state.rpc.rewatching)
+                .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
+        ]
+        .align_y(Center),
+        image_preview
+    ]
+    .spacing(layout::VERTICAL_SPACING)
+    .padding(layout::XL_SPACING)
+    .height(Length::Fill);
 
     let card = container(card_content)
         .style(styles::card_container_style)
@@ -203,8 +200,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         }))
         .padding([0., layout::XL_SPACING]),
         Space::new().height(layout::VERTICAL_SPACING),
-        card,
-        Space::new().height(layout::VERTICAL_SPACING),
+        scrollable(column![card, Space::new().height(Length::Fill),])
+            .direction(styles::slim_scrollbar())
+            .height(Length::Fill),
         row![
             button(text(save_text).align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::Io(IoMessage::SaveClicked))
