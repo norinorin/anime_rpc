@@ -69,10 +69,13 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         Space::new().height(0).width(0).into()
     };
 
-    let save_text = if state.save_status == SaveStatus::Saved {
-        "✔ Saved"
-    } else {
-        "Save Changes"
+    let (save_text, save_style): (
+        &str,
+        fn(&iced::Theme, iced::widget::button::Status) -> iced::widget::button::Style,
+    ) = match state.save_status {
+        SaveStatus::Idle => ("Save Changes", styles::primary_button_style),
+        SaveStatus::Saved => ("✔ Saved", styles::success_button_style),
+        SaveStatus::Failed => ("Failed to Save", styles::danger_button_style),
     };
 
     let card_content = column![
@@ -132,7 +135,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         row![
             button(text(save_text).align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::SaveClicked)
-                .style(styles::success_button_style)
+                .style(save_style)
                 .width(Length::Fill),
             button(text("Refresh").align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::RefreshClicked)
