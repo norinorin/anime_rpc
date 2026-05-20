@@ -1,11 +1,18 @@
-use std::fs;
+use tokio::fs;
 
 pub async fn load_rpc(dir: String) -> Result<String, String> {
     let path = format!("{}/.rpc", dir);
-    fs::read_to_string(path).map_err(|e| e.to_string())
+    fs::read_to_string(path).await.map_err(|e| e.to_string())
 }
 
-pub fn save_rpc(dir: String, raw: &str, title: String, url: String, img: String, rew: bool) {
+pub async fn save_rpc(
+    dir: String,
+    raw: String,
+    title: String,
+    url: String,
+    img: String,
+    rew: bool,
+) -> Result<(), String> {
     let mut lines: Vec<String> = raw.lines().map(|s| s.to_string()).collect();
     let updates = vec![
         ("title", title),
@@ -23,7 +30,9 @@ pub fn save_rpc(dir: String, raw: &str, title: String, url: String, img: String,
         }
     }
 
-    let _ = fs::write(format!("{}/.rpc", dir), lines.join("\n"));
+    fs::write(format!("{}/.rpc", dir), lines.join("\n"))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 pub fn clean_dir_name(path: &str) -> String {

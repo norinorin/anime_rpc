@@ -38,8 +38,9 @@ pub enum Message {
     SearchFinished(Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
     SaveClicked,
-    OpenUrlClicked,
+    SaveCompleted(Result<(), String>),
     ResetSaveStatus,
+    OpenUrlClicked,
     PerformSearch,
     ImageLoaded(String, Option<Handle>),
     ToggleWindow,
@@ -53,4 +54,5 @@ pub enum SaveStatus {
     #[default]
     Idle,
     Saved,
+    Failed,
 }

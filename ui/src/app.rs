@@ -204,24 +204,32 @@ impl AnimeRpc {
                     && let Some(p) = self.pollers.get(id)
                     && let Some(dir) = &p.filedir
                 {
-                    save_rpc(
-                        dir.clone(),
-                        &self.raw_content,
-                        self.title.clone(),
-                        self.url.clone(),
-                        self.image_url.clone(),
-                        self.rewatching,
-                    );
-
-                    self.save_status = SaveStatus::Saved;
-
                     return Task::perform(
-                        async {
-                            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        },
-                        |_| Message::ResetSaveStatus,
+                        save_rpc(
+                            dir.clone(),
+                            self.raw_content.clone(),
+                            self.title.clone(),
+                            self.url.clone(),
+                            self.image_url.clone(),
+                            self.rewatching,
+                        ),
+                        Message::SaveCompleted,
                     );
-                }
+                };
+            }
+            Message::SaveCompleted(res) => {
+                self.save_status = if res.is_ok() {
+                    SaveStatus::Saved
+                } else {
+                    SaveStatus::Failed
+                };
+
+                return Task::perform(
+                    async {
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    },
+                    |_| Message::ResetSaveStatus,
+                );
             }
             Message::OpenUrlClicked => {
                 if !self.url.is_empty() {
