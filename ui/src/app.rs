@@ -87,6 +87,17 @@ impl AnimeRpc {
         )
     }
 
+    fn clear_config_form(&mut self) {
+        self.rpc.active_id = None;
+        self.rpc.active_filedir = None;
+
+        self.rpc.title_placeholder.clear();
+        self.rpc.title.clear();
+        self.rpc.url.clear();
+        self.rpc.image_url.clear();
+        self.rpc.rewatching = false;
+    }
+
     pub fn subscription(&self) -> iced::Subscription<Message> {
         let tick = iced::window::frames().map(|_| Message::View(ViewMessage::Tick));
 
@@ -388,18 +399,10 @@ impl AnimeRpc {
                     Ok(payload) => {
                         self.rpc.pollers = payload;
 
-                        if let Some(id) = &self.rpc.active_id {
-                            let is_active = self.rpc.pollers.get(id).map_or(false, |p| p.active);
-                            if !is_active {
-                                self.rpc.active_id = None;
-                                self.rpc.active_filedir = None;
-
-                                self.rpc.title_placeholder.clear();
-                                self.rpc.title.clear();
-                                self.rpc.url.clear();
-                                self.rpc.image_url.clear();
-                                self.rpc.rewatching = false;
-                            }
+                        if let Some(id) = &self.rpc.active_id
+                            && !self.rpc.pollers.get(id).is_some_and(|p| p.active)
+                        {
+                            self.clear_config_form();
                         }
 
                         if self.rpc.active_id.is_none()
@@ -418,6 +421,8 @@ impl AnimeRpc {
                 Task::none()
             }
             SseMessage::Disconnected => {
+                self.rpc.pollers.clear();
+                self.clear_config_form();
                 let attempt = match self.sse {
                     SseState::Connecting { attempt: a } => a,
                     SseState::WaitingToReconnect { attempt: a, .. } => a,
