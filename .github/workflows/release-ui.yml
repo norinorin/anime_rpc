@@ -1,0 +1,46 @@
+name: Publish UI Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: ./ui
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Generate Version String
+        id: versioning
+        shell: bash
+        run: |
+          CALVER="$(date +'%Y.%m.%d').${{ github.run_number }}"
+          echo "version=$CALVER" >> $GITHUB_OUTPUT
+          echo "Generated version: $CALVER"
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./ui
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Rename binary for release
+        run: mv target/release/anime_rpc_ui.exe target/release/anime_rpc_ui_windows_amd64.exe
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.versioning.outputs.version }}
+          name: Release ${{ steps.versioning.outputs.version }}
+          files: ui/target/release/anime_rpc_ui_windows_amd64.exe
+          generate_release_notes: true
