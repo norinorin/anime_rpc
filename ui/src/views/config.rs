@@ -1,40 +1,74 @@
 use crate::app::AnimeRpc;
-use crate::components::{divider, underlined_input};
+use crate::components::{divider, dropdown, underlined_input};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex, secondary_button_style};
 use crate::types::{DaemonStatus, IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
+use iced::widget::scrollable::{Direction, Scrollbar};
 use iced::widget::{
-    Space, button, column, container, image, pick_list, row, text, text_input, toggler,
+    Space, button, column, container, image, row, scrollable, text, text_input, toggler,
 };
-use iced::{Center, Element, Font, Length};
+use iced::{Center, Color, Element, Font, Length};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
-    let poller_list: Vec<String> = state
-        .rpc
-        .pollers
-        .values()
-        .map(|p| {
-            format!(
-                "{} {} | {}",
-                if p.active { "●" } else { "○" },
-                p.display_name,
-                if p.active { "Active" } else { "Waiting" }
-            )
-        })
-        .collect();
-
-    let poller_select = pick_list(poller_list, state.rpc.active_id.clone(), |res| {
-        Message::Io(IoMessage::PollerSelected(res))
-    })
-    .placeholder("Select...")
-    .width(Length::Fill);
-
     let is_active = state
         .rpc
         .active_id
         .as_ref()
         .and_then(|id| state.rpc.pollers.get(id))
         .is_some_and(|p| p.active);
+
+    let active_poller = state
+        .rpc
+        .active_id
+        .as_ref()
+        .and_then(|id| state.rpc.pollers.get(id));
+
+    let mut sorted_pollers: Vec<_> = state.rpc.pollers.iter().collect();
+    sorted_pollers.sort_by_key(|&(id, _)| state.rpc.active_id.as_ref() != Some(id));
+    let dropdown_options = sorted_pollers.into_iter().map(|(id, p)| {
+        let is_current = state.rpc.active_id.as_ref() == Some(id);
+        let mut btn = button(
+            row![
+                text("●")
+                    .size(typography::INDICATOR_DOT_SIZE)
+                    .color(hex(if is_current {
+                        colours::GREEN
+                    } else {
+                        colours::TEXT_DARK_MUTED
+                    })),
+                text(&p.display_name)
+                    .size(typography::BODY_SIZE)
+                    .color(if p.active {
+                        Color::WHITE
+                    } else {
+                        hex(colours::TEXT_MUTED)
+                    }),
+                Space::new().width(Length::Fill),
+                text(if p.active { "Active" } else { "Waiting" })
+                    .size(typography::STATUS_SIZE)
+                    .color(hex(colours::TEXT_MUTED))
+            ]
+            .spacing(layout::SPACING)
+            .align_y(Center),
+        )
+        .width(Length::Fill)
+        .style(styles::ghost_button_style)
+        .padding([layout::SPACING, layout::L_SPACING]);
+
+        if p.active {
+            btn = btn.on_press(Message::Io(IoMessage::PollerSelected(id.clone())));
+        }
+
+        btn.into()
+    });
+
+    let poller_section = dropdown(
+        "Poller",
+        active_poller.map_or("Select...", |p| &p.display_name),
+        state.view.poller_dropdown_open,
+        Message::View(ViewMessage::TogglePollerDropdown),
+        dropdown_options,
+    );
 
     let search_btn = button("🔍").style(secondary_button_style);
     let search_btn = if is_active {
@@ -79,58 +113,62 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         SaveStatus::Failed => ("Failed to Save", styles::danger_button_style),
     };
 
-    let card_content = column![
-        row![
-            text("Poller")
-                .width(Length::Fill)
-                .size(typography::BODY_SIZE),
-            poller_select
-        ]
-        .align_y(Center),
-        divider(),
-        underlined_input(
-            "Media title",
-            &state.rpc.title_placeholder,
-            &state.rpc.title,
-            |res| Message::Rpc(RpcMessage::TitleChanged(res))
-        ),
+    let card_content = scrollable(
         column![
-            row![
-                column![
-                    text("Media URL")
-                        .size(typography::CAPTION_SIZE)
-                        .color(hex(colours::TEXT_MUTED)),
-                    text_input("URL...", &state.rpc.url)
-                        .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
-                        .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
-                        .style(styles::transparent_text_input_style)
-                        .padding([layout::SPACING, 0.]),
-                ],
-                row![open_btn, search_btn].spacing(layout::SPACING)
-            ]
-            .spacing(layout::VERTICAL_SPACING),
+            poller_section,
             divider(),
+            underlined_input(
+                "Media title",
+                &state.rpc.title_placeholder,
+                &state.rpc.title,
+                |res| Message::Rpc(RpcMessage::TitleChanged(res))
+            ),
+            column![
+                row![
+                    column![
+                        text("Media URL")
+                            .size(typography::CAPTION_SIZE)
+                            .color(hex(colours::TEXT_MUTED)),
+                        text_input("URL...", &state.rpc.url)
+                            .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
+                            .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
+                            .style(styles::transparent_text_input_style)
+                            .padding([layout::SPACING, 0.]),
+                    ],
+                    row![open_btn, search_btn].spacing(layout::SPACING)
+                ]
+                .spacing(layout::VERTICAL_SPACING),
+                divider(),
+            ]
+            .spacing(layout::INNER_COLUMN_SPACING),
+            underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
+                Message::Rpc(RpcMessage::ImageUrlChanged(res))
+            }),
+            row![
+                text("Rewatching")
+                    .width(Length::Fill)
+                    .size(typography::BODY_SIZE),
+                toggler(state.rpc.rewatching)
+                    .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
+            ]
+            .align_y(Center),
+            image_preview
         ]
-        .spacing(layout::INNER_COLUMN_SPACING),
-        underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
-            Message::Rpc(RpcMessage::ImageUrlChanged(res))
-        }),
-        row![
-            text("Rewatching")
-                .width(Length::Fill)
-                .size(typography::BODY_SIZE),
-            toggler(state.rpc.rewatching)
-                .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
-        ]
-        .align_y(Center),
-        image_preview
-    ]
-    .spacing(layout::VERTICAL_SPACING);
+        .spacing(layout::VERTICAL_SPACING)
+        .padding(layout::XL_SPACING),
+    )
+    .height(Length::Fill)
+    .direction(Direction::Vertical(
+        Scrollbar::new()
+            .width(layout::S_SPACING)
+            .scroller_width(layout::S_SPACING)
+            .margin(0),
+    ));
 
     let card = container(card_content)
         .style(styles::card_container_style)
-        .padding(layout::XL_SPACING)
-        .width(Length::Fill);
+        .width(Length::Fill)
+        .height(Length::Fill);
 
     let status_indicator: Element<'_, Message> = match state.view.daemon_status {
         DaemonStatus::Checking => row![
@@ -172,7 +210,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .padding([0., layout::XL_SPACING]),
         Space::new().height(layout::VERTICAL_SPACING),
         card,
-        Space::new().height(Length::Fill),
+        Space::new().height(layout::VERTICAL_SPACING),
         row![
             button(text(save_text).align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::Io(IoMessage::SaveClicked))
@@ -184,9 +222,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .width(Length::Shrink)
         ]
         .spacing(layout::VERTICAL_SPACING)
-        .padding([0., layout::XL_SPACING])
+        .padding([layout::VERTICAL_SPACING, layout::XL_SPACING])
     ]
-    .padding([layout::ROOT_PADDING_TOP, 0]);
+    .padding([layout::ROOT_PADDING_TOP, 0])
+    .height(Length::Fill);
 
     container(root)
         .style(styles::black_container_style)

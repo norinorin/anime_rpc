@@ -1,9 +1,9 @@
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
-use iced::widget::{Space, column, container, text, text_input};
-use iced::{Background, Color, Element, Length, Radians, Theme};
+use iced::widget::{Space, button, column, container, row, text, text_input};
+use iced::{Alignment, Background, Color, Element, Length, Radians, Theme};
 use std::f32::consts::{PI, TAU};
 
-use crate::constants::{colours, layout};
+use crate::constants::{colours, layout, typography};
 use crate::curves::ease_in_out_cubic;
 use crate::styles::{self, hex};
 use crate::types::Message;
@@ -126,4 +126,47 @@ pub fn underlined_input<'a>(
     ]
     .spacing(4)
     .into()
+}
+
+pub fn dropdown<'a, Message: Clone + 'a>(
+    title: &'a str,
+    active_text: &'a str,
+    is_open: bool,
+    on_toggle: Message,
+    options: impl IntoIterator<Item = Element<'a, Message>>,
+) -> Element<'a, Message> {
+    let selector_btn = button(
+        row![
+            text(active_text).width(Length::Fill),
+            text(if is_open { "▲" } else { "▼" })
+                .size(layout::SPACING)
+                .color(hex(colours::TEXT_MUTED))
+        ]
+        .align_y(Alignment::Center),
+    )
+    .on_press(on_toggle)
+    .style(styles::secondary_button_style)
+    .padding([layout::SPACING, layout::L_SPACING])
+    .width(Length::Fill);
+
+    let mut section = column![
+        row![
+            text(title).width(Length::Fill).size(typography::BODY_SIZE),
+            selector_btn
+        ]
+        .align_y(Alignment::Center)
+    ]
+    .spacing(layout::SPACING);
+
+    if is_open {
+        let opts_column =
+            column(options.into_iter().collect::<Vec<_>>()).spacing(layout::XS_SPACING);
+        section = section.push(
+            container(opts_column)
+                .width(Length::Fill)
+                .padding([layout::S_SPACING, 0.]),
+        );
+    }
+
+    section.into()
 }

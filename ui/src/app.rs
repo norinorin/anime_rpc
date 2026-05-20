@@ -22,6 +22,7 @@ pub struct AnimeRpc {
 pub struct ViewState {
     pub current: View,
     pub window_visible: bool,
+    pub poller_dropdown_open: bool,
     pub elapsed_time: f32,
     pub start_time: Instant,
     pub save_status: SaveStatus,
@@ -53,6 +54,7 @@ impl AnimeRpc {
                 view: ViewState {
                     current: View::Config,
                     window_visible: true,
+                    poller_dropdown_open: false,
                     elapsed_time: 0.0,
                     start_time: Instant::now(),
                     save_status: SaveStatus::default(),
@@ -143,6 +145,10 @@ impl AnimeRpc {
                 } else {
                     iced::widget::operation::focus_next()
                 }
+            }
+            ViewMessage::TogglePollerDropdown => {
+                self.view.poller_dropdown_open = !self.view.poller_dropdown_open;
+                Task::none()
             }
         }
     }
@@ -285,6 +291,7 @@ impl AnimeRpc {
                 Task::none()
             }
             IoMessage::PollerSelected(id) => {
+                self.view.poller_dropdown_open = false;
                 if let Some(p) = self.rpc.pollers.get(&id) {
                     if self.rpc.active_filedir != p.filedir {
                         self.rpc.raw_content.clear();

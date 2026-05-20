@@ -10,7 +10,7 @@ pub fn image_cache_size() -> NonZeroUsize {
 
 pub mod layout {
     pub const ROOT_PADDING_TOP: u16 = 40;
-    pub const VERTICAL_SPACING: u32 = 10;
+    pub const VERTICAL_SPACING: f32 = 10.;
     pub const IMAGE_PREVIEW_WIDTH: f32 = 200.;
     pub const INNER_COLUMN_SPACING: f32 = 6.;
     pub const XL_SPACING: f32 = 24.;

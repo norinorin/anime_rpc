@@ -38,6 +38,7 @@ pub enum ViewMessage {
     Switch(View),
     TabPressed { shift: bool },
     Tick,
+    TogglePollerDropdown,
 }
 
 #[derive(Debug, Clone)]
