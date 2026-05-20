@@ -73,6 +73,33 @@ pub fn success_button_style(_theme: &Theme, status: Status) -> button::Style {
     }
 }
 
+pub fn danger_button_style(_theme: &Theme, status: Status) -> button::Style {
+    let base = button::Style {
+        background: Some(Background::Color(rgb(239.0, 68.0, 68.0))),
+        text_color: Color::WHITE,
+        border: Border {
+            radius: 8.0.into(),
+            width: 0.0,
+            color: Color::TRANSPARENT,
+        },
+        shadow: Shadow::default(),
+        ..Default::default()
+    };
+
+    match status {
+        Status::Active => base,
+        Status::Hovered => button::Style {
+            background: Some(Background::Color(rgb(248.0, 113.0, 113.0))),
+            ..base
+        },
+        Status::Pressed => button::Style {
+            background: Some(Background::Color(rgb(220.0, 38.0, 38.0))),
+            ..base
+        },
+        Status::Disabled => base,
+    }
+}
+
 pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
         background: Some(Background::Color(Color::TRANSPARENT)),
