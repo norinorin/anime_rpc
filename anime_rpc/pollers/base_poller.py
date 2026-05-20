@@ -127,12 +127,11 @@ class BasePoller(ABC):
         if image_url := config.get("image_url"):
             state["image_url"] = image_url
 
-        # url, state, application_id, and url_text have default values
+        # url, state, and application_id have default values
         # which are set during config parsing, this won't raise KeyError
         state["url"] = config["url"]
         state["watching_state"] = vars_["state"]
         state["application_id"] = config["application_id"]
-        state["url_text"] = config["url_text"]
         return state
 
     @staticmethod

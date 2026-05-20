@@ -246,16 +246,15 @@ class Presence:
             "display_name": state.get("display_name", origin),
         }
 
+        url = state.get("url", "")
         kwargs: dict[str, Any] = {
+            "details_url": url,
             "large_text": self._get_large_text(**state_opts),
+            "large_image": state.get("image_url"),
+            "large_url": url,
             "type_": 3,
             "status_display_type": StatusDisplayType.DETAILS,
-            "large_image": state.get("image_url"),
         }
-
-        if (url := state.get("url")) and (url_text := state.get("url_text")):
-            assert "url_text" in state
-            kwargs["buttons"] = [{"label": url_text, "url": url}]
 
         if watching_state == WatchingState.PLAYING:
             kwargs.update(self._get_playing_state_kwargs(**state_opts))

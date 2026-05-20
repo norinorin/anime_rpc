@@ -16,7 +16,6 @@ class Config(TypedDict):
 
     # OPTIONAL SETTINGS
     url: str             # defaults to ""
-    url_text: str        # defaults to ""
     rewatching: bool     # defaults to 0
     application_id: int  # defaults to DEFAULT_APPLICATION_ID
     match: str           # will attempt to generate a regex pattern if not set
@@ -53,7 +52,6 @@ def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
 
     # optional settings
     config.setdefault("url", "")
-    config["url_text"] = config.get("url_text", "")
     config["rewatching"] = bool(_parse_int(config.get("rewatching")))
     config["application_id"] = config.get("application_id", "default")
     return config

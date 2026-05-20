@@ -405,11 +405,15 @@ class Discord:
         self,
         state: str,
         details: str,
+        state_url: str = "",
+        details_url: str = "",
         type_: int = 0,
         small_text: str = "",
         small_image: str = "",
+        small_url: str = "",
         large_text: str = "",
         large_image: str = "",
+        large_url: str = "",
         buttons: list[dict[str, str]] | None = None,
         start: int = 0,
         end: int = 0,
@@ -421,11 +425,15 @@ class Discord:
         self,
         state: str,
         details: str,
+        state_url: str = "",
+        details_url: str = "",
         type_: int = 0,
         small_text: str = "",
         small_image: str = "",
+        small_url: str = "",
         large_text: str = "",
         large_image: str = "",
+        large_url: str = "",
         buttons: list[dict[str, str]] | None = None,
         start: int = 0,
         end: int = 0,
@@ -438,11 +446,15 @@ class Discord:
         self,
         state: str,
         details: str,
+        state_url: str = "",
+        details_url: str = "",
         type_: int = 0,
         small_text: str = "",
         small_image: str = "",
+        small_url: str = "",
         large_text: str = "",
         large_image: str = "",
+        large_url: str = "",
         buttons: list[dict[str, str]] | None = None,
         start: int = 0,
         end: int = 0,
@@ -455,12 +467,16 @@ class Discord:
 
         self.current_activity = {
             "state": state,
+            "state_url": state_url,
             "details": details,
+            "details_url": details_url,
             "type_": type_,
             "small_text": small_text,
             "small_image": small_image,
+            "small_url": small_url,
             "large_text": large_text,
             "large_image": large_image,
+            "large_url": large_url,
             "buttons": buttons,
             "start": start,
             "end": end,
@@ -477,14 +493,24 @@ class Discord:
             garbages.append((activity, C.Discord_Activity_Drop))  # type: ignore
 
             ptr, buf = _enc_c_str(state)
-            if ptr != ffi.NULL:  # type: ignore
+            if ptr != ffi.NULL:
                 C.Discord_Activity_SetState(activity, ptr)  # type: ignore
-                garbages.append((buf, None))  # type: ignore
+                garbages.append((buf, None))
 
             ptr, buf = _enc_c_str(details)
-            if ptr != ffi.NULL:  # type: ignore
+            if ptr != ffi.NULL:
                 C.Discord_Activity_SetDetails(activity, ptr)  # type: ignore
-                garbages.append((buf, None))  # type: ignore
+                garbages.append((buf, None))
+
+            ptr, buf = _enc_c_str(state_url)
+            if ptr != ffi.NULL:
+                C.Discord_Activity_SetStateUrl(activity, ptr)  # type: ignore
+                garbages.append((buf, None))
+
+            ptr, buf = _enc_c_str(details_url)
+            if ptr != ffi.NULL:
+                C.Discord_Activity_SetDetailsUrl(activity, ptr)  # type: ignore
+                garbages.append((buf, None))
 
             if start > 0:
                 timestamps = ffi.new("Discord_ActivityTimestamps *")  # type: ignore
@@ -495,6 +521,7 @@ class Discord:
                 C.Discord_Activity_SetTimestamps(activity, timestamps)  # type: ignore
                 garbages.append((timestamps, C.Discord_ActivityTimestamps_Drop))  # type: ignore
 
+            # I'm assuming the URL won't even show so don't bother checking for URLs here
             if large_image or large_text or small_image or small_text:
                 assets = ffi.new("Discord_ActivityAssets *")  # type: ignore
                 C.Discord_ActivityAssets_Init(assets)  # type: ignore
@@ -503,30 +530,41 @@ class Discord:
                 def set_asset(
                     text: str,
                     image: str,
+                    url: str,
                     text_setter: cffi.FFI.CData,
                     image_setter: cffi.FFI.CData,
+                    url_setter: cffi.FFI.CData,
                 ) -> None:
                     ptr, buf = _enc_c_str(text)
-                    if ptr != ffi.NULL:  # type: ignore
-                        garbages.append((buf, None))  # type: ignore
+                    if ptr != ffi.NULL:
+                        garbages.append((buf, None))
                         text_setter(assets, ptr)
 
                     ptr, buf = _enc_c_str(image)
-                    if ptr != ffi.NULL:  # type: ignore
-                        garbages.append((buf, None))  # type: ignore
+                    if ptr != ffi.NULL:
+                        garbages.append((buf, None))
                         image_setter(assets, ptr)
+
+                    ptr, buf = _enc_c_str(url)
+                    if ptr != ffi.NULL:
+                        garbages.append((buf, None))
+                        url_setter(assets, ptr)
 
                 set_asset(
                     large_text,
                     large_image,
+                    large_url,
                     C.Discord_ActivityAssets_SetLargeText,  # type: ignore
                     C.Discord_ActivityAssets_SetLargeImage,  # type: ignore
+                    C.Discord_ActivityAssets_SetLargeUrl,  # type: ignore
                 )
                 set_asset(
                     small_text,
                     small_image,
+                    small_url,
                     C.Discord_ActivityAssets_SetSmallText,  # type: ignore
                     C.Discord_ActivityAssets_SetSmallImage,  # type: ignore
+                    C.Discord_ActivityAssets_SetSmallUrl,  # type: ignore
                 )
 
                 C.Discord_Activity_SetAssets(activity, assets)  # type: ignore
@@ -552,11 +590,11 @@ class Discord:
 
                 ptr, buf = _enc_c_str(label)
                 C.Discord_ActivityButton_SetLabel(c_button, ptr[0])  # type: ignore
-                garbages.append((buf, None))  # type: ignore
+                garbages.append((buf, None))
 
                 ptr, buf = _enc_c_str(url)
                 C.Discord_ActivityButton_SetUrl(c_button, ptr[0])  # type: ignore
-                garbages.append((buf, None))  # type: ignore
+                garbages.append((buf, None))
 
                 C.Discord_Activity_AddButton(activity, c_button)  # type: ignore
                 garbages.append((c_button, C.Discord_ActivityButton_Drop))  # type: ignore

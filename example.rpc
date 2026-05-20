@@ -22,17 +22,11 @@ match=S\d+E%ep%-%title%\[
 # or if it's a movie
 # match=movie
 
-# url for the button can be anything.
-# but if you want to use the --fetch-episode-titles feature,
-# which scrapes episode titles from MAL, set it to a myanimelist url like below
+# url to scrape metadata from
 url=https://myanimelist.net/anime/52578/Boku_no_Kokoro_no_Yabai_Yatsu
 
 # or just
 url=https://myanimelist.net/anime/52578
-
-# text for the button if url is set.
-# defaults to "", meaning it won't display the button.
-url_text=View on MAL
 
 # image_url is required for the large image in the rich presence
 # if url is set to a MAL URL, it will be used to scrape the image_url
