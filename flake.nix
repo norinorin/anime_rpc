@@ -76,7 +76,6 @@
           gdk-pixbuf
           cairo
           xdotool
-          openssl
         ];
 
         LD_LIBRARY_PATH =
