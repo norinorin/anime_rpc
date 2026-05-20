@@ -1,5 +1,5 @@
 use iced::widget::button::{self, Status};
-use iced::widget::{container, text_input};
+use iced::widget::{container, scrollable, text_input};
 use iced::{Background, Border, Color, Shadow, Theme};
 
 use crate::constants::{colours, layout};
@@ -201,4 +201,13 @@ pub fn search_input_style(_theme: &Theme, _status: text_input::Status) -> text_i
         placeholder: hex(colours::TEXT_DARK_MUTED),
         selection: hex(colours::SELECTION),
     }
+}
+
+pub fn slim_scrollbar() -> scrollable::Direction {
+    scrollable::Direction::Vertical(
+        scrollable::Scrollbar::new()
+            .width(layout::S_SPACING)
+            .scroller_width(layout::S_SPACING)
+            .margin(0),
+    )
 }

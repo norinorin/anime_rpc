@@ -3,7 +3,6 @@ use crate::components::{divider, dropdown, underlined_input};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex, secondary_button_style};
 use crate::types::{DaemonStatus, IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
-use iced::widget::scrollable::{Direction, Scrollbar};
 use iced::widget::{
     Space, button, column, container, image, row, scrollable, text, text_input, toggler,
 };
@@ -158,12 +157,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .padding(layout::XL_SPACING),
     )
     .height(Length::Fill)
-    .direction(Direction::Vertical(
-        Scrollbar::new()
-            .width(layout::S_SPACING)
-            .scroller_width(layout::S_SPACING)
-            .margin(0),
-    ));
+    .direction(styles::slim_scrollbar());
 
     let card = container(card_content)
         .style(styles::card_container_style)

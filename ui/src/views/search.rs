@@ -61,7 +61,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .spacing(layout::S_SPACING)
         .into()
     };
-    let results_scroll = scrollable(results_content);
+    let results_scroll = scrollable(results_content).direction(styles::slim_scrollbar());
     let card = container(results_scroll)
         .style(styles::card_container_style)
         .padding(0)
