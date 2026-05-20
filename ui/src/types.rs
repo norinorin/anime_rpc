@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Poller {
+pub struct PollerStatus {
     pub display_name: String,
     pub active: bool,
     pub filedir: Option<String>,
 }
+
+pub type PollerStatePayload = HashMap<String, PollerStatus>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SearchResult {
@@ -30,6 +32,7 @@ pub enum Message {
     Rpc(RpcMessage),
     Search(SearchMessage),
     Io(IoMessage),
+    Sse(SseMessage),
 }
 
 #[derive(Debug, Clone)]
@@ -60,10 +63,9 @@ pub enum SearchMessage {
 
 #[derive(Debug, Clone)]
 pub enum IoMessage {
-    PollersFetched(Result<HashMap<String, Poller>, String>),
     PollerSelected(String),
     RpcLoaded(Result<String, String>),
-    RefreshClicked,
+    ReconnectClicked,
     SaveClicked,
     SaveCompleted(Result<(), String>),
     ResetSaveStatus,
@@ -78,10 +80,10 @@ pub enum SaveStatus {
     Failed,
 }
 
-#[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DaemonStatus {
-    #[default]
-    Checking,
-    Disconnected,
+#[derive(Debug, Clone)]
+pub enum SseMessage {
     Connected,
+    Data(String),
+    Disconnected,
+    Tick,
 }

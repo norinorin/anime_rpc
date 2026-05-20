@@ -1,8 +1,8 @@
-use crate::app::AnimeRpc;
-use crate::components::{divider, dropdown, underlined_input};
+use crate::app::{AnimeRpc, SseState};
+use crate::components::{LoadingSpinner, divider, dropdown, underlined_input};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex, secondary_button_style};
-use crate::types::{DaemonStatus, IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
+use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{
     Space, button, column, container, image, row, scrollable, text, text_input, toggler,
 };
@@ -167,8 +167,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .width(Length::Fill)
         .height(Length::Fill);
 
-    let status_indicator: Element<'_, Message> = match state.view.daemon_status {
-        DaemonStatus::Checking => row![
+    let status_indicator: Element<'_, Message> = match state.sse {
+        SseState::Connecting { .. } => row![
             text("●")
                 .size(typography::INDICATOR_DOT_SIZE)
                 .color(hex(colours::TEXT_DARK_MUTED)),
@@ -176,7 +176,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .size(typography::STATUS_SIZE)
                 .color(hex(colours::TEXT_MUTED))
         ],
-        DaemonStatus::Connected => row![
+        SseState::Connected => row![
             text("●")
                 .size(typography::INDICATOR_DOT_SIZE)
                 .color(hex(colours::GREEN)),
@@ -184,13 +184,26 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .size(typography::STATUS_SIZE)
                 .color(hex(colours::TEXT_MUTED))
         ],
-        DaemonStatus::Disconnected => row![
+        SseState::WaitingToReconnect { seconds_left, .. } => row![
             text("●")
                 .size(typography::INDICATOR_DOT_SIZE)
                 .color(hex(colours::RED)),
-            text(" Daemon offline")
-                .size(typography::STATUS_SIZE)
-                .color(hex(colours::RED))
+            text(format!(
+                " Daemon offline. Reconnecting in {}...",
+                seconds_left
+            ))
+            .size(typography::STATUS_SIZE)
+            .color(hex(colours::RED)),
+            button(
+                text("Connect now")
+                    .size(typography::INDICATOR_DOT_SIZE)
+                    .font(Font {
+                        weight: iced::font::Weight::Bold,
+                        ..Default::default()
+                    })
+            )
+            .on_press(Message::Io(IoMessage::ReconnectClicked))
+            .padding(0)
         ],
     }
     .align_y(iced::alignment::Vertical::Center)
@@ -214,10 +227,6 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .on_press(Message::Io(IoMessage::SaveClicked))
                 .style(save_style)
                 .width(Length::Fill),
-            button(text("Refresh").align_x(iced::alignment::Horizontal::Center))
-                .on_press(Message::Io(IoMessage::RefreshClicked))
-                .style(styles::primary_button_style)
-                .width(Length::Shrink)
         ]
         .spacing(layout::VERTICAL_SPACING)
         .padding([layout::VERTICAL_SPACING, layout::XL_SPACING])

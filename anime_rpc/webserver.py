@@ -1,16 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import TYPE_CHECKING, Any, Callable
 
-from aiohttp.web_response import json_response
 import aiohttp_cors
+from aiohttp.web_response import json_response
 
 from anime_rpc.cli import CLI_ARGS
+from anime_rpc.pollers import PollerStatus
 
 if TYPE_CHECKING:
-    import asyncio
     from collections.abc import Coroutine
 
 from aiohttp import WSMsgType
@@ -19,12 +20,13 @@ from aiohttp.web import (
     AppRunner,
     Request,
     Response,
+    StreamResponse,
     TCPSite,
     WebSocketResponse,
 )
 
-from anime_rpc.states import State, WatchingState
 from anime_rpc.metadata_provider import BaseMetadataProvider
+from anime_rpc.states import State, WatchingState
 
 PORT = 56727
 _LOGGER = logging.getLogger("webserver")
@@ -91,19 +93,56 @@ async def pollers_handler(request: Request) -> Response:
     return json_response(request.app["pollers"])
 
 
+async def pollers_sse_handler(request: Request) -> StreamResponse:
+    response = StreamResponse(
+        status=200,
+        headers={
+            "Content-Type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+    await response.prepare(request)
+
+    sse_clients = request.app["sse_clients"]
+    queue: asyncio.Queue[dict[str, PollerStatus]] = asyncio.Queue()
+    sse_clients.append(queue)
+
+    await response.write(
+        f"data: {json.dumps(request.app['pollers'])}\n\n".encode("utf-8")
+    )
+
+    try:
+        while True:
+            data = await queue.get()
+            await response.write(f"data: {json.dumps(data)}\n\n".encode("utf-8"))
+
+    except (asyncio.CancelledError, ConnectionResetError):
+        pass
+    finally:
+        sse_clients.remove(queue)
+
+    return response
+
+
 async def get_app(
     queue: asyncio.Queue[State], metadata_providers: dict[str, BaseMetadataProvider]
 ) -> Application:
     app = Application()
     app["metadata_providers"] = metadata_providers
+    app["sse_clients"] = []
     app["pollers"] = {
-        p.origin(): {"active": False, "filedir": None, "display_name": p.display_name}
+        p.origin(): PollerStatus(
+            {"active": False, "filedir": None, "display_name": p.display_name}
+        )
         for p in CLI_ARGS.pollers
     }
 
     app.router.add_get("/ws", ws_handler(queue))
     app.router.add_get("/search", search_handler)
     app.router.add_get("/pollers", pollers_handler)
+    app.router.add_get("/pollers/events", pollers_sse_handler)
     cors = aiohttp_cors.setup(
         app,
         defaults={
