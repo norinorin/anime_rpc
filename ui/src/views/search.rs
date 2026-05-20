@@ -3,7 +3,7 @@ use crate::components::LoadingSpinner;
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::{Message, SearchMessage, View, ViewMessage};
-use iced::widget::{button, column, container, image, row, scrollable, text, text_input};
+use iced::widget::{Space, button, column, container, image, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
@@ -61,8 +61,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .spacing(layout::S_SPACING)
         .into()
     };
-    let results_scroll = scrollable(results_content).direction(styles::slim_scrollbar());
-    let card = container(results_scroll)
+    let card = container(results_content)
         .style(styles::card_container_style)
         .padding(0)
         .width(Length::Fill)
@@ -96,7 +95,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         ]
         .spacing(layout::S_SPACING)
         .padding([0., layout::S_SPACING]),
-        card
+        scrollable(column![card, Space::new().height(Length::Fill),])
+            .direction(styles::slim_scrollbar())
+            .height(Length::Fill),
     ]
     .spacing(layout::L_SPACING)
     .padding(Padding::new(0.).top(40).right(0).bottom(20).left(0));
