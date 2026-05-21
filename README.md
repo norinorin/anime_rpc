@@ -10,8 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="anime rich presence" src="assets/docs/anime.png" />
-  <img alt="generic stream rich presence" src="assets/docs/generic.png">
+  <img alt="ui showcase" src="assets/docs/grid.png" width="75%"/>
 </p>
 
 ---
