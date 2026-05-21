@@ -1,9 +1,9 @@
 use crate::app::AnimeRpc;
-use crate::components::LoadingSpinner;
+use crate::components::CachedImage;
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::{Message, SearchMessage, View, ViewMessage};
-use iced::widget::{Space, button, column, container, image, row, scrollable, text, text_input};
+use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
@@ -21,17 +21,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .results
                 .iter()
                 .map(|res| {
-                    let img_widget: Element<'_, Message> =
-                        if let Some(handle) = state.rpc.image_cache.peek(&res.image_url) {
-                            container(image(handle.clone()).width(Length::Fixed(50.0)))
-                                .width(Length::Fixed(50.0))
-                                .height(Length::Fixed(50.0))
-                                .align_x(Center)
-                                .align_y(Center)
-                                .into()
-                        } else {
-                            LoadingSpinner::view(state.view.elapsed_time, 1.5, 10., 50.0, 3.)
-                        };
+                    let img_widget: Element<'_, Message> = state
+                        .rpc
+                        .image_cache
+                        .peek(&res.image_url)
+                        .unwrap_or(&CachedImage::Pending)
+                        .view(50.0, state.view.elapsed_time);
 
                     button(
                         row![

@@ -1,5 +1,6 @@
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
-use iced::widget::{Space, button, column, container, row, text, text_input};
+use iced::widget::image::Handle;
+use iced::widget::{Space, button, column, container, image, row, text, text_input};
 use iced::{Alignment, Background, Color, Element, Length, Radians, Theme};
 use std::f32::consts::{PI, TAU};
 
@@ -169,4 +170,25 @@ pub fn dropdown<'a, Message: Clone + 'a>(
     }
 
     section.into()
+}
+
+#[derive(Default, Debug, Clone)]
+pub enum CachedImage {
+    #[default]
+    Pending,
+    Failed,
+    Ready(Handle),
+}
+
+impl CachedImage {
+    pub fn view(&self, size: f32, elapsed_time: f32) -> Element<'_, Message> {
+        match self {
+            Self::Ready(handle) => image(handle).width(Length::Fixed(size)).into(),
+            Self::Pending => LoadingSpinner::view(elapsed_time, 1.5, 10., 50., 3.),
+            Self::Failed => text("Failed to load")
+                .size(typography::STATUS_SIZE)
+                .color(hex(colours::TEXT_DARK_MUTED))
+                .into(),
+        }
+    }
 }

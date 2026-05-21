@@ -1,4 +1,5 @@
 use crate::api::{fetch_img, perform_search};
+use crate::components::CachedImage;
 use crate::constants::image_cache_size;
 use crate::types::{
     IoMessage, Message, PollerStatePayload, RpcMessage, SaveStatus, SearchMessage, SearchResult,
@@ -7,7 +8,6 @@ use crate::types::{
 use crate::utils::{clean_dir_name, load_rpc, save_rpc};
 use crate::{sse, views};
 use iced::widget::container;
-use iced::widget::image::Handle;
 use iced::{Element, Length, Task, window};
 use lru::LruCache;
 use std::collections::HashMap;
@@ -39,7 +39,7 @@ pub struct RpcState {
     pub image_url: String,
     pub rewatching: bool,
     pub raw_content: String,
-    pub image_cache: LruCache<String, Handle>,
+    pub image_cache: LruCache<String, CachedImage>,
 }
 
 pub struct SearchState {
@@ -189,12 +189,13 @@ impl AnimeRpc {
             }
             RpcMessage::ImageUrlChanged(val) => {
                 self.rpc.image_url = val.clone();
-                if !val.is_empty() && !self.rpc.image_cache.contains(&val) {
-                    return Task::perform(fetch_img(val.clone()), move |handle| {
-                        Message::Io(IoMessage::ImageLoaded(val, handle))
-                    });
+                if val.is_empty() || self.rpc.image_cache.contains(&val) {
+                    return Task::none();
                 }
-                Task::none()
+                self.rpc.image_cache.put(val.clone(), CachedImage::Pending);
+                Task::perform(fetch_img(val.clone()), move |handle| {
+                    Message::Io(IoMessage::ImageLoaded(val, handle))
+                })
             }
             RpcMessage::ToggleRewatching(b) => {
                 self.rpc.rewatching = b;
@@ -380,8 +381,14 @@ impl AnimeRpc {
                 self.view.save_status = SaveStatus::Idle;
                 Task::none()
             }
-            IoMessage::ImageLoaded(url, Some(handle)) => {
-                self.rpc.image_cache.put(url, handle);
+            IoMessage::ImageLoaded(url, handle_opt) => {
+                self.rpc.image_cache.put(
+                    url,
+                    match handle_opt {
+                        Some(handle) => CachedImage::Ready(handle),
+                        None => CachedImage::Failed,
+                    },
+                );
                 Task::none()
             }
             _ => Task::none(),
