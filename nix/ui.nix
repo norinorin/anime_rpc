@@ -1,7 +1,9 @@
 {
   lib,
+  stdenv,
   rustPlatform,
   pkg-config,
+  # Linux
   wrapGAppsHook3,
   copyDesktopItems,
   makeDesktopItem,
@@ -17,6 +19,8 @@
   xorg,
   xdotool,
   libayatana-appindicator,
+  # macOS
+  darwin,
 }:
 rustPlatform.buildRustPackage {
   pname = "anime_rpc_ui";
@@ -28,30 +32,41 @@ rustPlatform.buildRustPackage {
     lockFile = ../ui/Cargo.lock;
   };
 
-  nativeBuildInputs = [
-    pkg-config
-    wrapGAppsHook3
-    copyDesktopItems
-  ];
+  nativeBuildInputs =
+    [
+      pkg-config
+    ]
+    ++ lib.optionals stdenv.isLinux [
+      wrapGAppsHook3
+      copyDesktopItems
+    ];
 
-  buildInputs = [
-    gtk3
-    glib
-    cairo
-    pango
-    atk
-    gdk-pixbuf
-    vulkan-loader
-    wayland
-    libxkbcommon
-    xdotool
-    xorg.libX11
-    xorg.libXcursor
-    xorg.libXi
-    xorg.libXrandr
-  ];
+  buildInputs =
+    lib.optionals stdenv.isLinux
+    [
+      gtk3
+      glib
+      cairo
+      pango
+      atk
+      gdk-pixbuf
+      vulkan-loader
+      wayland
+      libxkbcommon
+      xdotool
+      xorg.libX11
+      xorg.libXcursor
+      xorg.libXi
+      xorg.libXrandr
+    ]
+    ++ lib.optionals stdenv.isDarwin [
+      darwin.apple_sdk.frameworks.AppKit
+      darwin.apple_sdk.frameworks.Foundation
+      darwin.apple_sdk.frameworks.Metal
+      darwin.apple_sdk.frameworks.QuartzCore
+    ];
 
-  desktopItems = [
+  desktopItems = lib.optionals stdenv.isLinux [
     (makeDesktopItem {
       name = "anime-rpc"; # FIXME: either use dash or underscore
       desktopName = "Anime RPC";
@@ -63,11 +78,11 @@ rustPlatform.buildRustPackage {
     })
   ];
 
-  postInstall = ''
+  postInstall = lib.optionalString stdenv.isLinux ''
     install -Dm644 assets/icon.png $out/share/icons/anime-rpc.png
   '';
 
-  postFixup = ''
+  postFixup = lib.optionalString stdenv.isLinux ''
     wrapProgram $out/bin/anime_rpc_ui \
       --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [
       vulkan-loader
@@ -81,6 +96,6 @@ rustPlatform.buildRustPackage {
     description = "Configuration UI for Anime RPC";
     license = licenses.mit;
     mainProgram = "anime_rpc_ui";
-    platforms = platforms.linux;
+    platforms = platforms.linux ++ platforms.darwin;
   };
 }

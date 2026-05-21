@@ -55,28 +55,38 @@
     in {
       default = pkgs.mkShell {
         inputsFrom = [animeRpcPkg animeRpcUiPkg];
-        packages = with pkgs; [
-          python3
-          python3Packages.ruff
-          python3Packages.pytest
-          basedpyright
-          uv
+        packages = with pkgs;
+          [
+            python3
+            python3Packages.ruff
+            python3Packages.pytest
+            basedpyright
+            uv
 
-          cargo
-          rustc
-          rustfmt
-          rust-analyzer
-          clippy
+            cargo
+            rustc
+            rustfmt
+            rust-analyzer
+            clippy
 
-          pkg-config
-          vulkan-loader
-          glib
-          gtk3
-          atk
-          gdk-pixbuf
-          cairo
-          xdotool
-        ];
+            pkg-config
+          ]
+          ++ lib.optionals stdenv.isLinux [
+            vulkan-loader
+            glib
+            gtk3
+            atk
+            gdk-pixbuf
+            cairo
+            xdotool
+          ]
+          ++ lib.optionals stdenv.isDarwin [
+            darwin.apple_sdk.frameworks.AppKit
+            darwin.apple_sdk.frameworks.Cocoa
+            darwin.apple_sdk.frameworks.Foundation
+            darwin.apple_sdk.frameworks.Metal
+            darwin.apple_sdk.frameworks.QuartzCore
+          ];
 
         LD_LIBRARY_PATH =
           pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux

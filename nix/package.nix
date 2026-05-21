@@ -8,7 +8,6 @@
   alsa-lib ? null,
   libpulseaudio ? null,
   xorg ? null,
-  darwin ? null, # FIXME
 }: let
   linuxNativeDeps = [
     autoPatchelfHook
@@ -18,13 +17,6 @@
     libpulseaudio
     xorg.libX11
   ];
-  darwinSystemDeps = [
-    # FIXME
-  ];
-  libEnvVar =
-    if stdenv.hostPlatform.isDarwin
-    then "DYLD_LIBRARY_PATH"
-    else "LD_LIBRARY_PATH";
 in
   python3Packages.buildPythonApplication {
     pname = "anime_rpc";
@@ -57,11 +49,9 @@ in
       [
         libmediainfo
       ]
-      ++ lib.optionals stdenv.hostPlatform.isLinux linuxSystemDeps
-      ++ lib.optionals stdenv.hostPlatform.isDarwin darwinSystemDeps;
+      ++ lib.optionals stdenv.hostPlatform.isLinux linuxSystemDeps;
 
     makeWrapperArgs = [
-      "--prefix ${libEnvVar} : ${lib.makeLibraryPath [libmediainfo]}"
       "--set SETUPTOOLS_SCM_PRETEND_VERSION ${version}"
     ];
 
@@ -69,6 +59,6 @@ in
       description = "Anime Rich Presence integration";
       license = licenses.mit;
       mainProgram = "anime_rpc";
-      platforms = platforms.all;
+      platforms = platforms.linux ++ platforms.darwin;
     };
   }
