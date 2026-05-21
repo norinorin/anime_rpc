@@ -3,7 +3,6 @@
   stdenv,
   rustPlatform,
   pkg-config,
-  # Linux
   wrapGAppsHook3,
   copyDesktopItems,
   makeDesktopItem,
@@ -19,8 +18,6 @@
   xorg,
   xdotool,
   libayatana-appindicator,
-  # macOS
-  darwin,
 }:
 rustPlatform.buildRustPackage {
   pname = "anime_rpc_ui";
@@ -58,12 +55,6 @@ rustPlatform.buildRustPackage {
       xorg.libXcursor
       xorg.libXi
       xorg.libXrandr
-    ]
-    ++ lib.optionals stdenv.isDarwin [
-      darwin.apple_sdk.frameworks.AppKit
-      darwin.apple_sdk.frameworks.Foundation
-      darwin.apple_sdk.frameworks.Metal
-      darwin.apple_sdk.frameworks.QuartzCore
     ];
 
   desktopItems = lib.optionals stdenv.isLinux [

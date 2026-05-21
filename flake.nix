@@ -79,13 +79,6 @@
             gdk-pixbuf
             cairo
             xdotool
-          ]
-          ++ lib.optionals stdenv.isDarwin [
-            darwin.apple_sdk.frameworks.AppKit
-            darwin.apple_sdk.frameworks.Cocoa
-            darwin.apple_sdk.frameworks.Foundation
-            darwin.apple_sdk.frameworks.Metal
-            darwin.apple_sdk.frameworks.QuartzCore
           ];
 
         LD_LIBRARY_PATH =
