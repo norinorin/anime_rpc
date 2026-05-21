@@ -79,6 +79,7 @@
             gdk-pixbuf
             cairo
             xdotool
+            wrapGAppsHook3
           ];
 
         LD_LIBRARY_PATH =
@@ -89,9 +90,13 @@
             pkgs.alsa-lib
             pkgs.libpulseaudio
             pkgs.xorg.libX11
+            pkgs.xorg.libXcursor
+            pkgs.xorg.libXi
+            pkgs.xorg.libXrandr
             pkgs.wayland
             pkgs.libxkbcommon
             pkgs.libayatana-appindicator
+            pkgs.vulkan-loader
           ]);
       };
     });
