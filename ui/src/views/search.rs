@@ -1,5 +1,4 @@
 use crate::app::AnimeRpc;
-use crate::components::CachedImage;
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::{Message, SearchMessage, View, ViewMessage};
@@ -25,9 +24,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                         .rpc
                         .image_cache
                         .peek(&res.image_url)
-                        .unwrap_or(&CachedImage::Pending)
-                        .view(50.0, state.view.elapsed_time);
-
+                        .map(|img| img.view(50.0, state.now))
+                        .unwrap_or_else(|| Space::new().into());
                     button(
                         row![
                             img_widget,

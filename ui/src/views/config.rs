@@ -1,5 +1,5 @@
 use crate::app::{AnimeRpc, SseState};
-use crate::components::{CachedImage, divider, dropdown, underlined_input};
+use crate::components::{divider, dropdown, underlined_input};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex, secondary_button_style};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
@@ -81,7 +81,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         open_btn
     };
 
-    let image_preview: Element<'_, Message> = if !state.rpc.image_url.is_empty() {
+    let image_preview: Element<'_, Message> = if !state.rpc.image_url.is_empty()
+        && let Some(img) = state.rpc.image_cache.peek(&state.rpc.image_url)
+    {
         column![
             divider(),
             text("Image preview")
@@ -89,16 +91,9 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .size(typography::CAPTION_SIZE)
                 .align_x(Center)
                 .color(hex(colours::TEXT_MUTED)),
-            container(
-                state
-                    .rpc
-                    .image_cache
-                    .peek(&state.rpc.image_url)
-                    .unwrap_or(&CachedImage::Pending)
-                    .view(layout::IMAGE_PREVIEW_WIDTH, state.view.elapsed_time)
-            )
-            .width(Length::Fill)
-            .align_x(Center)
+            container(img.view(layout::IMAGE_PREVIEW_WIDTH, state.now))
+                .width(Length::Fill)
+                .align_x(Center)
         ]
         .spacing(layout::INNER_COLUMN_SPACING)
         .into()

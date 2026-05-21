@@ -40,7 +40,7 @@ pub enum ViewMessage {
     ToggleWindow,
     Switch(View),
     TabPressed { shift: bool },
-    Tick,
+    Animate,
     TogglePollerDropdown,
 }
 

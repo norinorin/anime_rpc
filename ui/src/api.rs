@@ -11,9 +11,7 @@ pub async fn fetch_img(url: String) -> Option<Handle> {
         .bytes()
         .await
         .ok()?;
-
     image::load_from_memory(&bytes).ok()?;
-
     Some(Handle::from_bytes(bytes))
 }
 

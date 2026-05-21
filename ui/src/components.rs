@@ -1,25 +1,23 @@
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
 use iced::widget::image::Handle;
 use iced::widget::{Space, button, column, container, image, row, text, text_input};
-use iced::{Alignment, Background, Color, Element, Length, Radians, Theme};
+use iced::{Alignment, Animation, Background, Color, Element, Length, Radians, Theme};
 use std::f32::consts::{PI, TAU};
+use std::time::Instant;
 
 use crate::constants::{colours, layout, typography};
-use crate::curves::ease_in_out_cubic;
 use crate::styles::{self, hex};
 use crate::types::Message;
 
 pub struct LoadingSpinner {
     radius: f32,
     stroke_width: f32,
-    elapsed_time: f32,
-    cycle_duration: f32,
+    progress: f32,
 }
 
 impl LoadingSpinner {
     pub fn view(
-        elapsed_time: f32,
-        cycle_duration: f32,
+        progress: f32,
         radius: f32,
         size: f32,
         stroke_width: f32,
@@ -27,8 +25,7 @@ impl LoadingSpinner {
         Canvas::new(LoadingSpinner {
             radius,
             stroke_width,
-            elapsed_time,
-            cycle_duration,
+            progress,
         })
         .width(Length::Fixed(size))
         .height(Length::Fixed(size))
@@ -53,14 +50,12 @@ impl<Message> Program<Message> for LoadingSpinner {
         let bg_bounds = Path::rectangle(iced::Point::ORIGIN, bounds.size());
         frame.fill(&bg_bounds, Color::TRANSPARENT);
 
-        let progress = (self.elapsed_time % self.cycle_duration) / self.cycle_duration;
-        let base_angle = progress * TAU * 1.25;
-        let t = (progress * 2.0) % 1.0;
-        let ease = ease_in_out_cubic(t);
-        let (start_offset, end_offset) = if progress < 0.5 {
-            (0.0, ease * 0.75 * TAU)
+        let base_angle = self.progress * TAU * 1.25;
+        let t = self.progress * 2.0;
+        let (start_offset, end_offset) = if t < 1.0 {
+            (0.0, t * 0.75 * TAU)
         } else {
-            (ease * 0.75 * TAU, 0.75 * TAU)
+            ((t - 1.0) * 0.75 * TAU, 0.75 * TAU)
         };
         let min_length = PI * 0.1;
         let start_angle = base_angle + start_offset;
@@ -172,19 +167,34 @@ pub fn dropdown<'a, Message: Clone + 'a>(
     section.into()
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum CachedImage {
-    #[default]
-    Pending,
+    Pending(Animation<bool>),
     Failed,
     Ready(Handle),
 }
 
 impl CachedImage {
-    pub fn view(&self, size: f32, elapsed_time: f32) -> Element<'_, Message> {
+    pub fn new_pending(now: Instant) -> Self {
+        Self::Pending(
+            Animation::new(false)
+                .duration(std::time::Duration::from_millis(2000))
+                .easing(iced::animation::Easing::EaseInOutCubic)
+                .repeat_forever()
+                .go(true, now),
+        )
+    }
+
+    pub fn is_animating(&self) -> bool {
+        matches!(self, Self::Pending(_))
+    }
+
+    pub fn view(&self, size: f32, now: Instant) -> Element<'_, Message> {
         match self {
             Self::Ready(handle) => image(handle).width(Length::Fixed(size)).into(),
-            Self::Pending => LoadingSpinner::view(elapsed_time, 1.5, 10., 50., 3.),
+            Self::Pending(anim) => {
+                LoadingSpinner::view(anim.interpolate(0.0, 1.0, now), 10., 50., 3.)
+            }
             Self::Failed => text("Failed to load")
                 .size(typography::STATUS_SIZE)
                 .color(hex(colours::TEXT_DARK_MUTED))

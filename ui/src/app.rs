@@ -18,14 +18,13 @@ pub struct AnimeRpc {
     pub rpc: RpcState,
     pub search: SearchState,
     pub sse: SseState,
+    pub now: Instant,
 }
 
 pub struct ViewState {
     pub current: View,
     pub window_visible: bool,
     pub poller_dropdown_open: bool,
-    pub elapsed_time: f32,
-    pub start_time: Instant,
     pub save_status: SaveStatus,
 }
 
@@ -61,8 +60,6 @@ impl AnimeRpc {
                     current: View::Config,
                     window_visible: true,
                     poller_dropdown_open: false,
-                    elapsed_time: 0.0,
-                    start_time: Instant::now(),
                     save_status: SaveStatus::default(),
                 },
                 rpc: RpcState {
@@ -82,6 +79,7 @@ impl AnimeRpc {
                     results: Vec::new(),
                 },
                 sse: SseState::Connecting { attempt: 1 },
+                now: Instant::now(),
             },
             Task::none(),
         )
@@ -99,7 +97,17 @@ impl AnimeRpc {
     }
 
     pub fn subscription(&self) -> iced::Subscription<Message> {
-        let tick = iced::window::frames().map(|_| Message::View(ViewMessage::Tick));
+        let is_animating = self
+            .rpc
+            .image_cache
+            .iter()
+            .any(|(_, img)| img.is_animating());
+
+        let animation = if is_animating {
+            iced::window::frames().map(|_| Message::View(ViewMessage::Animate))
+        } else {
+            iced::Subscription::none()
+        };
 
         let keyboard_sub = iced::keyboard::listen().filter_map(|event| match event {
             iced::keyboard::Event::KeyPressed {
@@ -124,20 +132,22 @@ impl AnimeRpc {
             }
         };
 
-        iced::Subscription::batch([tick, keyboard_sub, sse])
+        iced::Subscription::batch([animation, keyboard_sub, sse])
     }
 
-    pub fn update(&mut self, message: Message) -> Task<Message> {
+    pub fn update(&mut self, message: Message, now: Instant) -> Task<Message> {
+        self.now = now;
+
         match message {
-            Message::View(msg) => self.handle_view(msg),
-            Message::Rpc(msg) => self.handle_rpc(msg),
-            Message::Search(msg) => self.handle_search(msg),
-            Message::Io(msg) => self.handle_io(msg),
-            Message::Sse(msg) => self.handle_sse(msg),
+            Message::View(msg) => self.handle_view(msg, now),
+            Message::Rpc(msg) => self.handle_rpc(msg, now),
+            Message::Search(msg) => self.handle_search(msg, now),
+            Message::Io(msg) => self.handle_io(msg, now),
+            Message::Sse(msg) => self.handle_sse(msg, now),
         }
     }
 
-    fn handle_view(&mut self, message: ViewMessage) -> Task<Message> {
+    fn handle_view(&mut self, message: ViewMessage, _now: Instant) -> Task<Message> {
         match message {
             ViewMessage::ToggleWindow => {
                 self.view.window_visible = !self.view.window_visible;
@@ -159,10 +169,7 @@ impl AnimeRpc {
                 self.view.current = v;
                 Task::none()
             }
-            ViewMessage::Tick => {
-                self.view.elapsed_time = self.view.start_time.elapsed().as_secs_f32();
-                Task::none()
-            }
+            ViewMessage::Animate => Task::none(),
             ViewMessage::TabPressed { shift } => {
                 if shift {
                     iced::widget::operation::focus_previous()
@@ -177,7 +184,7 @@ impl AnimeRpc {
         }
     }
 
-    fn handle_rpc(&mut self, message: RpcMessage) -> Task<Message> {
+    fn handle_rpc(&mut self, message: RpcMessage, now: Instant) -> Task<Message> {
         match message {
             RpcMessage::TitleChanged(val) => {
                 self.rpc.title = val;
@@ -192,7 +199,9 @@ impl AnimeRpc {
                 if val.is_empty() || self.rpc.image_cache.contains(&val) {
                     return Task::none();
                 }
-                self.rpc.image_cache.put(val.clone(), CachedImage::Pending);
+                self.rpc
+                    .image_cache
+                    .put(val.clone(), CachedImage::new_pending(now));
                 Task::perform(fetch_img(val.clone()), move |handle| {
                     Message::Io(IoMessage::ImageLoaded(val, handle))
                 })
@@ -243,7 +252,7 @@ impl AnimeRpc {
                                 }
                             }
                         },
-                        |_| Message::View(ViewMessage::Tick),
+                        |_| Message::View(ViewMessage::Animate),
                     );
                 }
 
@@ -252,7 +261,7 @@ impl AnimeRpc {
         }
     }
 
-    fn handle_search(&mut self, message: SearchMessage) -> Task<Message> {
+    fn handle_search(&mut self, message: SearchMessage, now: Instant) -> Task<Message> {
         match message {
             SearchMessage::QueryChanged(q) => {
                 self.search.query = q;
@@ -267,6 +276,9 @@ impl AnimeRpc {
                 self.search.results = results.clone();
                 let urls: Vec<String> = results.into_iter().map(|r| r.image_url).collect();
                 Task::batch(urls.into_iter().map(|url| {
+                    self.rpc
+                        .image_cache
+                        .put(url.clone(), CachedImage::new_pending(now));
                     Task::perform(fetch_img(url.clone()), move |handle| {
                         Message::Io(IoMessage::ImageLoaded(url, handle))
                     })
@@ -283,7 +295,7 @@ impl AnimeRpc {
         }
     }
 
-    fn handle_io(&mut self, message: IoMessage) -> Task<Message> {
+    fn handle_io(&mut self, message: IoMessage, _now: Instant) -> Task<Message> {
         match message {
             IoMessage::ReconnectClicked => {
                 self.sse = SseState::Connecting { attempt: 1 };
@@ -395,7 +407,7 @@ impl AnimeRpc {
         }
     }
 
-    fn handle_sse(&mut self, message: SseMessage) -> Task<Message> {
+    fn handle_sse(&mut self, message: SseMessage, _now: Instant) -> Task<Message> {
         match message {
             SseMessage::Connected => {
                 self.sse = SseState::Connected;
