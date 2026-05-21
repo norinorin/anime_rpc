@@ -13,8 +13,6 @@
   <img alt="ui showcase" src="assets/docs/grid.png" width="75%"/>
 </p>
 
----
-
 ## Features
 
 - **Discord Rich Presence without running Discord**  
@@ -79,8 +77,6 @@ There are two ways to set the metadata:
 
 <summary>1. Automatically via MAL scraper (recommended)</summary>
 
----
-
 To use the scraper, you only need to set the `url` key to the respective MAL page. This will automatically get the title, image URL, and episode titles (if run using `--fetch-episode-titles`) for the presence.
 
 Example:
@@ -90,19 +86,13 @@ Example:
 url=https://myanimelist.net/anime/21/One_Piece
 ```
 
----
-
 </details>
 
 <details>
 
 <summary>2. Manually</summary>
 
----
-
 Refer to [the example config](example.rpc) to get started.
-
----
 
 </details>
 
