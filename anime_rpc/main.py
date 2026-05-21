@@ -288,7 +288,10 @@ def main() -> None:
     print_cli_args()
 
     if not (CLI_ARGS.pollers or CLI_ARGS.enable_webserver):
-        _LOGGER.error("Nothing's running. Exiting...")
+        _LOGGER.error(
+            "Nothing to run: use --pollers or --enable-webserver. "
+            "Try --help for usage details."
+        )
         sys.exit(1)
 
     asyncio.run(async_main())
