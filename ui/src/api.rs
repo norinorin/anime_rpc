@@ -3,13 +3,18 @@ use crate::types::SearchResult;
 use iced::widget::image::Handle;
 
 pub async fn fetch_img(url: String) -> Option<Handle> {
-    reqwest::get(&url)
+    let bytes = reqwest::get(&url)
         .await
+        .ok()?
+        .error_for_status()
         .ok()?
         .bytes()
         .await
-        .ok()
-        .map(Handle::from_bytes)
+        .ok()?;
+
+    image::load_from_memory(&bytes).ok()?;
+
+    Some(Handle::from_bytes(bytes))
 }
 
 // FIXME: allow choosing providers
