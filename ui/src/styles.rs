@@ -220,29 +220,3 @@ pub fn slim_scrollbar() -> scrollable::Direction {
             .margin(0),
     )
 }
-
-pub fn text_link_style(_theme: &Theme, status: button::Status) -> button::Style {
-    let link_color = hex(colours::TEXT_MUTED);
-    let hover_color = Color::WHITE;
-
-    match status {
-        button::Status::Hovered => button::Style {
-            background: None,
-            border: iced::Border::default(),
-            text_color: hover_color,
-            ..Default::default()
-        },
-        button::Status::Disabled => button::Style {
-            background: None,
-            border: iced::Border::default(),
-            text_color: hex(colours::TEXT_DARK_MUTED),
-            ..Default::default()
-        },
-        _ => button::Style {
-            background: None,
-            border: iced::Border::default(),
-            text_color: link_color,
-            ..Default::default()
-        },
-    }
-}

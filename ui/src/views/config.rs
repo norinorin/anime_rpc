@@ -222,7 +222,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             )
             .on_press(Message::Io(IoMessage::ReconnectClicked))
             .padding(0)
-            .style(styles::text_link_style)
+            .style(styles::get_ghost_button_style(
+                hex(colours::TEXT_MUTED),
+                Color::WHITE
+            ))
         ],
     }
     .align_y(iced::alignment::Vertical::Center)
