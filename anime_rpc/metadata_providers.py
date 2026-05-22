@@ -10,7 +10,16 @@ from contextlib import suppress
 from http import HTTPStatus
 from pathlib import Path
 from time import time
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, TypeVar, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Awaitable,
+    Callable,
+    Literal,
+    TypeVar,
+    TypedDict,
+    Unpack,
+)
 
 from aiohttp import ClientResponse
 from bs4 import BeautifulSoup
@@ -27,8 +36,10 @@ _LOGGER = logging.getLogger("metadata_provider")
 T = TypeVar("T")
 
 
+# TODO: decouple MAL and AL-specific fields
 class Metadata(TypedDict, total=False):
     id: str
+    mal_id: str
     episodes: dict[str, str]
     title: str
     image_url: str
@@ -48,15 +59,23 @@ class SearchProvider(ABC):
     async def search(self, query: str) -> list[SearchResult] | HTTPStatus: ...
 
 
+class _RequestOptions(TypedDict, total=False):
+    json: dict[str, Any]
+
+
 class HTTPMixin:
     def __init__(self, session: aiohttp.ClientSession, **kwargs: Any) -> None:
         self.session = session
         super().__init__(**kwargs)
 
     async def _make_request(
-        self, url: str, parser: Callable[[ClientResponse], Awaitable[T]]
+        self,
+        method: Literal["GET", "POST"],
+        url: str,
+        parser: Callable[[ClientResponse], Awaitable[T]],
+        **kwargs: Unpack[_RequestOptions],
     ) -> T | HTTPStatus:
-        async with self.session.get(url) as response:
+        async with self.session.request(method, url, **kwargs) as response:
             if response.status != HTTPStatus.OK:
                 status = HTTPStatus(response.status)
                 _LOGGER.error(
@@ -71,7 +90,7 @@ class HTTPMixin:
             return await parser(response)
 
     async def _get_text(self, url: str) -> str | HTTPStatus:
-        response_or_status = await self._make_request(url, lambda r: r.text())
+        response_or_status = await self._make_request("GET", url, lambda r: r.text())
         if isinstance(response_or_status, HTTPStatus):
             return response_or_status
         return response_or_status
@@ -79,7 +98,17 @@ class HTTPMixin:
     async def _get_json(
         self, url: str, json_type: Callable[[Any], T]
     ) -> T | HTTPStatus:
-        response_or_status = await self._make_request(url, lambda r: r.json())
+        response_or_status = await self._make_request("GET", url, lambda r: r.json())
+        if isinstance(response_or_status, HTTPStatus):
+            return response_or_status
+        return json_type(response_or_status)
+
+    async def _post_json(
+        self, url: str, payload: dict[str, Any], json_type: Callable[[Any], T]
+    ) -> T | HTTPStatus:
+        response_or_status = await self._make_request(
+            "POST", url, lambda r: r.json(), json=payload
+        )
         if isinstance(response_or_status, HTTPStatus):
             return response_or_status
         return json_type(response_or_status)
@@ -96,6 +125,10 @@ class BaseMetadataProvider(HTTPMixin, ABC):
     @abstractmethod
     def name(self) -> str: ...
 
+    @classmethod
+    @abstractmethod
+    def get_id_pattern(cls) -> re.Pattern[str]: ...
+
     @abstractmethod
     async def get_episodes(self, url: str, episode: str) -> dict[str, str]: ...
 
@@ -103,8 +136,12 @@ class BaseMetadataProvider(HTTPMixin, ABC):
     async def get_metadata(self, url: str) -> Metadata: ...
 
     @classmethod
-    @abstractmethod
-    def extract_id(cls, url: str) -> str | None: ...
+    def extract_id(cls, url: str) -> str | None:
+        if not (match := cls.get_id_pattern().match(url)):
+            _LOGGER.debug("URL doesn't match %s pattern: %s", cls.__name__, url)
+            return None
+
+        return match.group("id")
 
     async def update_episode_title_in(
         self,
@@ -160,10 +197,12 @@ class _CachingMetadataProvider(BaseMetadataProvider):
         self._cache_ready_event = asyncio.Event()
 
     @abstractmethod
-    async def fetch_episodes(self, url: str, episode: str) -> dict[str, str]: ...
+    async def _fetch_episodes(
+        self, id_: str, url: str, episode: str
+    ) -> dict[str, str]: ...
 
     @abstractmethod
-    async def fetch_metadata(self, url: str) -> Metadata: ...
+    async def _fetch_metadata(self, id_: str, url: str) -> Metadata: ...
 
     async def _consume_queue(
         self, id_: str, queue: asyncio.Queue[Metadata | None]
@@ -224,7 +263,7 @@ class _CachingMetadataProvider(BaseMetadataProvider):
                 return self.last_queried
 
         _LOGGER.info("[API CALL] Fetching metadata from %s", url)
-        metadata = await self.fetch_metadata(url)
+        metadata = await self._fetch_metadata(id_, url)
         metadata["id"] = id_
 
         # always clear event before writing so we
@@ -264,7 +303,8 @@ class _CachingMetadataProvider(BaseMetadataProvider):
 
         # time to hit the api
         _LOGGER.info("[API CALL] Fetching episodes from %s", episodes_url)
-        new_episodes = await self.fetch_episodes(url, episode)
+        assert "id" in metadata
+        new_episodes = await self._fetch_episodes(metadata["id"], url, episode)
         # this marks the episode as invalid if it
         # doesn't exist after re-hitting the API
         new_episodes.setdefault(episode, "")
@@ -306,14 +346,10 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
         return "myanimelist"
 
     @classmethod
-    def extract_id(cls, url: str) -> str | None:
-        if not (match := cls.ID_PATTERN.match(url)):
-            _LOGGER.debug("URL doesn't match MAL pattern: %s", url)
-            return None
+    def get_id_pattern(cls):
+        return cls.ID_PATTERN
 
-        return match.group("id")
-
-    async def fetch_metadata(self, url: str) -> Metadata:
+    async def _fetch_metadata(self, id_: str, url: str) -> Metadata:
         ret = Metadata()
 
         if isinstance(html := await self._get_text(url), HTTPStatus):
@@ -336,7 +372,7 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
         ret["last_updated"] = int(time() * 1000)
         return ret
 
-    async def fetch_episodes(self, url: str, episode: str) -> dict[str, str]:
+    async def _fetch_episodes(self, id_: str, url: str, episode: str) -> dict[str, str]:
         # _CachingScraper handles the metadata fetching and caching
         # at this point, the cache should have the episodes_url
         await self.wait_for_cache_ready()
@@ -379,4 +415,83 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
                 }
             )
             for item in items
+        ]
+
+
+class AniListMetadataProvider(_CachingMetadataProvider, SearchProvider):
+    ID_PATTERN = re.compile(r"https?://anilist\.co/anime/(?P<id>\d+)")
+    API_URL = "https://graphql.anilist.co"
+
+    @property
+    def name(self) -> str:
+        return "anilist"
+
+    @classmethod
+    def get_id_pattern(cls):
+        return cls.ID_PATTERN
+
+    async def _fetch_metadata(self, id_: str, url: str) -> Metadata:
+        ret = Metadata()
+
+        # TODO: cli option --preferred-lang
+        gql_query = """
+          query ($id: Int) {
+              Media(id: $id, type: ANIME) {
+                  idMal
+                  title { romaji }
+                  coverImage { extraLarge }
+              }
+          }  
+        """
+        payload = {"query": gql_query, "variables": {"id": int(id_)}}
+        data = await self._post_json(self.API_URL, payload, dict)
+
+        if isinstance(data, HTTPStatus):
+            return ret
+
+        media = data.get("data", {}).get("Media")
+        if not media:
+            return ret
+
+        if title := media.get("title", {}).get("romaji"):
+            ret["title"] = title
+
+        if image_url := media.get("coverImage", {}).get("extraLarge"):
+            ret["image_url"] = image_url
+
+        if mal_id := media.get("idMal"):
+            ret["mal_id"] = mal_id
+
+        ret["last_updated"] = int(time() * 1000)
+        return ret
+
+    async def _fetch_episodes(self, id_: str, url: str, episode: str) -> dict[str, str]:
+        # TODO: delegate to MALMetadataProvider using malID
+        return {}
+
+    async def search(self, query: str) -> list[SearchResult] | HTTPStatus:
+        gql_query = """
+          query ($search: String) {
+              Page(page: 1, perPage: 10) {
+                  media(search: $search, type: ANIME) {
+                      id
+                      title { romaji }
+                      coverImage { extraLarge }
+                  }
+              }
+          }  
+        """
+        payload = {"query": gql_query, "variables": {"search": query}}
+        data = await self._post_json(self.API_URL, payload, dict)
+        if isinstance(data, HTTPStatus):
+            return data
+
+        media_list = data.get("data", {}).get("Page", {}).get("media", [])
+        return [
+            SearchResult(id=id, title=title, url=url, image_url=image_url)
+            for item in media_list
+            if (id := str(item.get("id")))
+            and (title := item.get("title", {}).get("romaji", ""))
+            and (url := f"https://anilist.co/anime/{item.get('id')}")
+            and (image_url := item.get("coverImage", {}).get("extraLarge", ""))
         ]

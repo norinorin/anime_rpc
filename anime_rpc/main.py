@@ -18,7 +18,11 @@ from anime_rpc.file_watcher import FileWatcherManager, Subscription
 from anime_rpc.matcher import generate_regex_pattern
 from anime_rpc.pollers import BasePoller
 from anime_rpc.presence import Presence, UpdateFlag
-from anime_rpc.metadata_provider import BaseMetadataProvider, MALMetadataProvider
+from anime_rpc.metadata_providers import (
+    BaseMetadataProvider,
+    MALMetadataProvider,
+    AniListMetadataProvider,
+)
 from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, get_states_logger, validate_state
 from anime_rpc.timer import Timer
@@ -221,7 +225,10 @@ async def async_main() -> None:
     session = aiohttp.ClientSession()
     file_watcher_manager = FileWatcherManager(loop=asyncio.get_running_loop())
 
-    _metadata_providers = [MALMetadataProvider(session, file_watcher_manager)]
+    _metadata_providers = [
+        MALMetadataProvider(session, file_watcher_manager),
+        AniListMetadataProvider(session, file_watcher_manager),
+    ]
     metadata_providers: dict[str, BaseMetadataProvider] = {}
     for p in _metadata_providers:
         metadata_providers[p.name] = p

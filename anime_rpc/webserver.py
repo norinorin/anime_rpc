@@ -25,7 +25,7 @@ from aiohttp.web import (
     WebSocketResponse,
 )
 
-from anime_rpc.metadata_provider import BaseMetadataProvider
+from anime_rpc.metadata_providers import BaseMetadataProvider
 from anime_rpc.states import State, WatchingState
 
 PORT = 56727

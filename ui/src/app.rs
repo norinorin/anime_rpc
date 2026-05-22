@@ -2,8 +2,8 @@ use crate::api::{fetch_img, perform_search};
 use crate::components::CachedImage;
 use crate::constants::image_cache_size;
 use crate::types::{
-    IoMessage, Message, PollerStatePayload, RpcMessage, SaveStatus, SearchMessage, SearchResult,
-    SseMessage, View, ViewMessage,
+    IoMessage, Message, PollerStatePayload, RpcMessage, SaveStatus, SearchMessage, SearchProvider,
+    SearchResult, SseMessage, View, ViewMessage,
 };
 use crate::utils::{clean_dir_name, load_rpc, save_rpc};
 use crate::{sse, views};
@@ -43,6 +43,7 @@ pub struct RpcState {
 
 pub struct SearchState {
     pub query: String,
+    pub selected_provider: SearchProvider,
     pub results: Vec<SearchResult>,
 }
 
@@ -76,6 +77,7 @@ impl AnimeRpc {
                 },
                 search: SearchState {
                     query: String::new(),
+                    selected_provider: SearchProvider::default(),
                     results: Vec::new(),
                 },
                 sse: SseState::Connecting { attempt: 1 },
@@ -267,11 +269,10 @@ impl AnimeRpc {
                 self.search.query = q;
                 Task::none()
             }
-            SearchMessage::Perform => {
-                Task::perform(perform_search(self.search.query.clone()), |res| {
-                    Message::Search(SearchMessage::Finished(res))
-                })
-            }
+            SearchMessage::Perform => Task::perform(
+                perform_search(self.search.query.clone(), self.search.selected_provider),
+                |res| Message::Search(SearchMessage::Finished(res)),
+            ),
             SearchMessage::Finished(Ok(results)) => {
                 self.search.results = results.clone();
                 let urls: Vec<String> = results.into_iter().map(|r| r.image_url).collect();
@@ -290,6 +291,10 @@ impl AnimeRpc {
                 self.rpc.url = res.url;
                 self.rpc.image_url = res.image_url;
                 self.view.current = View::Config;
+                Task::none()
+            }
+            SearchMessage::ProviderSelected(provider) => {
+                self.search.selected_provider = provider;
                 Task::none()
             }
         }

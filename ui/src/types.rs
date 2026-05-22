@@ -59,6 +59,7 @@ pub enum SearchMessage {
     Perform,
     Finished(Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
+    ProviderSelected(SearchProvider),
 }
 
 #[derive(Debug, Clone)]
@@ -86,4 +87,46 @@ pub enum SseMessage {
     Data(String),
     Disconnected,
     Tick,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum SearchProvider {
+    #[default]
+    #[serde(rename = "myanimelist")]
+    MyAnimeList,
+    #[serde(rename = "anilist")]
+    AniList,
+}
+
+impl SearchProvider {
+    pub const ALL: &'static [SearchProvider] =
+        &[SearchProvider::MyAnimeList, SearchProvider::AniList];
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::AniList => "anilist",
+            Self::MyAnimeList => "myanimelist",
+        }
+    }
+
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::AniList => "AniList",
+            Self::MyAnimeList => "MyAnimeList",
+        }
+    }
+
+    pub fn from_url(url: &str) -> Self {
+        if url.contains("anilist.co") {
+            Self::AniList
+        } else {
+            Self::MyAnimeList
+        }
+    }
+}
+
+impl std::fmt::Display for SearchProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
 }

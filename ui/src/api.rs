@@ -1,5 +1,5 @@
 use crate::constants::API_BASE_URL;
-use crate::types::SearchResult;
+use crate::types::{SearchProvider, SearchResult};
 use iced::widget::image::Handle;
 
 pub async fn fetch_img(url: String) -> Option<Handle> {
@@ -16,8 +16,11 @@ pub async fn fetch_img(url: String) -> Option<Handle> {
 }
 
 // FIXME: allow choosing providers
-pub async fn perform_search(query: String) -> Result<Vec<SearchResult>, String> {
-    let url = format!("{}/search?q={}&provider=myanimelist", API_BASE_URL, query);
+pub async fn perform_search(
+    query: String,
+    provider: SearchProvider,
+) -> Result<Vec<SearchResult>, String> {
+    let url = format!("{}/search?q={}&provider={}", API_BASE_URL, query, provider);
     reqwest::get(&url)
         .await
         .map_err(|e| e.to_string())?

@@ -1,7 +1,7 @@
 use crate::app::AnimeRpc;
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
-use crate::types::{Message, SearchMessage, View, ViewMessage};
+use crate::types::{Message, SearchMessage, SearchProvider, View, ViewMessage};
 use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Element, Font, Length, Padding};
 
@@ -34,7 +34,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                                     weight: iced::font::Weight::Bold,
                                     ..Default::default()
                                 }),
-                                text("MyAnimeList")
+                                text(SearchProvider::from_url(&res.url).display_name())
                                     .size(typography::STATUS_SIZE)
                                     .color(hex(colours::TEXT_MUTED)),
                             ]
@@ -54,11 +54,38 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .spacing(layout::S_SPACING)
         .into()
     };
+
     let card = container(results_content)
         .style(styles::card_container_style)
         .padding(0)
         .width(Length::Fill)
         .height(Length::Fill);
+
+    let provider_toggles = container(
+        row(SearchProvider::ALL.iter().map(|&provider| {
+            let is_active = state.search.selected_provider == provider;
+
+            button(
+                text(provider.display_name())
+                    .size(typography::CAPTION_SIZE)
+                    .width(Length::Fill)
+                    .align_x(iced::alignment::Horizontal::Center),
+            )
+            .width(Length::Fill)
+            .padding([layout::S_SPACING, 0.])
+            .style(if is_active {
+                styles::primary_button_style
+            } else {
+                styles::ghost_button_style
+            })
+            .on_press(Message::Search(SearchMessage::ProviderSelected(provider)))
+            .into()
+        }))
+        .spacing(layout::S_SPACING),
+    )
+    .width(Length::Fill)
+    .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]);
+
     let root = column![
         row![
             button(text("<").size(28).font(Font {
@@ -75,25 +102,30 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .spacing(layout::L_SPACING)
         .align_y(Center)
         .padding([0., layout::L_SPACING]),
-        row![
-            text_input("Search title...", &state.search.query)
-                .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
-                .on_submit(Message::Search(SearchMessage::Perform))
-                .style(styles::search_input_style)
-                .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]),
-            button("Go")
-                .on_press(Message::Search(SearchMessage::Perform))
-                .style(styles::ghost_button_style)
-                .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING])
+        column![
+            provider_toggles,
+            row![
+                text_input("Search title...", &state.search.query)
+                    .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
+                    .on_submit(Message::Search(SearchMessage::Perform))
+                    .style(styles::search_input_style)
+                    .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]),
+                button("Go")
+                    .on_press(Message::Search(SearchMessage::Perform))
+                    .style(styles::ghost_button_style)
+                    .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING])
+            ]
+            .spacing(layout::S_SPACING)
         ]
         .spacing(layout::S_SPACING)
-        .padding([0., layout::S_SPACING]),
-        scrollable(column![card, Space::new().height(Length::Fill),])
+        .padding([0., layout::L_SPACING + layout::S_SPACING]),
+        scrollable(column![card, Space::new().height(Length::Fill)])
             .direction(styles::slim_scrollbar())
             .height(Length::Fill),
     ]
-    .spacing(layout::L_SPACING)
+    .spacing(layout::XL_SPACING)
     .padding(Padding::new(0.).top(40).right(0).bottom(20).left(0));
+
     container(root)
         .style(styles::black_container_style)
         .width(Length::Fill)
