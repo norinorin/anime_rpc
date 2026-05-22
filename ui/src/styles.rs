@@ -166,25 +166,34 @@ pub fn transparent_text_input_style(
     }
 }
 
-pub fn ghost_button_style(_theme: &Theme, status: button::Status) -> button::Style {
-    let base = button::Style {
-        background: Some(Background::Color(Color::TRANSPARENT)),
-        text_color: Color::WHITE,
-        border: Border::default(),
-        shadow: Shadow::default(),
-        ..Default::default()
-    };
+pub fn get_ghost_button_style(
+    base_colour: Color,
+    hover_colour: Color,
+) -> impl Fn(&Theme, button::Status) -> button::Style {
+    move |_theme, status| {
+        let base = button::Style {
+            background: Some(Background::Color(Color::TRANSPARENT)),
+            border: iced::Border::default(),
+            shadow: iced::Shadow::default(),
+            text_color: base_colour,
+            ..Default::default()
+        };
 
-    match status {
-        button::Status::Hovered => button::Style {
-            text_color: Color::from_rgba(1.0, 1.0, 1.0, 0.5),
-            ..base
-        },
-        button::Status::Pressed => button::Style {
-            text_color: Color::from_rgba(1.0, 1.0, 1.0, 0.9),
-            ..base
-        },
-        _ => base,
+        match status {
+            button::Status::Hovered => button::Style {
+                text_color: hover_colour,
+                ..base
+            },
+            button::Status::Pressed => button::Style {
+                text_color: Color::WHITE,
+                ..base
+            },
+            button::Status::Disabled => button::Style {
+                text_color: Color::from_rgba(base_colour.r, base_colour.g, base_colour.b, 0.5),
+                ..base
+            },
+            _ => base,
+        }
     }
 }
 

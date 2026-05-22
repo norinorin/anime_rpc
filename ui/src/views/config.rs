@@ -1,7 +1,7 @@
 use crate::app::{AnimeRpc, SseState};
-use crate::components::{divider, dropdown, toggler, underlined_input};
+use crate::components::{divider, dropdown, icon, toggler, underlined_input};
 use crate::constants::{colours, layout, typography};
-use crate::styles::{self, hex, secondary_button_style};
+use crate::styles::{self, hex};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Center, Color, Element, Font, Length};
@@ -24,6 +24,11 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     sorted_pollers.sort_by_key(|&(id, _)| state.rpc.active_id.as_ref() != Some(id));
     let dropdown_options = sorted_pollers.into_iter().map(|(id, p)| {
         let is_current = state.rpc.active_id.as_ref() == Some(id);
+        let base_colour = if p.active {
+            Color::WHITE
+        } else {
+            hex(colours::TEXT_MUTED)
+        };
         let mut btn = button(
             row![
                 text("●")
@@ -33,13 +38,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     } else {
                         colours::TEXT_DARK_MUTED
                     })),
-                text(&p.display_name)
-                    .size(typography::BODY_SIZE)
-                    .color(if p.active {
-                        Color::WHITE
-                    } else {
-                        hex(colours::TEXT_MUTED)
-                    }),
+                text(&p.display_name).size(typography::BODY_SIZE),
                 Space::new().width(Length::Fill),
                 text(if p.active { "Active" } else { "Waiting" })
                     .size(typography::STATUS_SIZE)
@@ -49,7 +48,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             .align_y(Center),
         )
         .width(Length::Fill)
-        .style(styles::ghost_button_style)
+        .style(styles::get_ghost_button_style(
+            base_colour,
+            hex(colours::SELECTION),
+        ))
         .padding([layout::SPACING, layout::L_SPACING]);
 
         if p.active {
@@ -71,18 +73,36 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         dropdown_options,
     );
 
-    let search_btn = button("🔍").style(secondary_button_style);
+    let mut media_label_row = row![
+        text("Media URL")
+            .size(typography::CAPTION_SIZE)
+            .color(hex(colours::TEXT_MUTED)),
+    ]
+    .align_y(Center)
+    .spacing(layout::SPACING);
+
+    if !state.rpc.url.is_empty() {
+        let open_btn = button(icon('\u{e89e}').size(typography::STATUS_SIZE))
+            .style(styles::get_ghost_button_style(
+                hex(colours::TEXT_MUTED),
+                hex(colours::SELECTION),
+            ))
+            .padding(0.)
+            .on_press(Message::Rpc(RpcMessage::OpenUrlClicked));
+        media_label_row = media_label_row.push(open_btn);
+    }
+
+    let search_btn = button(icon('\u{e8b6}').size(24))
+        .style(styles::get_ghost_button_style(
+            hex(colours::TEXT_MUTED),
+            hex(colours::SELECTION),
+        ))
+        .padding([0., layout::SPACING]);
+
     let search_btn = if is_active {
         search_btn.on_press(Message::View(ViewMessage::Switch(View::Search)))
     } else {
         search_btn
-    };
-
-    let open_btn = button("🌐").style(secondary_button_style);
-    let open_btn = if !state.rpc.url.is_empty() {
-        open_btn.on_press(Message::Rpc(RpcMessage::OpenUrlClicked))
-    } else {
-        open_btn
     };
 
     let image_preview: Element<'_, Message> = if !state.rpc.image_url.is_empty()
@@ -119,33 +139,28 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         divider(),
         underlined_input(
             "Media title",
-            state
-                .rpc
-                .title_placeholder
-                .is_empty()
-                .then_some("Title...")
-                .unwrap_or(&state.rpc.title_placeholder),
+            if state.rpc.title_placeholder.is_empty() {
+                "Title..."
+            } else {
+                &state.rpc.title_placeholder
+            },
             &state.rpc.title,
             |res| Message::Rpc(RpcMessage::TitleChanged(res))
         ),
         column![
+            media_label_row,
             row![
-                column![
-                    text("Media URL")
-                        .size(typography::CAPTION_SIZE)
-                        .color(hex(colours::TEXT_MUTED)),
-                    text_input("URL...", &state.rpc.url)
-                        .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
-                        .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
-                        .style(styles::transparent_text_input_style)
-                        .padding([layout::SPACING, 0.]),
-                ],
-                row![open_btn, search_btn].spacing(layout::SPACING)
+                text_input("URL...", &state.rpc.url)
+                    .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
+                    .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
+                    .style(styles::transparent_text_input_style)
+                    .padding([layout::SPACING, 0.]),
+                search_btn
             ]
-            .spacing(layout::VERTICAL_SPACING),
+            .align_y(Center),
             divider(),
         ]
-        .spacing(layout::INNER_COLUMN_SPACING),
+        .spacing(layout::S_SPACING),
         underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
             Message::Rpc(RpcMessage::ImageUrlChanged(res))
         }),

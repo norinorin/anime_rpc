@@ -1,9 +1,10 @@
 use crate::app::AnimeRpc;
+use crate::components::icon;
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::{Message, SearchMessage, SearchProvider, View, ViewMessage};
 use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
-use iced::{Alignment, Center, Element, Font, Length, Padding};
+use iced::{Alignment, Center, Color, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let results_content: Element<'_, Message> = if state.search.results.is_empty() {
@@ -45,7 +46,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     )
                     .width(Length::Fill)
                     .padding([layout::SPACING, layout::L_SPACING])
-                    .style(styles::ghost_button_style)
+                    .style(styles::get_ghost_button_style(
+                        Color::WHITE,
+                        hex(colours::TEXT_MUTED),
+                    ))
                     .on_press(Message::Search(SearchMessage::ResultSelected(res.clone())))
                     .into()
                 })
@@ -64,6 +68,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let provider_toggles = container(
         row(SearchProvider::ALL.iter().map(|&provider| {
             let is_active = state.search.selected_provider == provider;
+            let ghost_style =
+                styles::get_ghost_button_style(Color::WHITE, hex(colours::TEXT_MUTED));
 
             button(
                 text(provider.display_name())
@@ -73,10 +79,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             )
             .width(Length::Fill)
             .padding([layout::S_SPACING, 0.])
-            .style(if is_active {
-                styles::primary_button_style
-            } else {
-                styles::ghost_button_style
+            .style(move |theme, status| {
+                if is_active {
+                    styles::primary_button_style(theme, status)
+                } else {
+                    ghost_style(theme, status)
+                }
             })
             .on_press(Message::Search(SearchMessage::ProviderSelected(provider)))
             .into()
@@ -88,12 +96,12 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
 
     let root = column![
         row![
-            button(text("<").size(28).font(Font {
-                weight: iced::font::Weight::Light,
-                ..Default::default()
-            }))
-            .style(styles::ghost_button_style)
-            .on_press(Message::View(ViewMessage::Switch(View::Config))),
+            button(icon('\u{e5e0}').size(28))
+                .style(styles::get_ghost_button_style(
+                    Color::WHITE,
+                    hex(colours::TEXT_MUTED)
+                ))
+                .on_press(Message::View(ViewMessage::Switch(View::Config))),
             text("Search").size(34).font(Font {
                 weight: iced::font::Weight::Bold,
                 ..Default::default()
@@ -110,12 +118,16 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     .on_submit(Message::Search(SearchMessage::Perform))
                     .style(styles::search_input_style)
                     .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]),
-                button("Go")
+                button(icon('\u{e8b6}').size(layout::XL_SPACING))
                     .on_press(Message::Search(SearchMessage::Perform))
-                    .style(styles::ghost_button_style)
+                    .style(styles::get_ghost_button_style(
+                        Color::WHITE,
+                        hex(colours::TEXT_MUTED)
+                    ))
                     .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING])
             ]
             .spacing(layout::S_SPACING)
+            .align_y(Center)
         ]
         .spacing(layout::S_SPACING)
         .padding([0., layout::L_SPACING + layout::S_SPACING]),

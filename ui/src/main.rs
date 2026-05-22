@@ -22,6 +22,9 @@ pub fn main() -> iced::Result {
     )
     .antialiasing(true)
     .title("Anime RPC")
+    .font(include_bytes!(
+        "../assets/MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf"
+    ))
     .window(window::Settings {
         size: Size::new(constants::WINDOW_WIDTH, constants::WINDOW_HEIGHT),
         resizable: false,

@@ -8,7 +8,7 @@ use iced::{Alignment, Animation, Background, Color, Element, Length, Padding, Ra
 use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
-use crate::constants::{colours, layout, typography};
+use crate::constants::{ICON_FONT, colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::Message;
 
@@ -116,14 +116,16 @@ pub fn underlined_input<'a>(
     on_change: impl Fn(String) -> Message + 'a,
 ) -> Element<'a, Message> {
     column![
-        text(label).size(13).color(hex(colours::TEXT_MUTED)),
+        text(label)
+            .size(typography::CAPTION_SIZE)
+            .color(hex(colours::TEXT_MUTED)),
         text_input(placeholder, value)
             .on_input(on_change)
             .style(styles::transparent_text_input_style)
             .padding([layout::SPACING, 0.]),
         divider(),
     ]
-    .spacing(4)
+    .spacing(layout::S_SPACING)
     .into()
 }
 
@@ -279,4 +281,11 @@ impl CachedImage {
                 .into(),
         }
     }
+}
+
+pub fn icon<'a>(unicode: char) -> iced::widget::Text<'a> {
+    text(unicode.to_string())
+        .font(ICON_FONT)
+        .align_x(iced::alignment::Horizontal::Center)
+        .align_y(iced::alignment::Vertical::Center)
 }

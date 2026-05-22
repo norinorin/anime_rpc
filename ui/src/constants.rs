@@ -1,5 +1,10 @@
 use std::num::NonZeroUsize;
 
+use iced::{
+    Font,
+    font::{Family, Stretch, Style, Weight},
+};
+
 pub const API_BASE_URL: &str = "http://127.0.0.1:56727";
 pub const WINDOW_WIDTH: f32 = 400.0;
 pub const WINDOW_HEIGHT: f32 = 800.0;
@@ -37,3 +42,10 @@ pub mod colours {
     pub const SOFT_DARK: u32 = 0x151515;
     pub const SELECTION: u32 = 0x3E91FF;
 }
+
+pub const ICON_FONT: Font = Font {
+    family: Family::Name("Material Symbols Rounded"),
+    weight: Weight::Normal,
+    stretch: Stretch::Normal,
+    style: Style::Normal,
+};
