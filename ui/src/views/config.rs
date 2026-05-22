@@ -1,9 +1,9 @@
 use crate::app::{AnimeRpc, SseState};
-use crate::components::{divider, dropdown, underlined_input};
+use crate::components::{divider, dropdown, toggler, underlined_input};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex, secondary_button_style};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
-use iced::widget::{Space, button, column, container, row, scrollable, text, text_input, toggler};
+use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Center, Color, Element, Font, Length};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
@@ -63,6 +63,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         "Poller",
         active_poller.map_or("Select...", |p| &p.display_name),
         state.view.poller_dropdown_open,
+        state
+            .view
+            .poller_dropdown_anim
+            .interpolate(0.0, 1.0, state.now),
         Message::View(ViewMessage::TogglePollerDropdown),
         dropdown_options,
     );
@@ -149,8 +153,10 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             text("Rewatching")
                 .width(Length::Fill)
                 .size(typography::BODY_SIZE),
-            toggler(state.rpc.rewatching)
-                .on_toggle(|res| Message::Rpc(RpcMessage::ToggleRewatching(res)))
+            toggler(
+                state.view.rewatching_anim.interpolate(0.0, 1.0, state.now),
+                Message::Rpc(RpcMessage::ToggleRewatching(!state.rpc.rewatching))
+            )
         ]
         .align_y(Center),
         image_preview

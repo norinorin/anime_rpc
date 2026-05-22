@@ -7,6 +7,7 @@ use crate::types::{
 };
 use crate::utils::{clean_dir_name, load_rpc, save_rpc};
 use crate::{sse, views};
+use iced::Animation;
 use iced::widget::container;
 use iced::{Element, Length, Task, window};
 use lru::LruCache;
@@ -25,6 +26,8 @@ pub struct ViewState {
     pub current: View,
     pub window_visible: bool,
     pub poller_dropdown_open: bool,
+    pub poller_dropdown_anim: Animation<bool>,
+    pub rewatching_anim: Animation<bool>,
     pub save_status: SaveStatus,
 }
 
@@ -61,6 +64,12 @@ impl AnimeRpc {
                     current: View::Config,
                     window_visible: true,
                     poller_dropdown_open: false,
+                    poller_dropdown_anim: Animation::new(false)
+                        .duration(std::time::Duration::from_millis(200))
+                        .easing(iced::animation::Easing::EaseInOutCubic),
+                    rewatching_anim: Animation::new(false)
+                        .duration(std::time::Duration::from_millis(150))
+                        .easing(iced::animation::Easing::EaseInOutCubic),
                     save_status: SaveStatus::default(),
                 },
                 rpc: RpcState {
@@ -98,14 +107,21 @@ impl AnimeRpc {
         self.rpc.rewatching = false;
     }
 
-    pub fn subscription(&self) -> iced::Subscription<Message> {
-        let is_animating = self
+    fn is_animating(&self) -> bool {
+        let mut is_animating = self
             .rpc
             .image_cache
             .iter()
             .any(|(_, img)| img.is_animating());
 
-        let animation = if is_animating {
+        is_animating |= self.view.poller_dropdown_anim.is_animating(self.now);
+        is_animating |= self.view.rewatching_anim.is_animating(self.now);
+
+        is_animating
+    }
+
+    pub fn subscription(&self) -> iced::Subscription<Message> {
+        let animation = if self.is_animating() {
             iced::window::frames().map(|_| Message::View(ViewMessage::Animate))
         } else {
             iced::Subscription::none()
@@ -149,7 +165,7 @@ impl AnimeRpc {
         }
     }
 
-    fn handle_view(&mut self, message: ViewMessage, _now: Instant) -> Task<Message> {
+    fn handle_view(&mut self, message: ViewMessage, now: Instant) -> Task<Message> {
         match message {
             ViewMessage::ToggleWindow => {
                 self.view.window_visible = !self.view.window_visible;
@@ -181,6 +197,9 @@ impl AnimeRpc {
             }
             ViewMessage::TogglePollerDropdown => {
                 self.view.poller_dropdown_open = !self.view.poller_dropdown_open;
+                self.view
+                    .poller_dropdown_anim
+                    .go_mut(self.view.poller_dropdown_open, now);
                 Task::none()
             }
         }
@@ -210,6 +229,7 @@ impl AnimeRpc {
             }
             RpcMessage::ToggleRewatching(b) => {
                 self.rpc.rewatching = b;
+                self.view.rewatching_anim.go_mut(b, now);
                 Task::none()
             }
             RpcMessage::OpenUrlClicked => {
@@ -300,7 +320,7 @@ impl AnimeRpc {
         }
     }
 
-    fn handle_io(&mut self, message: IoMessage, _now: Instant) -> Task<Message> {
+    fn handle_io(&mut self, message: IoMessage, now: Instant) -> Task<Message> {
         match message {
             IoMessage::ReconnectClicked => {
                 self.sse = SseState::Connecting { attempt: 1 };
@@ -308,10 +328,12 @@ impl AnimeRpc {
             }
             IoMessage::PollerSelected(id) => {
                 self.view.poller_dropdown_open = false;
+                self.view.poller_dropdown_anim.go_mut(false, now);
                 if let Some(p) = self.rpc.pollers.get(&id) {
                     if self.rpc.active_filedir != p.filedir {
                         self.rpc.raw_content.clear();
                         self.rpc.rewatching = false;
+                        self.view.rewatching_anim = Animation::new(false);
                         self.rpc.title.clear();
                         self.rpc.url.clear();
                         self.rpc.image_url.clear();
@@ -346,7 +368,10 @@ impl AnimeRpc {
                             "title" => self.rpc.title = parts[1].to_string(),
                             "url" => self.rpc.url = parts[1].to_string(),
                             "image_url" => self.rpc.image_url = parts[1].to_string(),
-                            "rewatching" => self.rpc.rewatching = parts[1] != "0",
+                            "rewatching" => {
+                                self.rpc.rewatching = parts[1] != "0";
+                                self.view.rewatching_anim = Animation::new(self.rpc.rewatching);
+                            }
                             _ => {}
                         }
                     }

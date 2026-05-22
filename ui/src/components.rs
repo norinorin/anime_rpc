@@ -1,7 +1,10 @@
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
 use iced::widget::image::Handle;
-use iced::widget::{Space, button, column, container, image, row, text, text_input};
-use iced::{Alignment, Animation, Background, Color, Element, Length, Radians, Theme};
+use iced::widget::{
+    Space, button, column, container, image, mouse_area, row, scrollable, space, stack, text,
+    text_input,
+};
+use iced::{Alignment, Animation, Background, Color, Element, Length, Padding, Radians, Theme};
 use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
@@ -128,6 +131,7 @@ pub fn dropdown<'a, Message: Clone + 'a>(
     title: &'a str,
     active_text: &'a str,
     is_open: bool,
+    progress: f32,
     on_toggle: Message,
     options: impl IntoIterator<Item = Element<'a, Message>>,
 ) -> Element<'a, Message> {
@@ -151,20 +155,94 @@ pub fn dropdown<'a, Message: Clone + 'a>(
             selector_btn
         ]
         .align_y(Alignment::Center)
-    ]
-    .spacing(layout::SPACING);
+    ];
 
-    if is_open {
-        let opts_column =
-            column(options.into_iter().collect::<Vec<_>>()).spacing(layout::XS_SPACING);
-        section = section.push(
-            container(opts_column)
-                .width(Length::Fill)
-                .padding([layout::S_SPACING, 0.]),
-        );
+    if progress > 0.0 {
+        let options_vec: Vec<_> = options.into_iter().collect();
+        let item_height = 35.;
+        let target_height = options_vec.len() as f32 * item_height + layout::SPACING;
+        let opts_column = column(options_vec).spacing(layout::XS_SPACING);
+        let opts_container = container(opts_column).width(Length::Fill).padding(Padding {
+            top: layout::SPACING,
+            bottom: 0.,
+            right: 0.,
+            left: 0.,
+        });
+        let viewport = scrollable(opts_container)
+            .direction(scrollable::Direction::Vertical(
+                scrollable::Scrollbar::new()
+                    .width(0)
+                    .scroller_width(0)
+                    .margin(0),
+            ))
+            .height(Length::Fixed(target_height * progress));
+        section = section.push(viewport);
     }
 
     section.into()
+}
+
+pub fn toggler<'a, Message: Clone + 'a>(progress: f32, on_toggle: Message) -> Element<'a, Message> {
+    let width = 34.0;
+    let height = 18.0;
+    let circle_size = 12.0;
+    let padding = 3.0;
+
+    let bg_off = hex(colours::TEXT_DARK_MUTED);
+    let bg_on = hex(colours::SELECTION);
+
+    let r = bg_off.r + (bg_on.r - bg_off.r) * progress;
+    let g = bg_off.g + (bg_on.g - bg_off.g) * progress;
+    let b = bg_off.b + (bg_on.b - bg_off.b) * progress;
+    let current_bg_colour = Color::from_rgba(r, g, b, 1.0);
+
+    let knob_off = hex(colours::SOFT_DARK);
+    let knob_on = Color::WHITE;
+
+    let kr = knob_off.r + (knob_on.r - knob_off.r) * progress;
+    let kg = knob_off.g + (knob_on.g - knob_off.g) * progress;
+    let kb = knob_off.b + (knob_on.b - knob_off.b) * progress;
+    let current_knob_colour = Color::from_rgba(kr, kg, kb, 1.0);
+
+    let bg = container(space())
+        .width(Length::Fixed(width))
+        .height(Length::Fixed(height))
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(current_bg_colour)),
+            border: iced::Border {
+                radius: (height / 2.0).into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+    let circle_x = padding + (width - circle_size - padding * 2.0) * progress;
+
+    let knob = container(space())
+        .width(Length::Fixed(circle_size))
+        .height(Length::Fixed(circle_size))
+        .style(move |_theme| container::Style {
+            background: Some(Background::Color(current_knob_colour)),
+            border: iced::Border {
+                radius: (circle_size / 2.0).into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+    let knob_positioned = container(knob)
+        .width(Length::Fixed(width))
+        .height(Length::Fixed(height))
+        .padding(Padding {
+            top: padding,
+            bottom: 0.0,
+            left: circle_x,
+            right: 0.0,
+        });
+
+    mouse_area(stack![bg, knob_positioned])
+        .on_press(on_toggle)
+        .into()
 }
 
 #[derive(Debug, Clone)]
