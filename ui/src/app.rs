@@ -9,7 +9,7 @@ use crate::utils::{clean_dir_name, load_rpc, save_rpc};
 use crate::{sse, views};
 use iced::Animation;
 use iced::widget::container;
-use iced::{Element, Length, Task, window};
+use iced::{Element, Length, Task};
 use lru::LruCache;
 use std::collections::HashMap;
 use std::time::Instant;
@@ -24,11 +24,18 @@ pub struct AnimeRpc {
 
 pub struct ViewState {
     pub current: View,
-    pub window_visible: bool,
     pub poller_dropdown_open: bool,
     pub poller_dropdown_anim: Animation<bool>,
     pub rewatching_anim: Animation<bool>,
     pub save_status: SaveStatus,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RpcSnapshot {
+    pub title: String,
+    pub url: String,
+    pub image_url: String,
+    pub rewatching: bool,
 }
 
 pub struct RpcState {
@@ -42,12 +49,16 @@ pub struct RpcState {
     pub rewatching: bool,
     pub raw_content: String,
     pub image_cache: LruCache<String, CachedImage>,
+
+    pub undo_stack: Vec<RpcSnapshot>,
+    pub redo_stack: Vec<RpcSnapshot>,
 }
 
 pub struct SearchState {
     pub query: String,
     pub selected_provider: SearchProvider,
     pub results: Vec<SearchResult>,
+    pub hovered_index: Option<usize>,
 }
 
 pub enum SseState {
@@ -62,7 +73,6 @@ impl AnimeRpc {
             Self {
                 view: ViewState {
                     current: View::Config,
-                    window_visible: true,
                     poller_dropdown_open: false,
                     poller_dropdown_anim: Animation::new(false)
                         .duration(std::time::Duration::from_millis(200))
@@ -83,17 +93,38 @@ impl AnimeRpc {
                     rewatching: false,
                     raw_content: String::new(),
                     image_cache: LruCache::new(image_cache_size()),
+                    undo_stack: Vec::new(),
+                    redo_stack: Vec::new(),
                 },
                 search: SearchState {
                     query: String::new(),
                     selected_provider: SearchProvider::default(),
                     results: Vec::new(),
+                    hovered_index: None,
                 },
                 sse: SseState::Connecting { attempt: 1 },
                 now: Instant::now(),
             },
             Task::none(),
         )
+    }
+
+    fn current_snapshot(&self) -> RpcSnapshot {
+        RpcSnapshot {
+            title: self.rpc.title.clone(),
+            url: self.rpc.url.clone(),
+            image_url: self.rpc.image_url.clone(),
+            rewatching: self.rpc.rewatching,
+        }
+    }
+
+    fn save_snapshot(&mut self) {
+        let snapshot = self.current_snapshot();
+
+        if self.rpc.undo_stack.last() != Some(&snapshot) {
+            self.rpc.undo_stack.push(snapshot);
+            self.rpc.redo_stack.clear();
+        }
     }
 
     fn clear_config_form(&mut self) {
@@ -127,18 +158,32 @@ impl AnimeRpc {
             iced::Subscription::none()
         };
 
-        let keyboard_sub = iced::keyboard::listen().filter_map(|event| match event {
-            iced::keyboard::Event::KeyPressed {
-                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Escape),
-                ..
-            } => Some(Message::View(ViewMessage::ToggleWindow)),
-            iced::keyboard::Event::KeyPressed {
-                key: iced::keyboard::Key::Named(iced::keyboard::key::Named::Tab),
-                modifiers,
-                ..
-            } => Some(Message::View(ViewMessage::TabPressed {
-                shift: modifiers.shift(),
-            })),
+        let keyboard_sub = iced::keyboard::listen().filter_map(move |event| match event {
+            iced::keyboard::Event::KeyPressed { key, modifiers, .. } => {
+                use iced::keyboard::key::{Key, Named};
+
+                match key.as_ref() {
+                    Key::Named(Named::Tab) => Some(Message::View(ViewMessage::TabPressed {
+                        shift: modifiers.shift(),
+                    })),
+                    Key::Character(c) if (c == "z" || c == "Z") && modifiers.command() => {
+                        if modifiers.shift() {
+                            Some(Message::Rpc(RpcMessage::Redo))
+                        } else {
+                            Some(Message::Rpc(RpcMessage::Undo))
+                        }
+                    }
+                    Key::Named(Named::ArrowDown) => {
+                        Some(Message::Search(SearchMessage::MoveSelection(1)))
+                    }
+                    Key::Named(Named::ArrowUp) => {
+                        Some(Message::Search(SearchMessage::MoveSelection(-1)))
+                    }
+                    Key::Named(Named::Enter) => Some(Message::Search(SearchMessage::SelectHovered)),
+                    Key::Character("/") => Some(Message::Search(SearchMessage::FocusInput)),
+                    _ => None,
+                }
+            }
             _ => None,
         });
 
@@ -167,15 +212,6 @@ impl AnimeRpc {
 
     fn handle_view(&mut self, message: ViewMessage, now: Instant) -> Task<Message> {
         match message {
-            ViewMessage::ToggleWindow => {
-                self.view.window_visible = !self.view.window_visible;
-                let mode = if self.view.window_visible {
-                    window::Mode::Windowed
-                } else {
-                    window::Mode::Hidden
-                };
-                window::latest().and_then(move |id| window::set_mode(id, mode))
-            }
             ViewMessage::Switch(v) => {
                 if v == View::Search
                     && let Some(id) = &self.rpc.active_id
@@ -206,16 +242,25 @@ impl AnimeRpc {
     }
 
     fn handle_rpc(&mut self, message: RpcMessage, now: Instant) -> Task<Message> {
+        if self.view.current != View::Config
+            && let RpcMessage::Undo | RpcMessage::Redo = message
+        {
+            return Task::none();
+        }
+
         match message {
             RpcMessage::TitleChanged(val) => {
+                self.save_snapshot();
                 self.rpc.title = val;
                 Task::none()
             }
             RpcMessage::UrlChanged(val) => {
+                self.save_snapshot();
                 self.rpc.url = val;
                 Task::none()
             }
             RpcMessage::ImageUrlChanged(val) => {
+                self.save_snapshot();
                 self.rpc.image_url = val.clone();
                 if val.is_empty() || self.rpc.image_cache.contains(&val) {
                     return Task::none();
@@ -228,8 +273,31 @@ impl AnimeRpc {
                 })
             }
             RpcMessage::ToggleRewatching(b) => {
+                self.save_snapshot();
                 self.rpc.rewatching = b;
                 self.view.rewatching_anim.go_mut(b, now);
+                Task::none()
+            }
+            RpcMessage::Undo => {
+                if let Some(previous) = self.rpc.undo_stack.pop() {
+                    self.rpc.redo_stack.push(self.current_snapshot());
+                    self.rpc.title = previous.title;
+                    self.rpc.url = previous.url;
+                    self.rpc.image_url = previous.image_url;
+                    self.rpc.rewatching = previous.rewatching;
+                    self.view.rewatching_anim.go_mut(previous.rewatching, now);
+                }
+                Task::none()
+            }
+            RpcMessage::Redo => {
+                if let Some(next) = self.rpc.redo_stack.pop() {
+                    self.rpc.undo_stack.push(self.current_snapshot());
+                    self.rpc.title = next.title;
+                    self.rpc.url = next.url;
+                    self.rpc.image_url = next.image_url;
+                    self.rpc.rewatching = next.rewatching;
+                    self.view.rewatching_anim.go_mut(next.rewatching, now);
+                }
                 Task::none()
             }
             RpcMessage::OpenUrlClicked => {
@@ -284,9 +352,18 @@ impl AnimeRpc {
     }
 
     fn handle_search(&mut self, message: SearchMessage, now: Instant) -> Task<Message> {
+        if self.view.current != View::Search
+            && let SearchMessage::MoveSelection(_)
+            | SearchMessage::SelectHovered
+            | SearchMessage::FocusInput = message
+        {
+            return Task::none();
+        }
+
         match message {
             SearchMessage::QueryChanged(q) => {
                 self.search.query = q;
+                self.search.hovered_index = None;
                 Task::none()
             }
             SearchMessage::Perform => Task::perform(
@@ -316,6 +393,49 @@ impl AnimeRpc {
             SearchMessage::ProviderSelected(provider) => {
                 self.search.selected_provider = provider;
                 Task::none()
+            }
+            SearchMessage::MoveSelection(delta) => {
+                if self.search.results.is_empty() {
+                    return Task::none();
+                }
+
+                let max_idx = self.search.results.len().saturating_sub(1);
+                let new_idx = match self.search.hovered_index {
+                    Some(curr) => {
+                        let next = curr as isize + delta;
+                        next.clamp(0, max_idx as isize) as usize
+                    }
+                    None => {
+                        if delta > 0 {
+                            0
+                        } else {
+                            max_idx
+                        }
+                    }
+                };
+
+                self.search.hovered_index = Some(new_idx);
+
+                // FIXME: is there a way to properly calculate this?
+                let offset_y = new_idx as f32 * 70.0;
+                iced::widget::operation::scroll_to(
+                    iced::widget::Id::new("search_scroll"),
+                    iced::widget::scrollable::AbsoluteOffset {
+                        x: 0.0,
+                        y: offset_y,
+                    },
+                )
+            }
+            SearchMessage::SelectHovered => {
+                if let Some(idx) = self.search.hovered_index
+                    && let Some(res) = self.search.results.get(idx).cloned()
+                {
+                    return self.update(Message::Search(SearchMessage::ResultSelected(res)), now);
+                }
+                Task::none()
+            }
+            SearchMessage::FocusInput => {
+                iced::widget::operation::focus(iced::widget::Id::new("search_bar"))
             }
         }
     }

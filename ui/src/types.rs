@@ -37,7 +37,6 @@ pub enum Message {
 
 #[derive(Debug, Clone)]
 pub enum ViewMessage {
-    ToggleWindow,
     Switch(View),
     TabPressed { shift: bool },
     Animate,
@@ -51,6 +50,8 @@ pub enum RpcMessage {
     ImageUrlChanged(String),
     ToggleRewatching(bool),
     OpenUrlClicked,
+    Undo,
+    Redo,
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +61,9 @@ pub enum SearchMessage {
     Finished(Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
     ProviderSelected(SearchProvider),
+    MoveSelection(isize),
+    SelectHovered,
+    FocusInput,
 }
 
 #[derive(Debug, Clone)]

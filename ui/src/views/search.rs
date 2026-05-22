@@ -3,7 +3,7 @@ use crate::components::icon;
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, hex};
 use crate::types::{Message, SearchMessage, SearchProvider, View, ViewMessage};
-use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
+use iced::widget::{Id, Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Color, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
@@ -20,13 +20,17 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .search
                 .results
                 .iter()
-                .map(|res| {
+                .enumerate()
+                .map(|(i, res)| {
                     let img_widget: Element<'_, Message> = state
                         .rpc
                         .image_cache
                         .peek(&res.image_url)
                         .map(|img| img.view(50.0, state.now))
                         .unwrap_or_else(|| Space::new().into());
+                    let is_hovered = state.search.hovered_index == Some(i);
+                    let ghost_style =
+                        styles::get_ghost_button_style(Color::WHITE, hex(colours::TEXT_MUTED));
                     button(
                         row![
                             img_widget,
@@ -37,7 +41,11 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                                 }),
                                 text(SearchProvider::from_url(&res.url).display_name())
                                     .size(typography::STATUS_SIZE)
-                                    .color(hex(colours::TEXT_MUTED)),
+                                    .color(if is_hovered {
+                                        Color::WHITE
+                                    } else {
+                                        hex(colours::TEXT_MUTED)
+                                    }),
                             ]
                             .spacing(layout::XS_SPACING)
                         ]
@@ -46,10 +54,13 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     )
                     .width(Length::Fill)
                     .padding([layout::SPACING, layout::L_SPACING])
-                    .style(styles::get_ghost_button_style(
-                        Color::WHITE,
-                        hex(colours::TEXT_MUTED),
-                    ))
+                    .style(move |theme, status| {
+                        if is_hovered {
+                            styles::primary_button_style(theme, status)
+                        } else {
+                            ghost_style(theme, status)
+                        }
+                    })
                     .on_press(Message::Search(SearchMessage::ResultSelected(res.clone())))
                     .into()
                 })
@@ -114,6 +125,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             provider_toggles,
             row![
                 text_input("Search title...", &state.search.query)
+                    .id(Id::new("search_bar"))
                     .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
                     .on_submit(Message::Search(SearchMessage::Perform))
                     .style(styles::search_input_style)
@@ -132,6 +144,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .spacing(layout::S_SPACING)
         .padding([0., layout::L_SPACING + layout::S_SPACING]),
         scrollable(column![card, Space::new().height(Length::Fill)])
+            .id(Id::new("search_scroll"))
             .direction(styles::slim_scrollbar())
             .height(Length::Fill),
     ]
