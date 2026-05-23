@@ -147,7 +147,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         ]
         .spacing(layout::S_SPACING)
         .padding([0., layout::L_SPACING + layout::S_SPACING]),
-        scrollable(column![card, Space::new().height(Length::Fill)])
+        scrollable(column![card, Space::new().height(Length::Fill)].padding([0., layout::SPACING]))
             .id(Id::new("search_scroll"))
             .direction(styles::slim_scrollbar())
             .height(Length::Fill),

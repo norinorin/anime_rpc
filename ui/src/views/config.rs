@@ -242,9 +242,11 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         }))
         .padding([0., layout::XL_SPACING]),
         Space::new().height(layout::VERTICAL_SPACING),
-        scrollable(column![card, Space::new().height(Length::Fill),])
-            .direction(styles::slim_scrollbar())
-            .height(Length::Fill),
+        scrollable(
+            column![card, Space::new().height(Length::Fill),].padding([0., layout::SPACING])
+        )
+        .direction(styles::slim_scrollbar())
+        .height(Length::Fill),
         row![
             button(text(save_text).align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::Io(IoMessage::SaveClicked))
