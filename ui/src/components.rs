@@ -136,6 +136,7 @@ pub fn dropdown<'a, Message: Clone + 'a>(
     progress: f32,
     on_toggle: Message,
     options: impl IntoIterator<Item = Element<'a, Message>>,
+    row_height: f32,
 ) -> Element<'a, Message> {
     let selector_btn = button(
         row![
@@ -161,8 +162,7 @@ pub fn dropdown<'a, Message: Clone + 'a>(
 
     if progress > 0.0 {
         let options_vec: Vec<_> = options.into_iter().collect();
-        let item_height = 35.;
-        let target_height = options_vec.len() as f32 * item_height + layout::SPACING;
+        let target_height = options_vec.len() as f32 * row_height + layout::SPACING;
         let opts_column = column(options_vec).spacing(layout::XS_SPACING);
         let opts_container = container(opts_column).width(Length::Fill).padding(Padding {
             top: layout::SPACING,

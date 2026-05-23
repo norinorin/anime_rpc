@@ -3,8 +3,10 @@ use crate::components::{divider, dropdown, icon, toggler, underlined_input};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, TogglerStyle};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
+use crate::utils::clean_dir_name;
+use iced::widget::text::LineHeight;
 use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
-use iced::{Center, Color, Element, Font, Length};
+use iced::{Center, Color, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let is_active = state
@@ -29,25 +31,46 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         } else {
             colours::TEXT_MUTED
         };
+
         let mut btn = button(
             row![
-                text("●")
-                    .size(typography::INDICATOR_DOT_SIZE)
-                    .color(if is_current {
-                        colours::GREEN
-                    } else {
-                        colours::TEXT_DARK_MUTED
-                    }),
-                text(&p.display_name).size(typography::BODY_SIZE),
+                container(
+                    text("●")
+                        .size(typography::INDICATOR_DOT_SIZE)
+                        .color(if is_current {
+                            colours::GREEN
+                        } else {
+                            colours::TEXT_DARK_MUTED
+                        })
+                        .line_height(LineHeight::Relative(1.0))
+                        .center()
+                )
+                // nudge this down so it aligns with the row
+                // with this we probably don't even need line_height() and center()?
+                .padding(Padding::new(0.).top(3.)),
+                text(&p.display_name)
+                    .size(typography::BODY_SIZE)
+                    .line_height(LineHeight::Relative(1.0))
+                    .center(),
                 Space::new().width(Length::Fill),
-                text(if p.active { "Active" } else { "Waiting" })
+                container(
+                    text(if let Some(dir) = &p.filedir {
+                        format!("Playing {}", clean_dir_name(dir))
+                    } else {
+                        "Waiting".into()
+                    })
                     .size(typography::STATUS_SIZE)
                     .color(colours::TEXT_MUTED)
+                    .line_height(LineHeight::Relative(1.0))
+                    .center()
+                )
+                .padding(Padding::new(0.).top(2.)),
             ]
             .spacing(layout::SPACING)
             .align_y(Center),
         )
         .width(Length::Fill)
+        .height(35.)
         .style(styles::get_ghost_button_style(
             base_colour,
             colours::SELECTION,
@@ -71,6 +94,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             .interpolate(0.0, 1.0, state.now),
         Message::View(ViewMessage::TogglePollerDropdown),
         dropdown_options,
+        35.,
     );
 
     let mut media_label_row = row![
