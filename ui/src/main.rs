@@ -4,6 +4,7 @@ mod api;
 mod app;
 mod components;
 mod constants;
+mod history;
 mod sse;
 mod styles;
 mod types;

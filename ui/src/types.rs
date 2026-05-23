@@ -88,6 +88,8 @@ pub enum Message {
     Search(SearchMessage),
     Io(IoMessage),
     Sse(SseMessage),
+    Undo,
+    Redo,
 }
 
 #[derive(Debug, Clone)]
@@ -119,6 +121,8 @@ pub enum SearchMessage {
     MoveSelection(isize),
     SelectHovered,
     FocusInput,
+    Undo,
+    Redo,
 }
 
 #[derive(Debug, Clone)]

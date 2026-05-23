@@ -1,6 +1,7 @@
 use crate::api::{fetch_img, perform_search};
 use crate::components::CachedImage;
 use crate::constants::image_cache_size;
+use crate::history::History;
 use crate::types::{
     IoMessage, Message, PollerStatePayload, RpcMessage, SaveStatus, SearchMessage, SearchProvider,
     SearchResult, SseMessage, View, ViewMessage,
@@ -31,33 +32,32 @@ pub struct ViewState {
     pub save_status: SaveStatus,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct RpcSnapshot {
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct RpcFormData {
     pub title: String,
     pub url: String,
     pub image_url: String,
     pub rewatching: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SearchFormData {
+    pub query: String,
+    pub selected_provider: SearchProvider,
 }
 
 pub struct RpcState {
+    pub form: History<RpcFormData>,
     pub pollers: PollerStatePayload,
     pub active_id: Option<String>,
     pub active_filedir: Option<String>,
-    pub title: String,
     pub title_placeholder: String,
-    pub url: String,
-    pub image_url: String,
-    pub rewatching: bool,
     pub raw_content: String,
     pub image_cache: LruCache<String, CachedImage>,
-
-    pub undo_stack: Vec<RpcSnapshot>,
-    pub redo_stack: Vec<RpcSnapshot>,
 }
 
 pub struct SearchState {
-    pub query: String,
-    pub selected_provider: SearchProvider,
+    pub form: History<SearchFormData>,
     pub results: Vec<SearchResult>,
     pub hovered_index: Option<usize>,
 }
@@ -90,21 +90,15 @@ impl AnimeRpc {
                     pollers: HashMap::new(),
                     active_id: None,
                     active_filedir: None,
-                    title: String::new(),
                     title_placeholder: String::new(),
-                    url: String::new(),
-                    image_url: String::new(),
-                    rewatching: false,
                     raw_content: String::new(),
                     image_cache: LruCache::new(image_cache_size()),
-                    undo_stack: Vec::new(),
-                    redo_stack: Vec::new(),
+                    form: History::new(RpcFormData::default()),
                 },
                 search: SearchState {
-                    query: String::new(),
-                    selected_provider: SearchProvider::default(),
                     results: Vec::new(),
                     hovered_index: None,
+                    form: History::new(SearchFormData::default()),
                 },
                 sse: SseState::Connecting { attempt: 1 },
                 now: Instant::now(),
@@ -113,33 +107,11 @@ impl AnimeRpc {
         )
     }
 
-    fn current_snapshot(&self) -> RpcSnapshot {
-        RpcSnapshot {
-            title: self.rpc.title.clone(),
-            url: self.rpc.url.clone(),
-            image_url: self.rpc.image_url.clone(),
-            rewatching: self.rpc.rewatching,
-        }
-    }
-
-    fn save_snapshot(&mut self) {
-        let snapshot = self.current_snapshot();
-
-        if self.rpc.undo_stack.last() != Some(&snapshot) {
-            self.rpc.undo_stack.push(snapshot);
-            self.rpc.redo_stack.clear();
-        }
-    }
-
     fn clear_config_form(&mut self) {
+        self.rpc.form.modify(|form| *form = RpcFormData::default());
         self.rpc.active_id = None;
         self.rpc.active_filedir = None;
-
         self.rpc.title_placeholder.clear();
-        self.rpc.title.clear();
-        self.rpc.url.clear();
-        self.rpc.image_url.clear();
-        self.rpc.rewatching = false;
     }
 
     fn is_animating(&self) -> bool {
@@ -173,9 +145,9 @@ impl AnimeRpc {
                     })),
                     Key::Character(c) if (c == "z" || c == "Z") && modifiers.command() => {
                         if modifiers.shift() {
-                            Some(Message::Rpc(RpcMessage::Redo))
+                            Some(Message::Redo)
                         } else {
-                            Some(Message::Rpc(RpcMessage::Undo))
+                            Some(Message::Undo)
                         }
                     }
                     Key::Named(Named::ArrowDown) => {
@@ -206,16 +178,37 @@ impl AnimeRpc {
     pub fn update(&mut self, message: Message, now: Instant) -> Task<Message> {
         self.now = now;
 
-        match message {
+        let task = match message {
             Message::View(msg) => self.handle_view(msg, now),
             Message::Rpc(msg) => self.handle_rpc(msg, now),
             Message::Search(msg) => self.handle_search(msg, now),
             Message::Io(msg) => self.handle_io(msg, now),
             Message::Sse(msg) => self.handle_sse(msg, now),
-        }
+            Message::Undo => match self.view.current {
+                View::Search => self.handle_search(SearchMessage::Undo, now),
+                View::Config => self.handle_rpc(RpcMessage::Undo, now),
+            },
+            Message::Redo => match self.view.current {
+                View::Search => self.handle_search(SearchMessage::Redo, now),
+                View::Config => self.handle_rpc(RpcMessage::Redo, now),
+            },
+        };
+
+        // animation sync
+        self.view
+            .provider_anim
+            .go_mut(self.search.form.selected_provider as u8 != 0, now);
+        self.view
+            .rewatching_anim
+            .go_mut(self.rpc.form.rewatching, now);
+        self.view
+            .poller_dropdown_anim
+            .go_mut(self.view.poller_dropdown_open, now);
+
+        task
     }
 
-    fn handle_view(&mut self, message: ViewMessage, now: Instant) -> Task<Message> {
+    fn handle_view(&mut self, message: ViewMessage, _now: Instant) -> Task<Message> {
         match message {
             ViewMessage::Switch(v) => {
                 if v == View::Search
@@ -223,7 +216,9 @@ impl AnimeRpc {
                     && let Some(p) = self.rpc.pollers.get(id)
                     && let Some(dir) = &p.filedir
                 {
-                    self.search.query = clean_dir_name(dir);
+                    self.search
+                        .form
+                        .modify(|form| form.query = clean_dir_name(dir));
                 }
                 self.view.current = v;
                 Task::none()
@@ -238,9 +233,6 @@ impl AnimeRpc {
             }
             ViewMessage::TogglePollerDropdown => {
                 self.view.poller_dropdown_open = !self.view.poller_dropdown_open;
-                self.view
-                    .poller_dropdown_anim
-                    .go_mut(self.view.poller_dropdown_open, now);
                 Task::none()
             }
         }
@@ -255,18 +247,15 @@ impl AnimeRpc {
 
         match message {
             RpcMessage::TitleChanged(val) => {
-                self.save_snapshot();
-                self.rpc.title = val;
+                self.rpc.form.modify(|form| form.title = val);
                 Task::none()
             }
             RpcMessage::UrlChanged(val) => {
-                self.save_snapshot();
-                self.rpc.url = val;
+                self.rpc.form.modify(|form| form.url = val);
                 Task::none()
             }
             RpcMessage::ImageUrlChanged(val) => {
-                self.save_snapshot();
-                self.rpc.image_url = val.clone();
+                self.rpc.form.modify(|form| form.image_url = val.clone());
                 if val.is_empty() || self.rpc.image_cache.contains(&val) {
                     return Task::none();
                 }
@@ -278,36 +267,20 @@ impl AnimeRpc {
                 })
             }
             RpcMessage::ToggleRewatching(b) => {
-                self.save_snapshot();
-                self.rpc.rewatching = b;
-                self.view.rewatching_anim.go_mut(b, now);
+                self.rpc.form.modify(|form| form.rewatching = b);
                 Task::none()
             }
             RpcMessage::Undo => {
-                if let Some(previous) = self.rpc.undo_stack.pop() {
-                    self.rpc.redo_stack.push(self.current_snapshot());
-                    self.rpc.title = previous.title;
-                    self.rpc.url = previous.url;
-                    self.rpc.image_url = previous.image_url;
-                    self.rpc.rewatching = previous.rewatching;
-                    self.view.rewatching_anim.go_mut(previous.rewatching, now);
-                }
+                self.rpc.form.undo();
                 Task::none()
             }
             RpcMessage::Redo => {
-                if let Some(next) = self.rpc.redo_stack.pop() {
-                    self.rpc.undo_stack.push(self.current_snapshot());
-                    self.rpc.title = next.title;
-                    self.rpc.url = next.url;
-                    self.rpc.image_url = next.image_url;
-                    self.rpc.rewatching = next.rewatching;
-                    self.view.rewatching_anim.go_mut(next.rewatching, now);
-                }
+                self.rpc.form.redo();
                 Task::none()
             }
             RpcMessage::OpenUrlClicked => {
-                if !self.rpc.url.is_empty() {
-                    let cloned_url = self.rpc.url.clone();
+                if !self.rpc.form.url.is_empty() {
+                    let cloned_url = self.rpc.form.url.clone();
                     return Task::perform(
                         async move {
                             #[cfg(target_os = "windows")]
@@ -367,12 +340,15 @@ impl AnimeRpc {
 
         match message {
             SearchMessage::QueryChanged(q) => {
-                self.search.query = q;
+                self.search.form.modify(|form| form.query = q);
                 self.search.hovered_index = None;
                 Task::none()
             }
             SearchMessage::Perform => Task::perform(
-                perform_search(self.search.query.clone(), self.search.selected_provider),
+                perform_search(
+                    self.search.form.query.clone(),
+                    self.search.form.selected_provider,
+                ),
                 |res| Message::Search(SearchMessage::Finished(res)),
             ),
             SearchMessage::Finished(Ok(results)) => {
@@ -389,15 +365,18 @@ impl AnimeRpc {
             }
             SearchMessage::Finished(Err(_)) => Task::none(),
             SearchMessage::ResultSelected(res) => {
-                self.rpc.title = res.title;
-                self.rpc.url = res.url;
-                self.rpc.image_url = res.image_url;
+                self.rpc.form.modify(|form| {
+                    form.title = res.title;
+                    form.url = res.url;
+                    form.image_url = res.image_url;
+                });
                 self.view.current = View::Config;
                 Task::none()
             }
             SearchMessage::ProviderSelected(provider) => {
-                self.search.selected_provider = provider;
-                self.view.provider_anim.go_mut(provider as u8 != 0, now);
+                self.search
+                    .form
+                    .modify(|form| form.selected_provider = provider);
                 Task::none()
             }
             SearchMessage::MoveSelection(delta) => {
@@ -443,10 +422,18 @@ impl AnimeRpc {
             SearchMessage::FocusInput => {
                 iced::widget::operation::focus(iced::widget::Id::new("search_bar"))
             }
+            SearchMessage::Undo => {
+                self.search.form.undo();
+                Task::none()
+            }
+            SearchMessage::Redo => {
+                self.search.form.redo();
+                Task::none()
+            }
         }
     }
 
-    fn handle_io(&mut self, message: IoMessage, now: Instant) -> Task<Message> {
+    fn handle_io(&mut self, message: IoMessage, _now: Instant) -> Task<Message> {
         match message {
             IoMessage::ReconnectClicked => {
                 self.sse = SseState::Connecting { attempt: 1 };
@@ -454,15 +441,15 @@ impl AnimeRpc {
             }
             IoMessage::PollerSelected(id) => {
                 self.view.poller_dropdown_open = false;
-                self.view.poller_dropdown_anim.go_mut(false, now);
                 if let Some(p) = self.rpc.pollers.get(&id) {
                     if self.rpc.active_filedir != p.filedir {
+                        self.rpc.form.modify(|form| {
+                            form.rewatching = false;
+                            form.title.clear();
+                            form.url.clear();
+                            form.image_url.clear();
+                        });
                         self.rpc.raw_content.clear();
-                        self.rpc.rewatching = false;
-                        self.view.rewatching_anim = Animation::new(false);
-                        self.rpc.title.clear();
-                        self.rpc.url.clear();
-                        self.rpc.image_url.clear();
                         self.rpc.active_filedir = p.filedir.clone();
                         self.rpc.title_placeholder = self
                             .rpc
@@ -486,26 +473,28 @@ impl AnimeRpc {
             }
             IoMessage::RpcLoaded(Ok(content)) => {
                 self.rpc.raw_content = content.clone();
-                self.rpc.rewatching = false;
-                for line in content.lines() {
-                    let parts: Vec<&str> = line.splitn(2, '=').collect();
-                    if parts.len() == 2 {
-                        match parts[0] {
-                            "title" => self.rpc.title = parts[1].to_string(),
-                            "url" => self.rpc.url = parts[1].to_string(),
-                            "image_url" => self.rpc.image_url = parts[1].to_string(),
-                            "rewatching" => {
-                                self.rpc.rewatching = parts[1] != "0";
-                                self.view.rewatching_anim = Animation::new(self.rpc.rewatching);
+
+                self.rpc.form.modify(|form| {
+                    form.rewatching = false;
+                    for line in content.lines() {
+                        let parts: Vec<&str> = line.splitn(2, '=').collect();
+                        if parts.len() == 2 {
+                            match parts[0] {
+                                "title" => form.title = parts[1].to_string(),
+                                "url" => form.url = parts[1].to_string(),
+                                "image_url" => form.image_url = parts[1].to_string(),
+                                "rewatching" => {
+                                    form.rewatching = parts[1] != "0";
+                                }
+                                _ => {}
                             }
-                            _ => {}
                         }
                     }
-                }
+                });
 
-                if !self.rpc.image_url.is_empty() {
+                if !self.rpc.form.image_url.is_empty() {
                     return Task::done(Message::Rpc(RpcMessage::ImageUrlChanged(
-                        self.rpc.image_url.clone(),
+                        self.rpc.form.image_url.clone(),
                     )));
                 }
 
@@ -520,10 +509,10 @@ impl AnimeRpc {
                         save_rpc(
                             dir.clone(),
                             self.rpc.raw_content.clone(),
-                            self.rpc.title.clone(),
-                            self.rpc.url.clone(),
-                            self.rpc.image_url.clone(),
-                            self.rpc.rewatching,
+                            self.rpc.form.title.clone(),
+                            self.rpc.form.url.clone(),
+                            self.rpc.form.image_url.clone(),
+                            self.rpc.form.rewatching,
                         ),
                         |res| Message::Io(IoMessage::SaveCompleted(res)),
                     );

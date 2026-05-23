@@ -194,7 +194,7 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
         .width(Length::Fill)
         .height(Length::Fill);
 
-    let next_provider = match state.search.selected_provider {
+    let next_provider = match state.search.form.selected_provider {
         SearchProvider::MyAnimeList => SearchProvider::AniList,
         SearchProvider::AniList => SearchProvider::MyAnimeList,
     };
@@ -239,7 +239,7 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
         .padding([0., layout::L_SPACING + layout::S_SPACING]),
         column![
             row![
-                text_input("Search title...", &state.search.query)
+                text_input("Search title...", &state.search.form.query)
                     .id(Id::new("search_bar"))
                     .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
                     .on_submit(Message::Search(SearchMessage::Perform))

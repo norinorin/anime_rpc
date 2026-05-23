@@ -81,7 +81,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     .align_y(Center)
     .spacing(layout::SPACING);
 
-    if !state.rpc.url.is_empty() {
+    if !state.rpc.form.url.is_empty() {
         let open_btn = button(icon('\u{e89e}').size(typography::STATUS_SIZE))
             .style(styles::get_ghost_button_style(
                 colours::TEXT_MUTED,
@@ -105,8 +105,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         search_btn
     };
 
-    let image_preview: Element<'_, Message> = if !state.rpc.image_url.is_empty()
-        && let Some(img) = state.rpc.image_cache.peek(&state.rpc.image_url)
+    let image_preview: Element<'_, Message> = if !state.rpc.form.image_url.is_empty()
+        && let Some(img) = state.rpc.image_cache.peek(&state.rpc.form.image_url)
     {
         column![
             divider(),
@@ -144,13 +144,13 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             } else {
                 &state.rpc.title_placeholder
             },
-            &state.rpc.title,
+            &state.rpc.form.title,
             |res| Message::Rpc(RpcMessage::TitleChanged(res))
         ),
         column![
             media_label_row,
             row![
-                text_input("URL...", &state.rpc.url)
+                text_input("URL...", &state.rpc.form.url)
                     .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
                     .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
                     .style(styles::transparent_text_input_style)
@@ -161,7 +161,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             divider(),
         ]
         .spacing(layout::S_SPACING),
-        underlined_input("Image URL", "URL...", &state.rpc.image_url, |res| {
+        underlined_input("Image URL", "URL...", &state.rpc.form.image_url, |res| {
             Message::Rpc(RpcMessage::ImageUrlChanged(res))
         }),
         row![
@@ -170,7 +170,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .size(typography::BODY_SIZE),
             toggler(
                 state.view.rewatching_anim.interpolate(0.0, 1.0, state.now),
-                Message::Rpc(RpcMessage::ToggleRewatching(!state.rpc.rewatching)),
+                Message::Rpc(RpcMessage::ToggleRewatching(!state.rpc.form.rewatching)),
                 TogglerStyle::default()
             )
         ]
