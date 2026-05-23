@@ -92,12 +92,12 @@ pub enum Message {
     Redo,
     GotoSearchBar,
     EscPressed,
+    TabPressed { shift: bool },
 }
 
 #[derive(Debug, Clone)]
 pub enum ViewMessage {
     Switch(View),
-    TabPressed { shift: bool },
     Animate,
     TogglePollerDropdown,
 }

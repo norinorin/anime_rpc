@@ -140,9 +140,9 @@ impl AnimeRpc {
                 use iced::keyboard::key::{Key, Named};
 
                 match key.as_ref() {
-                    Key::Named(Named::Tab) => Some(Message::View(ViewMessage::TabPressed {
+                    Key::Named(Named::Tab) => Some(Message::TabPressed {
                         shift: modifiers.shift(),
-                    })),
+                    }),
                     Key::Character(c) if c.eq_ignore_ascii_case("z") && modifiers.command() => {
                         if modifiers.shift() {
                             Some(Message::Redo)
@@ -212,6 +212,38 @@ impl AnimeRpc {
                 }
             }
             (Message::EscPressed, View::Config) => Task::none(),
+            (Message::TabPressed { shift }, View::Search) => {
+                match (shift, self.search.hovered_index) {
+                    (true, Some(0)) => {
+                        self.search.hovered_index = None;
+                        self.handle_search(SearchMessage::FocusInput, now)
+                    }
+                    (true, Some(_)) => self.handle_search(SearchMessage::MoveSelection(-1), now),
+                    (true, None) => Task::none(),
+                    (false, None) => {
+                        let has_results = self
+                            .search
+                            .results
+                            .get(&self.search.form.selected_provider)
+                            .is_some_and(|v| !v.is_empty());
+
+                        if has_results {
+                            self.search.hovered_index = Some(0);
+                            return iced::widget::operation::focus_next();
+                        }
+
+                        Task::none()
+                    }
+                    (false, Some(_)) => self.handle_search(SearchMessage::MoveSelection(1), now),
+                }
+            }
+            (Message::TabPressed { shift }, View::Config) => {
+                if shift {
+                    iced::widget::operation::focus_previous()
+                } else {
+                    iced::widget::operation::focus_next()
+                }
+            }
         };
 
         // animation sync
@@ -249,13 +281,6 @@ impl AnimeRpc {
                 Task::none()
             }
             ViewMessage::Animate => Task::none(),
-            ViewMessage::TabPressed { shift } => {
-                if shift {
-                    iced::widget::operation::focus_previous()
-                } else {
-                    iced::widget::operation::focus_next()
-                }
-            }
             ViewMessage::TogglePollerDropdown => {
                 self.view.poller_dropdown_open = !self.view.poller_dropdown_open;
                 Task::none()
