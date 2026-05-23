@@ -34,13 +34,15 @@ pub mod typography {
 }
 
 pub mod colours {
-    pub const TEXT_MUTED: u32 = 0x888888;
-    pub const TEXT_DARK_MUTED: u32 = 0x666666;
-    pub const GREEN: u32 = 0x10B981;
-    pub const RED: u32 = 0xEF4444;
-    pub const DIVIDER: u32 = 0x2A2A2C;
-    pub const SOFT_DARK: u32 = 0x151515;
-    pub const SELECTION: u32 = 0x3E91FF;
+    use iced::{Color, color};
+
+    pub const TEXT_MUTED: Color = color!(0x888888);
+    pub const TEXT_DARK_MUTED: Color = color!(0x666666);
+    pub const GREEN: Color = color!(0x10B981);
+    pub const RED: Color = color!(0xEF4444);
+    pub const DIVIDER: Color = color!(0x2A2A2C);
+    pub const SOFT_DARK: Color = color!(0x151515);
+    pub const SELECTION: Color = color!(0x3E91FF);
 }
 
 pub const ICON_FONT: Font = Font {

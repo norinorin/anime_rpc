@@ -1,29 +1,16 @@
 use iced::widget::button::{self, Status};
 use iced::widget::{container, scrollable, text_input};
-use iced::{Background, Border, Color, Shadow, Theme};
+use iced::{Background, Border, Color, Shadow, Theme, color};
 
 use crate::constants::{colours, layout};
 
-pub fn hex(c: u32) -> Color {
-    Color::from_rgba8(
-        ((c >> 16) & 0xFF) as u8,
-        ((c >> 8) & 0xFF) as u8,
-        (c & 0xFF) as u8,
-        1.0,
-    )
-}
-
-fn rgb(r: f32, g: f32, b: f32) -> Color {
-    Color::from_rgb(r / 255.0, g / 255.0, b / 255.0)
-}
-
 pub fn primary_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
-        background: Some(Background::Color(hex(colours::SELECTION))),
+        background: Some(Background::Color(colours::SELECTION)),
         text_color: Color::WHITE,
         border: Border {
             radius: layout::INNER_COLUMN_SPACING.into(),
-            width: 0.0,
+            width: 0.,
             color: Color::TRANSPARENT,
         },
         shadow: Shadow::default(),
@@ -33,16 +20,16 @@ pub fn primary_button_style(_theme: &Theme, status: Status) -> button::Style {
     match status {
         Status::Active => base,
         Status::Hovered => button::Style {
-            background: Some(Background::Color(rgb(96.0, 165.0, 250.0))),
+            background: Some(Background::Color(color!(96, 165, 250))),
             ..base
         },
         Status::Pressed => button::Style {
-            background: Some(Background::Color(rgb(37.0, 99.0, 235.0))),
+            background: Some(Background::Color(color!(37, 99, 235))),
             ..base
         },
         Status::Disabled => button::Style {
-            background: Some(Background::Color(rgb(75.0, 85.0, 99.0))),
-            text_color: rgb(156.0, 163.0, 175.0),
+            background: Some(Background::Color(color!(75, 85, 99))),
+            text_color: color!(156, 163, 175),
             ..base
         },
     }
@@ -50,11 +37,11 @@ pub fn primary_button_style(_theme: &Theme, status: Status) -> button::Style {
 
 pub fn success_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
-        background: Some(Background::Color(hex(colours::GREEN))),
+        background: Some(Background::Color(colours::GREEN)),
         text_color: Color::WHITE,
         border: Border {
             radius: layout::INNER_COLUMN_SPACING.into(),
-            width: 0.0,
+            width: 0.,
             color: Color::TRANSPARENT,
         },
         shadow: Shadow::default(),
@@ -64,11 +51,11 @@ pub fn success_button_style(_theme: &Theme, status: Status) -> button::Style {
     match status {
         Status::Active => base,
         Status::Hovered => button::Style {
-            background: Some(Background::Color(rgb(52.0, 211.0, 153.0))),
+            background: Some(Background::Color(color!(52, 211, 153))),
             ..base
         },
         Status::Pressed => button::Style {
-            background: Some(Background::Color(rgb(5.0, 150.0, 105.0))),
+            background: Some(Background::Color(color!(5, 150, 105))),
             ..base
         },
         Status::Disabled => base,
@@ -77,11 +64,11 @@ pub fn success_button_style(_theme: &Theme, status: Status) -> button::Style {
 
 pub fn danger_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
-        background: Some(Background::Color(hex(colours::RED))),
+        background: Some(Background::Color(colours::RED)),
         text_color: Color::WHITE,
         border: Border {
             radius: layout::INNER_COLUMN_SPACING.into(),
-            width: 0.0,
+            width: 0.,
             color: Color::TRANSPARENT,
         },
         shadow: Shadow::default(),
@@ -91,11 +78,11 @@ pub fn danger_button_style(_theme: &Theme, status: Status) -> button::Style {
     match status {
         Status::Active => base,
         Status::Hovered => button::Style {
-            background: Some(Background::Color(rgb(248.0, 113.0, 113.0))),
+            background: Some(Background::Color(color!(248, 113, 113))),
             ..base
         },
         Status::Pressed => button::Style {
-            background: Some(Background::Color(rgb(220.0, 38.0, 38.0))),
+            background: Some(Background::Color(color!(220, 38, 38))),
             ..base
         },
         Status::Disabled => base,
@@ -105,11 +92,11 @@ pub fn danger_button_style(_theme: &Theme, status: Status) -> button::Style {
 pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
     let base = button::Style {
         background: Some(Background::Color(Color::TRANSPARENT)),
-        text_color: hex(colours::TEXT_MUTED),
+        text_color: colours::TEXT_MUTED,
         border: Border {
             radius: layout::INNER_COLUMN_SPACING.into(),
-            width: 1.0,
-            color: hex(colours::TEXT_DARK_MUTED),
+            width: 1.,
+            color: colours::TEXT_DARK_MUTED,
         },
         shadow: Shadow::default(),
         ..Default::default()
@@ -118,12 +105,12 @@ pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
     match status {
         Status::Active => base,
         Status::Hovered => button::Style {
-            background: Some(Background::Color(rgb(55.0, 65.0, 81.0))),
+            background: Some(Background::Color(color!(55, 65, 81))),
             text_color: Color::WHITE,
             ..base
         },
         Status::Pressed => button::Style {
-            background: Some(Background::Color(rgb(31.0, 41.0, 55.0))),
+            background: Some(Background::Color(color!(31, 41, 55))),
             ..base
         },
         Status::Disabled => base,
@@ -132,11 +119,11 @@ pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
 
 pub fn card_container_style(_theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(hex(colours::SOFT_DARK))),
+        background: Some(Background::Color(colours::SOFT_DARK)),
         text_color: Some(Color::WHITE),
         border: Border {
             radius: layout::XL_SPACING.into(),
-            width: 0.0,
+            width: 0.,
             color: Color::TRANSPARENT,
         },
         shadow: Default::default(),
@@ -146,7 +133,7 @@ pub fn card_container_style(_theme: &Theme) -> container::Style {
 
 pub fn black_container_style(_theme: &Theme) -> container::Style {
     container::Style {
-        background: Some(Background::Color(hex(0x000000))),
+        background: Some(Background::Color(Color::BLACK)),
         text_color: Some(Color::WHITE),
         ..Default::default()
     }
@@ -161,8 +148,8 @@ pub fn transparent_text_input_style(
         border: Border::default(),
         icon: Color::WHITE,
         value: Color::WHITE,
-        placeholder: hex(colours::TEXT_DARK_MUTED),
-        selection: hex(colours::SELECTION),
+        placeholder: colours::TEXT_DARK_MUTED,
+        selection: colours::SELECTION,
     }
 }
 
@@ -199,16 +186,16 @@ pub fn get_ghost_button_style(
 
 pub fn search_input_style(_theme: &Theme, _status: text_input::Status) -> text_input::Style {
     text_input::Style {
-        background: Background::Color(hex(colours::SOFT_DARK)),
+        background: Background::Color(colours::SOFT_DARK),
         border: Border {
             radius: (layout::XL_SPACING - layout::S_SPACING).into(),
-            width: 0.0,
+            width: 0.,
             color: Color::TRANSPARENT,
         },
         icon: Color::WHITE,
         value: Color::WHITE,
-        placeholder: hex(colours::TEXT_DARK_MUTED),
-        selection: hex(colours::SELECTION),
+        placeholder: colours::TEXT_DARK_MUTED,
+        selection: colours::SELECTION,
     }
 }
 
@@ -248,9 +235,9 @@ pub struct TogglerStyle {
 impl Default for TogglerStyle {
     fn default() -> Self {
         Self {
-            bg_off: hex(colours::TEXT_DARK_MUTED),
-            bg_on: hex(colours::SELECTION),
-            knob_off: hex(colours::SOFT_DARK),
+            bg_off: colours::TEXT_DARK_MUTED,
+            bg_on: colours::SELECTION,
+            knob_off: colours::SOFT_DARK,
             knob_on: Color::WHITE,
         }
     }

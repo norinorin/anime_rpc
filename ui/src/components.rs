@@ -9,7 +9,7 @@ use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
 use crate::constants::{ICON_FONT, colours, layout, typography};
-use crate::styles::{self, ColorExt, TogglerStyle, hex};
+use crate::styles::{self, ColorExt, TogglerStyle};
 use crate::types::Message;
 
 pub struct LoadingSpinner {
@@ -103,7 +103,7 @@ impl<Message> Program<Message> for LoadingSpinner {
 pub fn divider() -> Element<'static, Message> {
     container(Space::new().width(Length::Fill).height(Length::Fixed(1.0)))
         .style(|_theme| container::Style {
-            background: Some(Background::Color(hex(colours::DIVIDER))),
+            background: Some(Background::Color(colours::DIVIDER)),
             ..Default::default()
         })
         .into()
@@ -118,7 +118,7 @@ pub fn underlined_input<'a>(
     column![
         text(label)
             .size(typography::CAPTION_SIZE)
-            .color(hex(colours::TEXT_MUTED)),
+            .color(colours::TEXT_MUTED),
         text_input(placeholder, value)
             .on_input(on_change)
             .style(styles::transparent_text_input_style)
@@ -142,7 +142,7 @@ pub fn dropdown<'a, Message: Clone + 'a>(
             text(active_text).width(Length::Fill),
             text(if is_open { "▲" } else { "▼" })
                 .size(layout::SPACING)
-                .color(hex(colours::TEXT_MUTED))
+                .color(colours::TEXT_MUTED)
         ]
         .align_y(Alignment::Center),
     )
@@ -267,7 +267,7 @@ impl CachedImage {
             }
             Self::Failed => text("Failed to load")
                 .size(typography::STATUS_SIZE)
-                .color(hex(colours::TEXT_DARK_MUTED))
+                .color(colours::TEXT_DARK_MUTED)
                 .into(),
         }
     }

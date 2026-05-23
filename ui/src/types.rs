@@ -1,8 +1,6 @@
-use iced::{Color, widget::image::Handle};
+use iced::{Color, color, widget::image::Handle};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-use crate::styles::hex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollerStatus {
@@ -124,8 +122,8 @@ impl SearchProvider {
 
     pub fn accent_colour(&self) -> Color {
         match self {
-            Self::MyAnimeList => hex(0x2E51A2),
-            Self::AniList => hex(0x0B1622),
+            Self::MyAnimeList => color!(0x2E51A2),
+            Self::AniList => color!(0x0B1622),
         }
     }
 

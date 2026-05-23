@@ -1,7 +1,7 @@
 use crate::app::{AnimeRpc, SseState};
 use crate::components::{divider, dropdown, icon, toggler, underlined_input};
 use crate::constants::{colours, layout, typography};
-use crate::styles::{self, TogglerStyle, hex};
+use crate::styles::{self, TogglerStyle};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Center, Color, Element, Font, Length};
@@ -27,22 +27,22 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         let base_colour = if p.active {
             Color::WHITE
         } else {
-            hex(colours::TEXT_MUTED)
+            colours::TEXT_MUTED
         };
         let mut btn = button(
             row![
                 text("●")
                     .size(typography::INDICATOR_DOT_SIZE)
-                    .color(hex(if is_current {
+                    .color(if is_current {
                         colours::GREEN
                     } else {
                         colours::TEXT_DARK_MUTED
-                    })),
+                    }),
                 text(&p.display_name).size(typography::BODY_SIZE),
                 Space::new().width(Length::Fill),
                 text(if p.active { "Active" } else { "Waiting" })
                     .size(typography::STATUS_SIZE)
-                    .color(hex(colours::TEXT_MUTED))
+                    .color(colours::TEXT_MUTED)
             ]
             .spacing(layout::SPACING)
             .align_y(Center),
@@ -50,7 +50,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .width(Length::Fill)
         .style(styles::get_ghost_button_style(
             base_colour,
-            hex(colours::SELECTION),
+            colours::SELECTION,
         ))
         .padding([layout::SPACING, layout::L_SPACING]);
 
@@ -76,7 +76,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let mut media_label_row = row![
         text("Media URL")
             .size(typography::CAPTION_SIZE)
-            .color(hex(colours::TEXT_MUTED)),
+            .color(colours::TEXT_MUTED),
     ]
     .align_y(Center)
     .spacing(layout::SPACING);
@@ -84,8 +84,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     if !state.rpc.url.is_empty() {
         let open_btn = button(icon('\u{e89e}').size(typography::STATUS_SIZE))
             .style(styles::get_ghost_button_style(
-                hex(colours::TEXT_MUTED),
-                hex(colours::SELECTION),
+                colours::TEXT_MUTED,
+                colours::SELECTION,
             ))
             .padding(0.)
             .on_press(Message::Rpc(RpcMessage::OpenUrlClicked));
@@ -94,8 +94,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
 
     let search_btn = button(icon('\u{e8b6}').size(24))
         .style(styles::get_ghost_button_style(
-            hex(colours::TEXT_MUTED),
-            hex(colours::SELECTION),
+            colours::TEXT_MUTED,
+            colours::SELECTION,
         ))
         .padding([0., layout::SPACING]);
 
@@ -114,7 +114,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .width(Length::Fill)
                 .size(typography::CAPTION_SIZE)
                 .align_x(Center)
-                .color(hex(colours::TEXT_MUTED)),
+                .color(colours::TEXT_MUTED),
             container(img.view(layout::IMAGE_PREVIEW_WIDTH, state.now))
                 .width(Length::Fill)
                 .align_x(Center)
@@ -190,29 +190,29 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         SseState::Connecting { .. } => row![
             text("●")
                 .size(typography::INDICATOR_DOT_SIZE)
-                .color(hex(colours::TEXT_DARK_MUTED)),
+                .color(colours::TEXT_DARK_MUTED),
             text(" Connecting to daemon...")
                 .size(typography::STATUS_SIZE)
-                .color(hex(colours::TEXT_MUTED))
+                .color(colours::TEXT_MUTED)
         ],
         SseState::Connected => row![
             text("●")
                 .size(typography::INDICATOR_DOT_SIZE)
-                .color(hex(colours::GREEN)),
+                .color(colours::GREEN),
             text(" Daemon active")
                 .size(typography::STATUS_SIZE)
-                .color(hex(colours::TEXT_MUTED))
+                .color(colours::TEXT_MUTED)
         ],
         SseState::WaitingToReconnect { seconds_left, .. } => row![
             text("●")
                 .size(typography::INDICATOR_DOT_SIZE)
-                .color(hex(colours::RED)),
+                .color(colours::RED),
             text(format!(
                 " Daemon offline. Reconnecting in {}...",
                 seconds_left
             ))
             .size(typography::STATUS_SIZE)
-            .color(hex(colours::RED)),
+            .color(colours::RED),
             button(
                 text("Connect now")
                     .size(typography::INDICATOR_DOT_SIZE)
@@ -224,7 +224,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             .on_press(Message::Io(IoMessage::ReconnectClicked))
             .padding(0)
             .style(styles::get_ghost_button_style(
-                hex(colours::TEXT_MUTED),
+                colours::TEXT_MUTED,
                 Color::WHITE
             ))
         ],

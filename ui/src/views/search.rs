@@ -1,14 +1,14 @@
 use crate::app::AnimeRpc;
 use crate::components::{icon, toggler};
 use crate::constants::{colours, layout, typography};
-use crate::styles::{self, ColorExt, TogglerStyle, hex};
+use crate::styles::{self, ColorExt, TogglerStyle};
 use crate::types::{Message, SearchMessage, SearchProvider, View, ViewMessage};
 use iced::widget::{Id, Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Color, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     let results_content: Element<'_, Message> = if state.search.results.is_empty() {
-        container(text("No results").color(hex(colours::TEXT_DARK_MUTED)))
+        container(text("No results").color(colours::TEXT_DARK_MUTED))
             .width(Length::Fill)
             .height(Length::Fixed(100.0))
             .align_x(Center)
@@ -30,7 +30,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                         .unwrap_or_else(|| Space::new().into());
                     let is_hovered = state.search.hovered_index == Some(i);
                     let ghost_style =
-                        styles::get_ghost_button_style(Color::WHITE, hex(colours::TEXT_MUTED));
+                        styles::get_ghost_button_style(Color::WHITE, colours::TEXT_MUTED);
                     button(
                         row![
                             img_widget,
@@ -44,7 +44,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                                     .color(if is_hovered {
                                         Color::WHITE
                                     } else {
-                                        hex(colours::TEXT_MUTED)
+                                        colours::TEXT_MUTED
                                     }),
                             ]
                             .spacing(layout::XS_SPACING)
@@ -82,23 +82,15 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     };
 
     let progress = state.view.provider_anim.interpolate(0., 1., state.now);
-    let mal_color = Color::interpolate(
-        hex(colours::TEXT_MUTED),
-        hex(colours::TEXT_DARK_MUTED),
-        progress,
-    );
-    let anilist_color = Color::interpolate(
-        hex(colours::TEXT_DARK_MUTED),
-        hex(colours::TEXT_MUTED),
-        progress,
-    );
+    let mal_color = Color::interpolate(colours::TEXT_MUTED, colours::TEXT_DARK_MUTED, progress);
+    let anilist_color = Color::interpolate(colours::TEXT_DARK_MUTED, colours::TEXT_MUTED, progress);
 
     let root = column![
         row![
             button(icon('\u{e5e0}').size(28))
                 .style(styles::get_ghost_button_style(
                     Color::WHITE,
-                    hex(colours::TEXT_MUTED)
+                    colours::TEXT_MUTED
                 ))
                 .on_press(Message::View(ViewMessage::Switch(View::Config))),
             text("Search").size(34).font(Font {
@@ -139,7 +131,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                     .on_press(Message::Search(SearchMessage::Perform))
                     .style(styles::get_ghost_button_style(
                         Color::WHITE,
-                        hex(colours::TEXT_MUTED)
+                        colours::TEXT_MUTED
                     ))
                     .padding({
                         Padding {
