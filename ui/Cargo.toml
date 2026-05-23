@@ -10,6 +10,7 @@ path = "src/main.rs"
 [dependencies]
 futures-util = "0.3.32"
 iced = { version = "0.14.0", features = [
+  "advanced",
   "canvas",
   "image",
   "svg",

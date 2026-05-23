@@ -1,6 +1,6 @@
 use crate::app::AnimeRpc;
-use crate::components::{icon, toggler};
-use crate::constants::{WINDOW_WIDTH, colours, layout, typography};
+use crate::components::{icon, space_between_column, toggler};
+use crate::constants::{colours, layout, typography};
 use crate::styles::{self, ColorExt, TogglerStyle};
 use crate::types::{Message, SearchMessage, SearchProvider, SearchResult, View, ViewMessage};
 use iced::border::Radius;
@@ -119,40 +119,6 @@ pub fn result_card<'a>(
     let image_height = 72.0;
     let bottom_row = row![metadata_row, provider_display].align_y(Center);
 
-    // This is just a guesstimation hack
-    // There's no way to make something anchor at the bottom, or is there?
-    let scrollable_padding = layout::SPACING * 2.0;
-    let button_padding = layout::XL_SPACING * 2.0;
-
-    // FIXME: Rn the window is not resizable, but we can easily
-    // subscribe to resize events
-    let total_card_width = WINDOW_WIDTH - scrollable_padding - button_padding;
-    let font_size = typography::BODY_SIZE as f32;
-    let line_height = font_size * 1.2;
-    let avg_char_width = font_size * 0.55;
-
-    // Realistically, the score doesn't get higher than 95.00 so it's
-    // about 7 chars max including the space and the star.
-    let score_width_estimate = (7.0 * avg_char_width) + layout::SPACING;
-    let available_width = total_card_width
-        - image_width
-        - (layout::S_SPACING * 2.0)
-        - layout::L_SPACING
-        - score_width_estimate;
-    let chars_per_line = (available_width / avg_char_width).floor() as usize;
-    let text_len = result.title.chars().count();
-    let estimated_lines = (text_len as f32 / chars_per_line as f32).ceil().max(1.0);
-    let text_height = estimated_lines * line_height;
-    let total_content_height = text_height + provider_logo_size;
-    let required_spacer = if total_content_height < image_height {
-        image_height - total_content_height
-    } else {
-        // Technically long enough to anchor the bottom row
-        // But it's nice to have a bit of separation between
-        // the title and the metadata row
-        layout::INNER_COLUMN_SPACING
-    };
-
     container(
         row![
             container(img_widget)
@@ -162,13 +128,12 @@ pub fn result_card<'a>(
                     background: Some(Background::Color(colours::SOFT_DARK)),
                     ..Default::default()
                 }),
-            column![top_row, bottom_row]
-                .spacing(required_spacer)
-                .height(Length::Shrink)
-                .width(Length::Fill)
+            space_between_column(top_row, bottom_row)
+                .spacing(layout::INNER_COLUMN_SPACING)
+                .min_height(image_height),
         ]
         .spacing(layout::L_SPACING)
-        .align_y(Center),
+        .align_y(Alignment::Start),
     )
     .height(Length::Shrink)
     .padding(layout::S_SPACING)

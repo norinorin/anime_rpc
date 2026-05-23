@@ -1,3 +1,9 @@
+use iced::advanced::layout::{Limits, Node};
+use iced::advanced::mouse::Cursor;
+use iced::advanced::renderer;
+use iced::advanced::widget::{Tree, Widget};
+use iced::advanced::{Clipboard, Layout, Shell};
+use iced::event::Event;
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
 use iced::widget::image::Handle;
 use iced::widget::{
@@ -7,6 +13,7 @@ use iced::widget::{
 use iced::{
     Alignment, Animation, Background, Color, Element, Length, Padding, Radians, Theme, mouse,
 };
+use iced::{Point, Rectangle, Size};
 use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
@@ -281,4 +288,244 @@ pub fn icon<'a>(unicode: char) -> iced::widget::Text<'a> {
         .font(ICON_FONT)
         .align_x(iced::alignment::Horizontal::Center)
         .align_y(iced::alignment::Vertical::Center)
+}
+
+pub struct SpaceBetweenColumn<'a, Message, Theme, Renderer> {
+    top: Element<'a, Message, Theme, Renderer>,
+    bottom: Element<'a, Message, Theme, Renderer>,
+    min_height: f32,
+    spacing: f32,
+}
+
+// I'm missing the .min_height() feature, which I need for the
+// result cards used in View::Search.
+//
+// Basically what I'm trying to do is set a minimum height while
+// letting the container/column grow as needed.
+//
+// I've tried different combinations to no avail:
+// 1. Tried Length::Fill on both spacer in between the 2 widgets
+//    and the container that wraps the 3. While this maintains
+//    the min_height, it clips the bottom widget when the top widget
+//    grows/expands downward.
+// 2. Tried Length::Shrink on the container and set a fixed spacer.
+//    This obviously still looks nice and doesn't clip the bottom widget,
+//    yet it doesn't do what I want since now the spacer is static
+//    instead of growing/shrinking on demand.
+// 3. Tried guesstimating the font height and width, but it relies on
+//    assuming the average char width. Somehow that works out but it's
+//    ugly as fuck and is likely to break sooner or later when I implement
+//    the --preferred-lang which lets the user pick native titles (CJK).
+//
+// This implementation is way cleaner than my last attempt, but still not
+// sure if this is optimal. I'd be so happy if there's a higher level
+// interface for what I'm trying to achieve here.
+//
+// TL;DR I want a flex column with a vertical `justify-content: space-between`
+// with a min-height and also height set to `fit-content`.
+// Keeping it really simple since I only need it for exactly 2 widgets.
+// Maybe I can just keep nesting with a macro or something, but that's for later.
+impl<'a, Message, Theme, Renderer> Widget<Message, Theme, Renderer>
+    for SpaceBetweenColumn<'a, Message, Theme, Renderer>
+where
+    Renderer: renderer::Renderer,
+{
+    fn size(&self) -> Size<Length> {
+        Size {
+            width: Length::Fill,
+            height: Length::Shrink,
+        }
+    }
+
+    fn layout(&mut self, tree: &mut Tree, renderer: &Renderer, limits: &Limits) -> Node {
+        let max_width = limits.max().width;
+        let child_limits = limits.loose().max_width(max_width);
+
+        let top_node =
+            self.top
+                .as_widget_mut()
+                .layout(&mut tree.children[0], renderer, &child_limits);
+
+        let mut bottom_node =
+            self.bottom
+                .as_widget_mut()
+                .layout(&mut tree.children[1], renderer, &child_limits);
+
+        let top_size = top_node.size();
+        let bottom_size = bottom_node.size();
+
+        let intrinsic_height = top_size.height + bottom_size.height + self.spacing;
+        let final_height = intrinsic_height.max(self.min_height);
+
+        bottom_node.move_to_mut(Point::new(0.0, final_height - bottom_size.height));
+        // Should I actually pass max_width or whichever is bigger between top and bottom?
+        Node::with_children(
+            Size::new(max_width, final_height),
+            vec![top_node, bottom_node],
+        )
+    }
+
+    fn children(&self) -> Vec<Tree> {
+        vec![Tree::new(&self.top), Tree::new(&self.bottom)]
+    }
+
+    fn diff(&self, tree: &mut Tree) {
+        tree.diff_children(&[&self.top, &self.bottom]);
+    }
+
+    fn draw(
+        &self,
+        tree: &Tree,
+        renderer: &mut Renderer,
+        theme: &Theme,
+        style: &renderer::Style,
+        layout: Layout<'_>,
+        cursor: Cursor,
+        viewport: &Rectangle,
+    ) {
+        let mut children = layout.children();
+        self.top.as_widget().draw(
+            &tree.children[0],
+            renderer,
+            theme,
+            style,
+            children.next().unwrap(),
+            cursor,
+            viewport,
+        );
+        self.bottom.as_widget().draw(
+            &tree.children[1],
+            renderer,
+            theme,
+            style,
+            children.next().unwrap(),
+            cursor,
+            viewport,
+        );
+    }
+
+    fn operate(
+        &mut self,
+        state: &mut Tree,
+        layout: Layout<'_>,
+        renderer: &Renderer,
+        operation: &mut dyn iced::advanced::widget::Operation,
+    ) {
+        let mut children = layout.children();
+        self.top.as_widget_mut().operate(
+            &mut state.children[0],
+            children.next().unwrap(),
+            renderer,
+            operation,
+        );
+        self.bottom.as_widget_mut().operate(
+            &mut state.children[1],
+            children.next().unwrap(),
+            renderer,
+            operation,
+        );
+    }
+
+    fn update(
+        &mut self,
+        state: &mut Tree,
+        event: &Event,
+        layout: Layout<'_>,
+        cursor: Cursor,
+        renderer: &Renderer,
+        clipboard: &mut dyn Clipboard,
+        shell: &mut Shell<'_, Message>,
+        viewport: &Rectangle,
+    ) {
+        let mut children = layout.children();
+        self.top.as_widget_mut().update(
+            &mut state.children[0],
+            event,
+            children.next().unwrap(),
+            cursor,
+            renderer,
+            clipboard,
+            shell,
+            viewport,
+        );
+        self.bottom.as_widget_mut().update(
+            &mut state.children[1],
+            event,
+            children.next().unwrap(),
+            cursor,
+            renderer,
+            clipboard,
+            shell,
+            viewport,
+        );
+    }
+
+    fn mouse_interaction(
+        &self,
+        state: &Tree,
+        layout: Layout<'_>,
+        cursor: Cursor,
+        viewport: &Rectangle,
+        renderer: &Renderer,
+    ) -> iced::advanced::mouse::Interaction {
+        let mut children = layout.children();
+        let top_interaction = self.top.as_widget().mouse_interaction(
+            &state.children[0],
+            children.next().unwrap(),
+            cursor,
+            viewport,
+            renderer,
+        );
+        let bottom_interaction = self.bottom.as_widget().mouse_interaction(
+            &state.children[1],
+            children.next().unwrap(),
+            cursor,
+            viewport,
+            renderer,
+        );
+        top_interaction.max(bottom_interaction)
+    }
+}
+
+impl<'a, Message, Theme, Renderer> From<SpaceBetweenColumn<'a, Message, Theme, Renderer>>
+    for Element<'a, Message, Theme, Renderer>
+where
+    Message: 'a,
+    Theme: 'a,
+    Renderer: renderer::Renderer + 'a,
+{
+    fn from(content: SpaceBetweenColumn<'a, Message, Theme, Renderer>) -> Self {
+        Element::new(content)
+    }
+}
+
+impl<'a, Message, Theme, Renderer> SpaceBetweenColumn<'a, Message, Theme, Renderer> {
+    pub fn new(
+        top: impl Into<Element<'a, Message, Theme, Renderer>>,
+        bottom: impl Into<Element<'a, Message, Theme, Renderer>>,
+    ) -> Self {
+        Self {
+            top: top.into(),
+            bottom: bottom.into(),
+            min_height: 0.0,
+            spacing: 0.0,
+        }
+    }
+
+    pub fn min_height(mut self, height: f32) -> Self {
+        self.min_height = height;
+        self
+    }
+
+    pub fn spacing(mut self, spacing: f32) -> Self {
+        self.spacing = spacing;
+        self
+    }
+}
+
+pub fn space_between_column<'a, Message, Theme, Renderer>(
+    top: impl Into<Element<'a, Message, Theme, Renderer>>,
+    bottom: impl Into<Element<'a, Message, Theme, Renderer>>,
+) -> SpaceBetweenColumn<'a, Message, Theme, Renderer> {
+    SpaceBetweenColumn::new(top, bottom)
 }
