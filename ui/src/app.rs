@@ -249,11 +249,11 @@ impl AnimeRpc {
                     async move {
                         #[cfg(target_os = "windows")]
                         let _ = std::process::Command::new("cmd")
-                            .args(["/C", "start", &cloned_url])
+                            .args(["/C", "start", &url])
                             .spawn();
 
                         #[cfg(target_os = "macos")]
-                        let _ = std::process::Command::new("open").arg(&cloned_url).spawn();
+                        let _ = std::process::Command::new("open").arg(&url).spawn();
 
                         #[cfg(target_os = "linux")]
                         {
