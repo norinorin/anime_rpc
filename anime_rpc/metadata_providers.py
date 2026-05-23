@@ -370,6 +370,7 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
         "OVA": MediaFormat.OVA,
         "ONA": MediaFormat.ONA,
         "Special": MediaFormat.SPECIAL,
+        "TV Special": MediaFormat.SPECIAL,
     }
     AIRING_STATUS_MAPPING = {
         "Finished Airing": AiringStatus.FINISHED,
