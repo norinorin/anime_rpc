@@ -228,7 +228,7 @@ impl AnimeRpc {
         task
     }
 
-    fn handle_view(&mut self, message: ViewMessage, _now: Instant) -> Task<Message> {
+    fn handle_view(&mut self, message: ViewMessage, now: Instant) -> Task<Message> {
         match message {
             ViewMessage::Switch(v) => {
                 if v == View::Search
@@ -241,6 +241,11 @@ impl AnimeRpc {
                         .modify(|form| form.query = clean_dir_name(dir));
                 }
                 self.view.current = v;
+
+                if v == View::Search {
+                    return self.handle_search(SearchMessage::FocusInput, now);
+                }
+
                 Task::none()
             }
             ViewMessage::Animate => Task::none(),
