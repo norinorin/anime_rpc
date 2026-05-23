@@ -4,7 +4,9 @@ use iced::widget::{
     Space, button, column, container, image, mouse_area, row, scrollable, space, stack, text,
     text_input,
 };
-use iced::{Alignment, Animation, Background, Color, Element, Length, Padding, Radians, Theme};
+use iced::{
+    Alignment, Animation, Background, Color, Element, Length, Padding, Radians, Theme, mouse,
+};
 use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
@@ -233,6 +235,7 @@ pub fn toggler<'a, Message: Clone + 'a>(
         });
 
     mouse_area(stack![bg, knob_positioned])
+        .interaction(mouse::Interaction::Pointer)
         .on_press(on_toggle)
         .into()
 }
