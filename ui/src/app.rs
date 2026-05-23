@@ -150,6 +150,9 @@ impl AnimeRpc {
                             Some(Message::Undo)
                         }
                     }
+                    Key::Character(c) if c.eq_ignore_ascii_case("s") && modifiers.command() => {
+                        Some(Message::Io(IoMessage::SaveClicked))
+                    }
                     Key::Named(Named::ArrowDown) => {
                         Some(Message::Search(SearchMessage::MoveSelection(1)))
                     }
