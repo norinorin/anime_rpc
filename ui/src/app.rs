@@ -143,7 +143,7 @@ impl AnimeRpc {
                     Key::Named(Named::Tab) => Some(Message::View(ViewMessage::TabPressed {
                         shift: modifiers.shift(),
                     })),
-                    Key::Character(c) if (c == "z" || c == "Z") && modifiers.command() => {
+                    Key::Character(c) if c.eq_ignore_ascii_case("z") && modifiers.command() => {
                         if modifiers.shift() {
                             Some(Message::Redo)
                         } else {
