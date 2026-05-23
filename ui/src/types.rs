@@ -91,6 +91,7 @@ pub enum Message {
     Undo,
     Redo,
     GotoSearchBar,
+    EscPressed,
 }
 
 #[derive(Debug, Clone)]

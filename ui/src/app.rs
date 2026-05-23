@@ -156,6 +156,7 @@ impl AnimeRpc {
                     Key::Character(c) if c.eq_ignore_ascii_case("l") && modifiers.command() => {
                         Some(Message::GotoSearchBar)
                     }
+                    Key::Character("/") => Some(Message::Search(SearchMessage::FocusInput)),
                     Key::Named(Named::ArrowDown) => {
                         Some(Message::Search(SearchMessage::MoveSelection(1)))
                     }
@@ -163,7 +164,7 @@ impl AnimeRpc {
                         Some(Message::Search(SearchMessage::MoveSelection(-1)))
                     }
                     Key::Named(Named::Enter) => Some(Message::Search(SearchMessage::SelectHovered)),
-                    Key::Character("/") => Some(Message::Search(SearchMessage::FocusInput)),
+                    Key::Named(Named::Escape) => Some(Message::EscPressed),
                     _ => None,
                 }
             }
@@ -202,6 +203,15 @@ impl AnimeRpc {
                 View::Config => self.handle_view(ViewMessage::Switch(View::Search), now),
                 View::Search => self.handle_search(SearchMessage::FocusInput, now),
             },
+            Message::EscPressed if self.view.current == View::Search => {
+                if self.search.hovered_index.is_some() {
+                    self.search.hovered_index = None;
+                    Task::none()
+                } else {
+                    self.handle_view(ViewMessage::Switch(View::Config), now)
+                }
+            }
+            Message::EscPressed => Task::none(),
         };
 
         // animation sync
