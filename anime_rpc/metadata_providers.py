@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from enum import StrEnum, auto
 import json
 import logging
 import pprint
@@ -38,6 +39,8 @@ T = TypeVar("T")
 
 # TODO: decouple MAL and AL-specific fields
 class Metadata(TypedDict, total=False):
+    """This class is used internally on Python side."""
+
     id: str
     mal_id: str
     episodes: dict[str, str]
@@ -47,11 +50,32 @@ class Metadata(TypedDict, total=False):
     last_updated: int
 
 
+class MediaFormat(StrEnum):
+    TV = auto()
+    MOVIE = auto()
+    OVA = auto()
+    ONA = auto()
+    SPECIAL = auto()
+
+
+class AiringStatus(StrEnum):
+    FINISHED = auto()
+    RELEASING = auto()
+    TBA = auto()
+
+
 class SearchResult(TypedDict):
+    """This class is used externally on Rust side."""
+
     id: str
     title: str
     url: str
     image_url: str
+    year: int | None
+    media_format: MediaFormat | None
+    status: AiringStatus | None
+    # on a scale of 1000; we preserve 2 floating points
+    score: int | None
 
 
 class SearchProvider(ABC):
@@ -340,6 +364,18 @@ class _CachingMetadataProvider(BaseMetadataProvider):
 
 class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
     ID_PATTERN = re.compile(r"https?://myanimelist\.net/anime/(?P<id>\d+)")
+    MEDIA_TYPE_MAPPING = {
+        "TV": MediaFormat.TV,
+        "Movie": MediaFormat.MOVIE,
+        "OVA": MediaFormat.OVA,
+        "ONA": MediaFormat.ONA,
+        "Special": MediaFormat.SPECIAL,
+    }
+    AIRING_STATUS_MAPPING = {
+        "Finished Airing": AiringStatus.FINISHED,
+        "Currently Airing": AiringStatus.RELEASING,
+        "Not yet aired": AiringStatus.TBA,
+    }
 
     @property
     def name(self) -> str:
@@ -411,18 +447,41 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
                 title=title,
                 url=url,
                 image_url=image_url,
+                year=int(payload.get("start_year", 0)) or None,
+                score=int(float(score) * 100)
+                if (score := payload.get("score")) and score != "N/A"
+                else None,
+                media_format=self.MEDIA_TYPE_MAPPING.get(
+                    payload.get("media_type"), None
+                ),
+                status=self.AIRING_STATUS_MAPPING.get(payload.get("status"), None),
             )
             for item in items
             if (id := str(item.get("id")),)
             and (title := item.get("name"),)
             and (url := item.get("url"),)
             and (image_url := item.get("image_url"),)
+            and (payload := item.get("payload", {0: 0}))
         ]
 
 
 class AniListMetadataProvider(_CachingMetadataProvider, SearchProvider):
     ID_PATTERN = re.compile(r"https?://anilist\.co/anime/(?P<id>\d+)")
     API_URL = "https://graphql.anilist.co"
+    MEDIA_TYPE_MAPPING = {
+        "TV": MediaFormat.TV,
+        # should this be added as a separate field?
+        "TV_SHORT": MediaFormat.TV,
+        "MOVIE": MediaFormat.MOVIE,
+        "SPECIAL": MediaFormat.SPECIAL,
+        "OVA": MediaFormat.OVA,
+        "ONA": MediaFormat.ONA,
+    }
+    AIRING_STATUS_MAPPING = {
+        "FINISHED": AiringStatus.FINISHED,
+        "RELEASING": AiringStatus.RELEASING,
+        "NOT_YET_RELEASED": AiringStatus.TBA,
+    }
 
     @property
     def name(self) -> str:
@@ -479,6 +538,10 @@ class AniListMetadataProvider(_CachingMetadataProvider, SearchProvider):
                       id
                       title { romaji }
                       coverImage { extraLarge }
+                      format
+                      seasonYear
+                      status
+                      averageScore
                   }
               }
           }  
@@ -490,7 +553,18 @@ class AniListMetadataProvider(_CachingMetadataProvider, SearchProvider):
 
         media_list = data.get("data", {}).get("Page", {}).get("media", [])
         return [
-            SearchResult(id=id, title=title, url=url, image_url=image_url)
+            SearchResult(
+                id=id,
+                title=title,
+                url=url,
+                image_url=image_url,
+                year=item.get("seasonYear"),
+                media_format=self.MEDIA_TYPE_MAPPING.get(item.get("format")),
+                status=self.AIRING_STATUS_MAPPING.get(item.get("status")),
+                score=int(score) * 10
+                if (score := item.get("averageScore")) is not None
+                else None,
+            )
             for item in media_list
             if (id := str(item.get("id")))
             and (title := item.get("title", {}).get("romaji", ""))

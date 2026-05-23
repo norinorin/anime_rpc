@@ -2,6 +2,8 @@ use iced::{Color, color, widget::image::Handle};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::constants::colours;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollerStatus {
     pub display_name: String,
@@ -11,12 +13,65 @@ pub struct PollerStatus {
 
 pub type PollerStatePayload = HashMap<String, PollerStatus>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MediaFormat {
+    Tv,
+    Movie,
+    Ova,
+    Ona,
+    Special,
+}
+
+impl MediaFormat {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Tv => "TV",
+            Self::Movie => "Movie",
+            Self::Ova => "OVA",
+            Self::Ona => "ONA",
+            Self::Special => "Special",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AiringStatus {
+    Finished,
+    Releasing,
+    Tba,
+}
+
+impl AiringStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Finished => "Finished",
+            Self::Releasing => "Airing",
+            Self::Tba => "TBA",
+        }
+    }
+
+    pub fn accent_colour(&self) -> Color {
+        match self {
+            AiringStatus::Finished => colours::GREEN,
+            AiringStatus::Releasing => colours::SELECTION,
+            AiringStatus::Tba => colours::RED,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct SearchResult {
+    #[allow(unused)]
     pub id: String,
     pub title: String,
     pub url: String,
     pub image_url: String,
+    pub year: Option<i32>,
+    pub media_format: Option<MediaFormat>,
+    pub status: Option<AiringStatus>,
+    pub score: Option<u16>,
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq)]
