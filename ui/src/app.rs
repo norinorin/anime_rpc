@@ -563,7 +563,9 @@ impl AnimeRpc {
                 Task::none()
             }
             IoMessage::SaveClicked => {
-                if let Some(id) = &self.rpc.active_id
+                // If we're not in config view, assume it's a misclick
+                if self.view.current == View::Config
+                    && let Some(id) = &self.rpc.active_id
                     && let Some(p) = self.rpc.pollers.get(id)
                     && let Some(dir) = &p.filedir
                 {
