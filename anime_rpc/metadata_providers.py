@@ -407,14 +407,16 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
         items = data.get("categories", [{}])[0].get("items", [])
         return [
             SearchResult(
-                {
-                    "id": str(item.get("id")),
-                    "title": item.get("name"),
-                    "url": item.get("url"),
-                    "image_url": item.get("image_url"),
-                }
+                id=id,
+                title=title,
+                url=url,
+                image_url=image_url,
             )
             for item in items
+            if (id := str(item.get("id")),)
+            and (title := item.get("name"),)
+            and (url := item.get("url"),)
+            and (image_url := item.get("image_url"),)
         ]
 
 
