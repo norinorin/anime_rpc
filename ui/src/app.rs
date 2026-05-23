@@ -153,6 +153,9 @@ impl AnimeRpc {
                     Key::Character(c) if c.eq_ignore_ascii_case("s") && modifiers.command() => {
                         Some(Message::Io(IoMessage::SaveClicked))
                     }
+                    Key::Character(c) if c.eq_ignore_ascii_case("l") && modifiers.command() => {
+                        Some(Message::GotoSearchBar)
+                    }
                     Key::Named(Named::ArrowDown) => {
                         Some(Message::Search(SearchMessage::MoveSelection(1)))
                     }
@@ -194,6 +197,10 @@ impl AnimeRpc {
             Message::Redo => match self.view.current {
                 View::Search => self.handle_search(SearchMessage::Redo, now),
                 View::Config => self.handle_rpc(RpcMessage::Redo, now),
+            },
+            Message::GotoSearchBar => match self.view.current {
+                View::Config => self.handle_view(ViewMessage::Switch(View::Search), now),
+                View::Search => self.handle_search(SearchMessage::FocusInput, now),
             },
         };
 

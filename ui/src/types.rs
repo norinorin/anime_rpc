@@ -90,6 +90,7 @@ pub enum Message {
     Sse(SseMessage),
     Undo,
     Redo,
+    GotoSearchBar,
 }
 
 #[derive(Debug, Clone)]
