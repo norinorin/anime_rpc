@@ -185,25 +185,25 @@ impl AnimeRpc {
     pub fn update(&mut self, message: Message, now: Instant) -> Task<Message> {
         self.now = now;
 
-        let task = match message {
-            Message::View(msg) => self.handle_view(msg, now),
-            Message::Rpc(msg) => self.handle_rpc(msg, now),
-            Message::Search(msg) => self.handle_search(msg, now),
-            Message::Io(msg) => self.handle_io(msg, now),
-            Message::Sse(msg) => self.handle_sse(msg, now),
-            Message::Undo => match self.view.current {
+        let task = match (message, &self.view.current) {
+            (Message::View(msg), _) => self.handle_view(msg, now),
+            (Message::Rpc(msg), _) => self.handle_rpc(msg, now),
+            (Message::Search(msg), _) => self.handle_search(msg, now),
+            (Message::Io(msg), _) => self.handle_io(msg, now),
+            (Message::Sse(msg), _) => self.handle_sse(msg, now),
+            (Message::Undo, _) => match self.view.current {
                 View::Search => self.handle_search(SearchMessage::Undo, now),
                 View::Config => self.handle_rpc(RpcMessage::Undo, now),
             },
-            Message::Redo => match self.view.current {
-                View::Search => self.handle_search(SearchMessage::Redo, now),
-                View::Config => self.handle_rpc(RpcMessage::Redo, now),
-            },
-            Message::GotoSearchBar => match self.view.current {
-                View::Config => self.handle_view(ViewMessage::Switch(View::Search), now),
-                View::Search => self.handle_search(SearchMessage::FocusInput, now),
-            },
-            Message::EscPressed if self.view.current == View::Search => {
+            (Message::Redo, View::Config) => self.handle_rpc(RpcMessage::Redo, now),
+            (Message::Redo, View::Search) => self.handle_search(SearchMessage::Redo, now),
+            (Message::GotoSearchBar, View::Config) => {
+                self.handle_view(ViewMessage::Switch(View::Search), now)
+            }
+            (Message::GotoSearchBar, View::Search) => {
+                self.handle_search(SearchMessage::FocusInput, now)
+            }
+            (Message::EscPressed, View::Search) => {
                 if self.search.hovered_index.is_some() {
                     self.search.hovered_index = None;
                     Task::none()
@@ -211,7 +211,7 @@ impl AnimeRpc {
                     self.handle_view(ViewMessage::Switch(View::Config), now)
                 }
             }
-            Message::EscPressed => Task::none(),
+            (Message::EscPressed, View::Config) => Task::none(),
         };
 
         // animation sync
