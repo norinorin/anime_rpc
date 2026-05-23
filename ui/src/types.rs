@@ -115,7 +115,7 @@ pub enum RpcMessage {
 pub enum SearchMessage {
     QueryChanged(String),
     Perform,
-    Finished(Result<Vec<SearchResult>, String>),
+    Finished(SearchProvider, Result<Vec<SearchResult>, String>),
     ResultSelected(SearchResult),
     ProviderSelected(SearchProvider),
     MoveSelection(isize),
@@ -152,7 +152,7 @@ pub enum SseMessage {
     Tick,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 #[repr(u8)]
 pub enum SearchProvider {
     #[default]

@@ -58,7 +58,7 @@ pub struct RpcState {
 
 pub struct SearchState {
     pub form: History<SearchFormData>,
-    pub results: Vec<SearchResult>,
+    pub results: HashMap<SearchProvider, Vec<SearchResult>>,
     pub hovered_index: Option<usize>,
 }
 
@@ -96,7 +96,7 @@ impl AnimeRpc {
                     form: History::new(RpcFormData::default()),
                 },
                 search: SearchState {
-                    results: Vec::new(),
+                    results: HashMap::new(),
                     hovered_index: None,
                     form: History::new(SearchFormData::default()),
                 },
@@ -344,15 +344,16 @@ impl AnimeRpc {
                 self.search.hovered_index = None;
                 Task::none()
             }
-            SearchMessage::Perform => Task::perform(
-                perform_search(
-                    self.search.form.query.clone(),
-                    self.search.form.selected_provider,
-                ),
-                |res| Message::Search(SearchMessage::Finished(res)),
-            ),
-            SearchMessage::Finished(Ok(results)) => {
-                self.search.results = results.clone();
+            SearchMessage::Perform => {
+                let provider = self.search.form.selected_provider;
+
+                Task::perform(
+                    perform_search(self.search.form.query.clone(), provider),
+                    move |res| Message::Search(SearchMessage::Finished(provider, res)),
+                )
+            }
+            SearchMessage::Finished(provider, Ok(results)) => {
+                self.search.results.insert(provider, results.clone());
                 let urls: Vec<String> = results.into_iter().map(|r| r.image_url).collect();
                 Task::batch(urls.into_iter().map(|url| {
                     self.rpc
@@ -363,7 +364,7 @@ impl AnimeRpc {
                     })
                 }))
             }
-            SearchMessage::Finished(Err(_)) => Task::none(),
+            SearchMessage::Finished(_, Err(_)) => Task::none(),
             SearchMessage::ResultSelected(res) => {
                 self.rpc.form.modify(|form| {
                     form.title = res.title;
@@ -371,20 +372,29 @@ impl AnimeRpc {
                     form.image_url = res.image_url;
                 });
                 self.view.current = View::Config;
+                self.search.hovered_index = None;
                 Task::none()
             }
             SearchMessage::ProviderSelected(provider) => {
                 self.search
                     .form
                     .modify(|form| form.selected_provider = provider);
+                self.search.hovered_index = None;
                 Task::none()
             }
             SearchMessage::MoveSelection(delta) => {
-                if self.search.results.is_empty() {
+                let results = self
+                    .search
+                    .results
+                    .get(&self.search.form.selected_provider)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
+
+                if results.is_empty() {
                     return Task::none();
                 }
 
-                let max_idx = self.search.results.len().saturating_sub(1);
+                let max_idx = results.len().saturating_sub(1);
                 let new_idx = match self.search.hovered_index {
                     Some(curr) => {
                         let next = curr as isize + delta;
@@ -412,8 +422,15 @@ impl AnimeRpc {
                 )
             }
             SearchMessage::SelectHovered => {
+                let results = self
+                    .search
+                    .results
+                    .get(&self.search.form.selected_provider)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
+
                 if let Some(idx) = self.search.hovered_index
-                    && let Some(res) = self.search.results.get(idx).cloned()
+                    && let Some(res) = results.get(idx).cloned()
                 {
                     return self.update(Message::Search(SearchMessage::ResultSelected(res)), now);
                 }

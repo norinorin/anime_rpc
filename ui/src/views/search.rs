@@ -121,8 +121,14 @@ pub fn result_card<'a, Message: Clone + 'a>(
 }
 
 pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
-    let results_len = state.search.results.len();
-    let results_content: Element<'_, Message> = if state.search.results.is_empty() {
+    let results = state
+        .search
+        .results
+        .get(&state.search.form.selected_provider)
+        .map(|v| v.as_slice())
+        .unwrap_or(&[]);
+    let results_len = results.len();
+    let results_content: Element<'_, Message> = if results.is_empty() {
         container(text("No results").color(colours::TEXT_DARK_MUTED))
             .width(Length::Fill)
             .height(Length::Fixed(100.0))
@@ -131,9 +137,7 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
             .into()
     } else {
         column(
-            state
-                .search
-                .results
+            results
                 .iter()
                 .enumerate()
                 .map(|(i, res)| {
