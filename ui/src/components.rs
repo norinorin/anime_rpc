@@ -9,7 +9,7 @@ use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
 use crate::constants::{ICON_FONT, colours, layout, typography};
-use crate::styles::{self, hex};
+use crate::styles::{self, ColorExt, TogglerStyle, hex};
 use crate::types::Message;
 
 pub struct LoadingSpinner {
@@ -184,27 +184,17 @@ pub fn dropdown<'a, Message: Clone + 'a>(
     section.into()
 }
 
-pub fn toggler<'a, Message: Clone + 'a>(progress: f32, on_toggle: Message) -> Element<'a, Message> {
+pub fn toggler<'a, Message: Clone + 'a>(
+    progress: f32,
+    on_toggle: Message,
+    style: TogglerStyle,
+) -> Element<'a, Message> {
     let width = 34.0;
     let height = 18.0;
     let circle_size = 12.0;
     let padding = 3.0;
-
-    let bg_off = hex(colours::TEXT_DARK_MUTED);
-    let bg_on = hex(colours::SELECTION);
-
-    let r = bg_off.r + (bg_on.r - bg_off.r) * progress;
-    let g = bg_off.g + (bg_on.g - bg_off.g) * progress;
-    let b = bg_off.b + (bg_on.b - bg_off.b) * progress;
-    let current_bg_colour = Color::from_rgba(r, g, b, 1.0);
-
-    let knob_off = hex(colours::SOFT_DARK);
-    let knob_on = Color::WHITE;
-
-    let kr = knob_off.r + (knob_on.r - knob_off.r) * progress;
-    let kg = knob_off.g + (knob_on.g - knob_off.g) * progress;
-    let kb = knob_off.b + (knob_on.b - knob_off.b) * progress;
-    let current_knob_colour = Color::from_rgba(kr, kg, kb, 1.0);
+    let current_bg_colour = Color::interpolate(style.bg_off, style.bg_on, progress);
+    let current_knob_colour = Color::interpolate(style.knob_off, style.knob_on, progress);
 
     let bg = container(space())
         .width(Length::Fixed(width))

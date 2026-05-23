@@ -1,7 +1,7 @@
 use crate::app::{AnimeRpc, SseState};
 use crate::components::{divider, dropdown, icon, toggler, underlined_input};
 use crate::constants::{colours, layout, typography};
-use crate::styles::{self, hex};
+use crate::styles::{self, TogglerStyle, hex};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Center, Color, Element, Font, Length};
@@ -170,7 +170,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 .size(typography::BODY_SIZE),
             toggler(
                 state.view.rewatching_anim.interpolate(0.0, 1.0, state.now),
-                Message::Rpc(RpcMessage::ToggleRewatching(!state.rpc.rewatching))
+                Message::Rpc(RpcMessage::ToggleRewatching(!state.rpc.rewatching)),
+                TogglerStyle::default()
             )
         ]
         .align_y(Center),

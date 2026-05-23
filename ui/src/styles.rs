@@ -220,3 +220,38 @@ pub fn slim_scrollbar() -> scrollable::Direction {
             .margin(0),
     )
 }
+
+pub trait ColorExt {
+    fn interpolate(from: Self, to: Self, progress: f32) -> Self;
+}
+
+impl ColorExt for Color {
+    fn interpolate(from: Self, to: Self, progress: f32) -> Self {
+        Self {
+            r: from.r + (to.r - from.r) * progress,
+            g: from.g + (to.g - from.g) * progress,
+            b: from.b + (to.b - from.b) * progress,
+            a: from.a + (to.a - from.a) * progress,
+        }
+    }
+}
+// Hmm, maybe we should make this a function that takes
+// in theme and toggle status for when we need to integrate theme.
+// For now let's keep it stupid simple.
+pub struct TogglerStyle {
+    pub bg_off: Color,
+    pub bg_on: Color,
+    pub knob_off: Color,
+    pub knob_on: Color,
+}
+
+impl Default for TogglerStyle {
+    fn default() -> Self {
+        Self {
+            bg_off: hex(colours::TEXT_DARK_MUTED),
+            bg_on: hex(colours::SELECTION),
+            knob_off: hex(colours::SOFT_DARK),
+            knob_on: Color::WHITE,
+        }
+    }
+}

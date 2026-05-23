@@ -27,6 +27,7 @@ pub struct ViewState {
     pub poller_dropdown_open: bool,
     pub poller_dropdown_anim: Animation<bool>,
     pub rewatching_anim: Animation<bool>,
+    pub provider_anim: Animation<bool>,
     pub save_status: SaveStatus,
 }
 
@@ -78,6 +79,9 @@ impl AnimeRpc {
                         .duration(std::time::Duration::from_millis(200))
                         .easing(iced::animation::Easing::EaseInOutCubic),
                     rewatching_anim: Animation::new(false)
+                        .duration(std::time::Duration::from_millis(150))
+                        .easing(iced::animation::Easing::EaseInOutCubic),
+                    provider_anim: Animation::new(false)
                         .duration(std::time::Duration::from_millis(150))
                         .easing(iced::animation::Easing::EaseInOutCubic),
                     save_status: SaveStatus::default(),
@@ -147,6 +151,7 @@ impl AnimeRpc {
 
         is_animating |= self.view.poller_dropdown_anim.is_animating(self.now);
         is_animating |= self.view.rewatching_anim.is_animating(self.now);
+        is_animating |= self.view.provider_anim.is_animating(self.now);
 
         is_animating
     }
@@ -392,6 +397,7 @@ impl AnimeRpc {
             }
             SearchMessage::ProviderSelected(provider) => {
                 self.search.selected_provider = provider;
+                self.view.provider_anim.go_mut(provider as u8 != 0, now);
                 Task::none()
             }
             SearchMessage::MoveSelection(delta) => {

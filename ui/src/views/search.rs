@@ -1,7 +1,7 @@
 use crate::app::AnimeRpc;
-use crate::components::icon;
+use crate::components::{icon, toggler};
 use crate::constants::{colours, layout, typography};
-use crate::styles::{self, hex};
+use crate::styles::{self, ColorExt, TogglerStyle, hex};
 use crate::types::{Message, SearchMessage, SearchProvider, View, ViewMessage};
 use iced::widget::{Id, Space, button, column, container, row, scrollable, text, text_input};
 use iced::{Alignment, Center, Color, Element, Font, Length, Padding};
@@ -76,34 +76,22 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         .width(Length::Fill)
         .height(Length::Fill);
 
-    let provider_toggles = container(
-        row(SearchProvider::ALL.iter().map(|&provider| {
-            let is_active = state.search.selected_provider == provider;
-            let ghost_style =
-                styles::get_ghost_button_style(Color::WHITE, hex(colours::TEXT_MUTED));
+    let next_provider = match state.search.selected_provider {
+        SearchProvider::MyAnimeList => SearchProvider::AniList,
+        SearchProvider::AniList => SearchProvider::MyAnimeList,
+    };
 
-            button(
-                text(provider.display_name())
-                    .size(typography::CAPTION_SIZE)
-                    .width(Length::Fill)
-                    .align_x(iced::alignment::Horizontal::Center),
-            )
-            .width(Length::Fill)
-            .padding([layout::S_SPACING, 0.])
-            .style(move |theme, status| {
-                if is_active {
-                    styles::primary_button_style(theme, status)
-                } else {
-                    ghost_style(theme, status)
-                }
-            })
-            .on_press(Message::Search(SearchMessage::ProviderSelected(provider)))
-            .into()
-        }))
-        .spacing(layout::S_SPACING),
-    )
-    .width(Length::Fill)
-    .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]);
+    let progress = state.view.provider_anim.interpolate(0., 1., state.now);
+    let mal_color = Color::interpolate(
+        hex(colours::TEXT_MUTED),
+        hex(colours::TEXT_DARK_MUTED),
+        progress,
+    );
+    let anilist_color = Color::interpolate(
+        hex(colours::TEXT_DARK_MUTED),
+        hex(colours::TEXT_MUTED),
+        progress,
+    );
 
     let root = column![
         row![
@@ -116,13 +104,30 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             text("Search").size(34).font(Font {
                 weight: iced::font::Weight::Bold,
                 ..Default::default()
-            })
+            }),
+            Space::new().width(Length::Fill),
+            row![
+                text("MAL").size(typography::CAPTION_SIZE).color(mal_color),
+                toggler(
+                    state.view.provider_anim.interpolate(0., 1., state.now),
+                    Message::Search(SearchMessage::ProviderSelected(next_provider)),
+                    TogglerStyle {
+                        bg_off: SearchProvider::MyAnimeList.accent_colour(),
+                        bg_on: SearchProvider::AniList.accent_colour(),
+                        ..Default::default()
+                    }
+                ),
+                text("AniList")
+                    .size(typography::CAPTION_SIZE)
+                    .color(anilist_color),
+            ]
+            .spacing(layout::S_SPACING)
+            .align_y(Center)
         ]
         .spacing(layout::L_SPACING)
         .align_y(Center)
-        .padding([0., layout::L_SPACING]),
+        .padding([0., layout::L_SPACING + layout::S_SPACING]),
         column![
-            provider_toggles,
             row![
                 text_input("Search title...", &state.search.query)
                     .id(Id::new("search_bar"))
@@ -136,7 +141,14 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                         Color::WHITE,
                         hex(colours::TEXT_MUTED)
                     ))
-                    .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING])
+                    .padding({
+                        Padding {
+                            left: layout::L_SPACING,
+                            right: 0.,
+                            bottom: layout::L_SPACING,
+                            top: layout::L_SPACING,
+                        }
+                    })
             ]
             .spacing(layout::S_SPACING)
             .align_y(Center)

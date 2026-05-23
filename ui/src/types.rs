@@ -1,6 +1,8 @@
-use iced::widget::image::Handle;
+use iced::{Color, widget::image::Handle};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use crate::styles::hex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PollerStatus {
@@ -93,30 +95,37 @@ pub enum SseMessage {
     Tick,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[repr(u8)]
 pub enum SearchProvider {
     #[default]
-    #[serde(rename = "myanimelist")]
-    MyAnimeList,
-    #[serde(rename = "anilist")]
-    AniList,
+    MyAnimeList = 0,
+    AniList = 1,
 }
 
 impl SearchProvider {
+    #[allow(unused)]
     pub const ALL: &'static [SearchProvider] =
         &[SearchProvider::MyAnimeList, SearchProvider::AniList];
 
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::AniList => "anilist",
             Self::MyAnimeList => "myanimelist",
+            Self::AniList => "anilist",
         }
     }
 
     pub fn display_name(&self) -> &'static str {
         match self {
-            Self::AniList => "AniList",
             Self::MyAnimeList => "MyAnimeList",
+            Self::AniList => "AniList",
+        }
+    }
+
+    pub fn accent_colour(&self) -> Color {
+        match self {
+            Self::MyAnimeList => hex(0x2E51A2),
+            Self::AniList => hex(0x0B1622),
         }
     }
 
