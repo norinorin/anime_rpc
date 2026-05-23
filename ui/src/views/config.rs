@@ -112,7 +112,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
                 colours::SELECTION,
             ))
             .padding(0.)
-            .on_press(Message::Rpc(RpcMessage::OpenUrlClicked));
+            .on_press(Message::OpenUrlClicked(state.rpc.form.url.clone()));
         media_label_row = media_label_row.push(open_btn);
     }
 
@@ -176,7 +176,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             row![
                 text_input("URL...", &state.rpc.form.url)
                     .on_input(|res| Message::Rpc(RpcMessage::UrlChanged(res)))
-                    .on_submit(Message::Rpc(RpcMessage::OpenUrlClicked))
+                    .on_submit(Message::OpenUrlClicked(state.rpc.form.url.clone()))
                     .style(styles::transparent_text_input_style)
                     .padding([layout::SPACING, 0.]),
                 search_btn

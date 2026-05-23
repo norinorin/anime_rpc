@@ -1,4 +1,7 @@
-use iced::{Color, color, widget::image::Handle};
+use iced::{
+    Color, color,
+    widget::{image::Handle, svg},
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -93,6 +96,7 @@ pub enum Message {
     GotoSearchBar,
     EscPressed,
     TabPressed { shift: bool },
+    OpenUrlClicked(String),
 }
 
 #[derive(Debug, Clone)]
@@ -108,7 +112,6 @@ pub enum RpcMessage {
     UrlChanged(String),
     ImageUrlChanged(String),
     ToggleRewatching(bool),
-    OpenUrlClicked,
     Undo,
     Redo,
 }
@@ -174,6 +177,16 @@ impl SearchProvider {
         }
     }
 
+    pub fn logo(&self) -> svg::Handle {
+        match self {
+            Self::MyAnimeList => {
+                svg::Handle::from_memory(include_bytes!("../assets/myanimelist.svg"))
+            }
+            Self::AniList => svg::Handle::from_memory(include_bytes!("../assets/anilist.svg")),
+        }
+    }
+
+    #[allow(unused)]
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::MyAnimeList => "MyAnimeList",

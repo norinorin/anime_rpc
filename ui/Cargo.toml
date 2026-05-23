@@ -9,7 +9,13 @@ path = "src/main.rs"
 
 [dependencies]
 futures-util = "0.3.32"
-iced = { version = "0.14.0", features = ["canvas", "image", "tokio", "wgpu"] }
+iced = { version = "0.14.0", features = [
+  "canvas",
+  "image",
+  "svg",
+  "tokio",
+  "wgpu"
+] }
 image = "0.25.10"
 lru = "0.16.3"
 reqwest = { version = "0.13.3", default-features = false, features = [
