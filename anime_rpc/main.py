@@ -1,4 +1,5 @@
 import asyncio
+import errno
 import logging
 import signal
 import sys
@@ -27,7 +28,7 @@ from anime_rpc.social_sdk import Discord
 from anime_rpc.states import State, get_states_logger, validate_state
 from anime_rpc.timer import Timer
 from anime_rpc.ux import init_logging
-from anime_rpc.webserver import get_app, start_app
+from anime_rpc.webserver import PORT, get_app, start_app
 
 # fetch vars every 1 second
 POLLING_INTERVAL = 1.0
@@ -239,8 +240,18 @@ async def async_main() -> None:
 
     try:
         if CLI_ARGS.enable_webserver:
-            app = await get_app(queue, metadata_providers)
-            webserver = await start_app(app)
+            try:
+                app = await get_app(queue, metadata_providers)
+                webserver = await start_app(app)
+            except OSError as exc:
+                if exc.errno != errno.EADDRINUSE:
+                    raise
+
+                _LOGGER.error(
+                    "Failed to bind to port %d. Is something else using the port?"
+                    "Proceeding without webserver...",
+                    PORT,
+                )
 
         discord.start()
         file_watcher_manager.start()
