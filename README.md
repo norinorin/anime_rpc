@@ -50,18 +50,30 @@ uv tool run anime_rpc -h
 
 <details>
 
-<summary>Using Nix + Flake + Home Manager</summary>
+<summary>Using Nix Flakes + Home Manager</summary>
 
 1. Add `anime_rpc.url = "github:norinorin/anime_rpc"` to your inputs.
 2. Import the home module `inputs.anime_rpc.homeModules.anime_rpc`.
 3. Enable the service:
 
 ```nix
-services.anime_rpc = {
+# home.nix
+programs.anime_rpc = {
   enable = true;
-  enableWebserver = true;
-  pollers = ["mpv-webui:14567" "mpc"];
-  fetchEpisodeTitles = true;
+  ui.enable = true;
+  settings = {
+    webserver.enable = true;
+    pollers = {
+      # this requires an overlay to patch the simple-mpv-webui script
+      # `nixpkgs.overlays = [inputs.anime_rpc.overlays.default];`
+      mpvWebui = {
+        enable = true;
+        port = 14567; # omit this if you use the default port
+      };
+      mpc.enable = true;
+    };
+    fetchEpisodeTitles = true;
+  };
 };
 ```
 

@@ -1,85 +1,199 @@
-self: {
-  config,
+{
   lib,
+  config,
   pkgs,
+  self,
   ...
 }: let
-  cfg = config.services.anime_rpc;
-  pkg = self.packages.${pkgs.system}.default;
-  uiPkg = self.packages.${pkgs.system}.ui;
+  inherit
+    (lib)
+    mkEnableOption
+    mkIf
+    mkOption
+    mkDefault
+    types
+    optional
+    optionals
+    concatStringsSep
+    concatLists
+    ;
+
+  cfg = config.programs.anime_rpc;
+
+  minimumInterval = 5;
+
+  enabledPollers =
+    lib.filterAttrs (_: v: v.enable) cfg.settings.pollers;
+
+  pollerArgs = let
+    renameMap = {
+      mpvIpc = "mpv-ipc";
+      mpvWebui = "mpv-webui";
+    };
+  in
+    lib.mapAttrsToList
+    (
+      name: v: let
+        cliName = renameMap.${name} or name;
+      in
+        if (v ? port && v.port != null)
+        then "${cliName}:${toString v.port}"
+        else cliName
+    )
+    enabledPollers;
+
+  args = concatLists [
+    (optional cfg.settings.clearOnPause "--clear-on-pause")
+
+    (optional cfg.settings.webserver.enable "--enable-webserver")
+
+    (optional cfg.settings.useOAuth2 "--use-oauth2")
+
+    (optional cfg.settings.fetchEpisodeTitles
+      "--fetch-episode-titles")
+
+    (optional cfg.settings.verbose "--verbose")
+
+    (optionals (cfg.settings.interval > 0) [
+      "--interval"
+      (toString cfg.settings.interval)
+    ])
+
+    (optionals (pollerArgs != []) [
+      "--pollers"
+      (concatStringsSep "," pollerArgs)
+    ])
+
+    cfg.settings.extraArgs
+  ];
 in {
-  options.services.anime_rpc = {
-    enable = lib.mkEnableOption "Anime RPC Service";
+  options.programs.anime_rpc = {
+    enable = mkEnableOption "Anime RPC";
 
-    enableWebserver = lib.mkEnableOption "the webserver for browser userscripts (extension integration)";
-
-    enableUI = lib.mkEnableOption "the UI editor for .rpc files";
-
-    clearOnPause = lib.mkEnableOption "clearing rich presence on media pause";
-
-    useOAuth2 = lib.mkEnableOption "authentication via OAuth2 (no Discord client required)";
-
-    fetchEpisodeTitles = lib.mkEnableOption "fetching episode titles from MyAnimeList";
-
-    verbose = lib.mkEnableOption "verbose logging";
-
-    interval = lib.mkOption {
-      type = lib.types.int;
-      default = 0;
-      description = ''
-        Specify the interval in seconds for periodic updates.
-        Defaults to 0, meaning updates occur only on play/stop events.
-      '';
+    package = mkOption {
+      type = types.package;
+      default = self.packages.${pkgs.system}.default;
+      description = "The anime_rpc executable package to use.";
     };
 
-    pollers = lib.mkOption {
-      type = lib.types.listOf (lib.types.strMatching "^(mpc|mpv-ipc|mpv-webui)(:[0-9]+)?$");
-      default = ["mpv"];
-      example = ["mpv" "mpc:13579"];
-      description = ''
-        List of pollers to enable (e.g., mpc, mpv-ipc, mpv-webui).
-        You can specify ports using the format 'name:port'.
-      '';
+    ui = {
+      enable = mkEnableOption "Anime RPC UI";
+      package = mkOption {
+        type = types.package;
+        default = self.packages.${pkgs.system}.ui;
+        description = "The anime_rpc_ui package to use.";
+      };
     };
 
-    extraArgs = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [];
-      description = "Extra arguments to pass directly to the anime_rpc binary.";
+    settings = {
+      clearOnPause =
+        mkEnableOption "clearing rich presence on pause";
+
+      webserver.enable =
+        mkEnableOption "webserver integration";
+
+      useOAuth2 =
+        mkEnableOption "OAuth2 authentication";
+
+      fetchEpisodeTitles =
+        mkEnableOption "fetching episode titles from MAL";
+
+      verbose =
+        mkEnableOption "verbose logging";
+
+      interval = mkOption {
+        type = types.ints.unsigned;
+        default = 0;
+
+        description = ''
+          Interval in seconds for periodic updates.
+
+          Values between 1 and ${toString minimumInterval}
+          are ignored by anime_rpc.
+        '';
+      };
+
+      extraArgs = mkOption {
+        type = types.listOf types.str;
+        default = [];
+      };
+
+      pollers = mkOption {
+        type = let
+          pollerOpts = poller: hasPort:
+            mkOption {
+              type = types.submodule {
+                options =
+                  {
+                    enable = mkEnableOption "whether to enable ${poller} or not";
+                  }
+                  // lib.optionalAttrs hasPort {
+                    port = mkOption {
+                      type = types.nullOr types.port;
+                      default = null;
+                    };
+                  };
+              };
+            };
+        in
+          types.submodule {
+            options = {
+              mpc = pollerOpts "MPC" true;
+              mpvIpc = pollerOpts "mpv-ipc" false;
+              mpvWebui = pollerOpts "mpv-webui" true;
+            };
+          };
+
+        default = {};
+      };
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    home.packages = [pkg] ++ lib.optional cfg.enableUI uiPkg;
+  config = mkIf cfg.enable {
+    assertions = [
+      {
+        assertion = enabledPollers != {} || cfg.settings.webserver.enable;
+        message = ''
+          programs.anime_rpc requires either at least one poller enabled under
+          programs.anime_rpc.settings.pollers or webserver integration enabled
+          via programs.anime_rpc.settings.webserver.enable.
+        '';
+      }
+      {
+        assertion =
+          cfg.settings.interval
+          == 0
+          || cfg.settings.interval >= minimumInterval;
+
+        message = ''
+          programs.anime_rpc.settings.interval
+          must be either 0 or >= ${toString minimumInterval}.
+        '';
+      }
+    ];
+
+    programs.anime_rpc.settings.webserver.enable =
+      mkDefault cfg.ui.enable;
+
+    home.packages =
+      [cfg.package]
+      ++ optional cfg.ui.enable cfg.ui.package;
 
     systemd.user.services.anime_rpc = {
       Unit = {
-        Description = "Anime RPC Daemon";
+        Description = "Anime RPC";
         After = ["graphical-session.target"];
         PartOf = ["graphical-session.target"];
       };
 
       Service = {
-        ExecStart = let
-          args = lib.concatLists [
-            (lib.optional cfg.enableWebserver "--enable-webserver")
-            (lib.optional cfg.clearOnPause "--clear-on-pause")
-            (lib.optional cfg.useOAuth2 "--use-oauth2")
-            (lib.optional cfg.fetchEpisodeTitles "--fetch-episode-titles")
-            (lib.optional cfg.verbose "--verbose")
-            (lib.optionals (cfg.interval != 0) ["--interval" (toString cfg.interval)])
-            (lib.optionals (cfg.pollers != []) ["--pollers" (lib.concatStringsSep "," cfg.pollers)])
-            cfg.extraArgs
-          ];
-        in "${pkg}/bin/anime_rpc ${lib.escapeShellArgs args}";
+        ExecStart = "${cfg.package}/bin/anime_rpc ${lib.escapeShellArgs args}";
 
         Restart = "on-failure";
         RestartSec = 5;
       };
 
-      Install = {
-        WantedBy = ["graphical-session.target"];
-      };
+      Install.WantedBy = ["graphical-session.target"];
     };
   };
 }

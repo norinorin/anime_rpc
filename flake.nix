@@ -45,7 +45,10 @@
 
     homeModules = {
       default = self.homeModules.anime_rpc;
-      anime_rpc = import ./nix/hm-module.nix self;
+      anime_rpc = {...}: {
+        imports = [./nix/hm-module.nix];
+        _module.args = {inherit self;};
+      };
     };
 
     devShells = forAllSystems (system: let
