@@ -68,6 +68,12 @@ pub enum SseState {
     WaitingToReconnect { seconds_left: u64, attempt: u32 },
 }
 
+impl SseState {
+    pub fn is_connected(&self) -> bool {
+        matches!(self, Self::Connected)
+    }
+}
+
 impl AnimeRpc {
     pub fn init() -> (Self, Task<Message>) {
         (

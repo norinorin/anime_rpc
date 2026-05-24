@@ -4,7 +4,9 @@ use crate::constants::{colours, layout, typography};
 use crate::styles::{self, ColorExt, TogglerStyle};
 use crate::types::{Message, SearchMessage, SearchProvider, SearchResult, View, ViewMessage};
 use iced::border::Radius;
-use iced::widget::{Id, Space, button, column, container, row, scrollable, svg, text, text_input};
+use iced::widget::{
+    Id, Space, button, column, container, row, scrollable, stack, svg, text, text_input,
+};
 use iced::{Alignment, Background, Center, Color, Element, Font, Length, Padding};
 
 pub fn result_card<'a>(
@@ -147,14 +149,53 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
         .get(&state.search.form.selected_provider)
         .map(|v| v.as_slice())
         .unwrap_or(&[]);
+
     let results_len = results.len();
-    let results_content: Element<'_, Message> = if results.is_empty() {
-        container(text("No results").color(colours::TEXT_DARK_MUTED))
+
+    let is_connected = state.sse.is_connected();
+
+    // TODO: move this to components.rs
+    // Also TODO: use Option instead of an empty Space everywhere else
+    let stale_banner: Option<Element<'_, Message>> =
+        (!is_connected && !results.is_empty()).then(|| {
+            container(
+                row![
+                    icon('\u{e002}').size(16),
+                    text(format!(
+                        "Offline — showing cached {} results",
+                        state.search.form.selected_provider.display_name()
+                    ))
+                ]
+                .spacing(layout::S_SPACING)
+                .align_y(Center),
+            )
             .width(Length::Fill)
-            .height(Length::Fixed(100.0))
+            .style(|_theme| container::Style {
+                background: Some(colours::SURFACE_WARNING.scale_alpha(0.8).into()),
+                ..Default::default()
+            })
             .align_x(Center)
-            .align_y(Center)
+            .padding(layout::S_SPACING)
             .into()
+        });
+
+    let results_content: Element<'_, Message> = if results.is_empty() {
+        container(
+            text(if is_connected {
+                format!(
+                    "No results on {}",
+                    state.search.form.selected_provider.display_name()
+                )
+            } else {
+                "Daemon is offline".into()
+            })
+            .color(colours::TEXT_DARK_MUTED),
+        )
+        .width(Length::Fill)
+        .height(Length::Fixed(100.0))
+        .align_x(Center)
+        .align_y(Center)
+        .into()
     } else {
         column(
             results
@@ -227,6 +268,39 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
     let mal_color = Color::interpolate(colours::TEXT_MUTED, colours::TEXT_DARK_MUTED, progress);
     let anilist_color = Color::interpolate(colours::TEXT_DARK_MUTED, colours::TEXT_MUTED, progress);
 
+    let search_bar = text_input("Search title...", &state.search.form.query)
+        .id(Id::new("search_bar"))
+        .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
+        .style(styles::search_input_style)
+        .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]);
+
+    let search_btn = button(icon('\u{e8b6}').size(layout::XL_SPACING))
+        .style(styles::get_ghost_button_style(
+            if is_connected {
+                Color::WHITE
+            } else {
+                colours::TEXT_MUTED
+            },
+            colours::TEXT_MUTED,
+        ))
+        .padding({
+            Padding {
+                left: layout::L_SPACING,
+                right: 0.,
+                bottom: layout::L_SPACING,
+                top: layout::L_SPACING,
+            }
+        });
+
+    let (search_bar, search_btn) = if is_connected {
+        (
+            search_bar.on_submit(Message::Search(SearchMessage::Perform)),
+            search_btn.on_press(Message::Search(SearchMessage::Perform)),
+        )
+    } else {
+        (search_bar, search_btn)
+    };
+
     let root = column![
         row![
             button(icon('\u{e5e0}').size(28))
@@ -262,30 +336,9 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
         .align_y(Center)
         .padding([0., layout::L_SPACING + layout::S_SPACING]),
         column![
-            row![
-                text_input("Search title...", &state.search.form.query)
-                    .id(Id::new("search_bar"))
-                    .on_input(|res| Message::Search(SearchMessage::QueryChanged(res)))
-                    .on_submit(Message::Search(SearchMessage::Perform))
-                    .style(styles::search_input_style)
-                    .padding([layout::L_SPACING, layout::L_SPACING + layout::S_SPACING]),
-                button(icon('\u{e8b6}').size(layout::XL_SPACING))
-                    .on_press(Message::Search(SearchMessage::Perform))
-                    .style(styles::get_ghost_button_style(
-                        Color::WHITE,
-                        colours::TEXT_MUTED
-                    ))
-                    .padding({
-                        Padding {
-                            left: layout::L_SPACING,
-                            right: 0.,
-                            bottom: layout::L_SPACING,
-                            top: layout::L_SPACING,
-                        }
-                    })
-            ]
-            .spacing(layout::S_SPACING)
-            .align_y(Center)
+            row![search_bar, search_btn]
+                .spacing(layout::S_SPACING)
+                .align_y(Center)
         ]
         .spacing(layout::S_SPACING)
         .padding([0., layout::L_SPACING + layout::S_SPACING]),
@@ -297,9 +350,12 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
     .spacing(layout::XL_SPACING)
     .padding(Padding::new(0.).top(40).bottom(20));
 
-    container(root)
-        .style(styles::black_container_style)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .into()
+    stack![
+        container(root)
+            .style(styles::black_container_style)
+            .width(Length::Fill)
+            .height(Length::Fill),
+        stale_banner,
+    ]
+    .into()
 }

@@ -9,13 +9,6 @@ use iced::widget::{Space, button, column, container, row, scrollable, text, text
 use iced::{Center, Color, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
-    let is_active = state
-        .rpc
-        .active_id
-        .as_ref()
-        .and_then(|id| state.rpc.pollers.get(id))
-        .is_some_and(|p| p.active);
-
     let active_poller = state
         .rpc
         .active_id
@@ -121,13 +114,8 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
             colours::TEXT_MUTED,
             colours::SELECTION,
         ))
-        .padding([0., layout::SPACING]);
-
-    let search_btn = if is_active {
-        search_btn.on_press(Message::View(ViewMessage::Switch(View::Search)))
-    } else {
-        search_btn
-    };
+        .padding([0., layout::SPACING])
+        .on_press(Message::View(ViewMessage::Switch(View::Search)));
 
     let image_preview: Element<'_, Message> = if !state.rpc.form.image_url.is_empty()
         && let Some(img) = state.rpc.image_cache.peek(&state.rpc.form.image_url)

@@ -186,7 +186,6 @@ impl SearchProvider {
         }
     }
 
-    #[allow(unused)]
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::MyAnimeList => "MyAnimeList",

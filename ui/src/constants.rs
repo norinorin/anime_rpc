@@ -43,6 +43,7 @@ pub mod colours {
     pub const DIVIDER: Color = color!(0x2A2A2C);
     pub const SOFT_DARK: Color = color!(0x151515);
     pub const SELECTION: Color = color!(0x3E91FF);
+    pub const SURFACE_WARNING: Color = color!(0x47381C);
 }
 
 pub const ICON_FONT: Font = Font {
