@@ -117,15 +117,19 @@ pub fn secondary_button_style(_theme: &Theme, status: Status) -> button::Style {
     }
 }
 
+pub fn rounded_corner() -> Border {
+    Border {
+        radius: layout::XL_SPACING.into(),
+        width: 0.,
+        color: Color::TRANSPARENT,
+    }
+}
+
 pub fn card_container_style(_theme: &Theme) -> container::Style {
     container::Style {
         background: Some(Background::Color(colours::SOFT_DARK)),
         text_color: Some(Color::WHITE),
-        border: Border {
-            radius: layout::XL_SPACING.into(),
-            width: 0.,
-            color: Color::TRANSPARENT,
-        },
+        border: rounded_corner(),
         shadow: Default::default(),
         ..Default::default()
     }

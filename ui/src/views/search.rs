@@ -1,12 +1,10 @@
 use crate::app::AnimeRpc;
-use crate::components::{icon, space_between_column, toggler};
+use crate::components::{icon, rounded_scrollable_card, space_between_column, toggler};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, ColorExt, TogglerStyle};
 use crate::types::{Message, SearchMessage, SearchProvider, SearchResult, View, ViewMessage};
 use iced::border::Radius;
-use iced::widget::{
-    Id, Space, button, column, container, row, scrollable, stack, svg, text, text_input,
-};
+use iced::widget::{Id, Space, button, column, container, row, stack, svg, text, text_input};
 use iced::{Alignment, Background, Center, Color, Element, Font, Length, Padding};
 
 pub fn result_card<'a>(
@@ -253,12 +251,6 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
         .into()
     };
 
-    let card = container(results_content)
-        .style(styles::card_container_style)
-        .padding(0.)
-        .width(Length::Fill)
-        .height(Length::Fill);
-
     let next_provider = match state.search.form.selected_provider {
         SearchProvider::MyAnimeList => SearchProvider::AniList,
         SearchProvider::AniList => SearchProvider::MyAnimeList,
@@ -342,10 +334,7 @@ pub fn view<'a>(state: &'a AnimeRpc) -> Element<'a, Message> {
         ]
         .spacing(layout::S_SPACING)
         .padding([0., layout::L_SPACING + layout::S_SPACING]),
-        scrollable(column![card, Space::new().height(Length::Fill)].padding([0., layout::SPACING]))
-            .id(Id::new("search_scroll"))
-            .direction(styles::slim_scrollbar())
-            .height(Length::Fill),
+        rounded_scrollable_card(results_content, |s| s.id(Id::new("search_scroll"))),
     ]
     .spacing(layout::XL_SPACING)
     .padding(Padding::new(0.).top(40).bottom(20));

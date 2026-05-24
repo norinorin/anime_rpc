@@ -7,8 +7,8 @@ use iced::event::Event;
 use iced::widget::canvas::{self, Canvas, Frame, Geometry, Path, Program, Stroke, Style};
 use iced::widget::image::Handle;
 use iced::widget::{
-    Space, button, column, container, image, mouse_area, row, scrollable, space, stack, text,
-    text_input,
+    Scrollable, Space, button, column, container, image, mouse_area, row, scrollable, space, stack,
+    text, text_input,
 };
 use iced::{
     Alignment, Animation, Background, Color, Element, Length, Padding, Radians, Theme, mouse,
@@ -18,7 +18,7 @@ use std::f32::consts::{PI, TAU};
 use std::time::Instant;
 
 use crate::constants::{ICON_FONT, colours, layout, typography};
-use crate::styles::{self, ColorExt, TogglerStyle};
+use crate::styles::{self, ColorExt, TogglerStyle, card_container_style};
 use crate::types::Message;
 
 pub struct LoadingSpinner {
@@ -244,6 +244,83 @@ pub fn toggler<'a, Message: Clone + 'a>(
     mouse_area(stack![bg, knob_positioned])
         .interaction(mouse::Interaction::Pointer)
         .on_press(on_toggle)
+        .into()
+}
+
+pub struct CornerMask {
+    pub radius: f32,
+    pub color: Color,
+}
+
+impl<Message> Program<Message> for CornerMask {
+    type State = ();
+
+    fn draw(
+        &self,
+        _state: &Self::State,
+        renderer: &iced::Renderer,
+        _theme: &Theme,
+        bounds: Rectangle,
+        _cursor: iced::mouse::Cursor,
+    ) -> Vec<Geometry> {
+        let mut frame = Frame::new(renderer, bounds.size());
+
+        let r = self.radius;
+        let w = bounds.width;
+        let h = bounds.height;
+
+        let mask_path = Path::new(|b| {
+            b.move_to(Point::new(0., r));
+            b.arc_to(Point::new(0., 0.), Point::new(r, 0.), r);
+            b.line_to(Point::new(0., 0.));
+            b.close();
+
+            b.move_to(Point::new(w - r, 0.));
+            b.arc_to(Point::new(w, 0.), Point::new(w, r), r);
+            b.line_to(Point::new(w, 0.));
+            b.close();
+
+            b.move_to(Point::new(w, h - r));
+            b.arc_to(Point::new(w, h), Point::new(w - r, h), r);
+            b.line_to(Point::new(w, h));
+            b.close();
+
+            b.move_to(Point::new(r, h));
+            b.arc_to(Point::new(0., h), Point::new(0., h - r), r);
+            b.line_to(Point::new(0., h));
+            b.close();
+        });
+
+        frame.fill(&mask_path, self.color);
+        vec![frame.into_geometry()]
+    }
+}
+
+pub fn rounded_scrollable_card<'a, Message: 'a>(
+    content: impl Into<Element<'a, Message>>,
+    configure_scrollable: impl FnOnce(Scrollable<'a, Message>) -> Scrollable<'a, Message>,
+) -> Element<'a, Message> {
+    let wrapped = column![
+        container(content)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(card_container_style),
+        Space::new().height(Length::Fill)
+    ];
+
+    let scroll = scrollable(wrapped)
+        .direction(styles::slim_scrollbar())
+        .height(Length::Fill);
+
+    let corner_mask = iced::widget::canvas(CornerMask {
+        radius: layout::XL_SPACING, // card radius
+        color: Color::BLACK,        // root bg
+    })
+    .width(Length::Fill)
+    .height(Length::Fill);
+
+    container(stack![configure_scrollable(scroll), corner_mask])
+        .padding([0., layout::SPACING])
         .into()
 }
 

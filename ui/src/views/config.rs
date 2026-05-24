@@ -1,11 +1,13 @@
 use crate::app::{AnimeRpc, SseState};
-use crate::components::{divider, dropdown, icon, toggler, underlined_input};
+use crate::components::{
+    divider, dropdown, icon, rounded_scrollable_card, toggler, underlined_input,
+};
 use crate::constants::{colours, layout, typography};
 use crate::styles::{self, TogglerStyle};
 use crate::types::{IoMessage, Message, RpcMessage, SaveStatus, View, ViewMessage};
 use crate::utils::clean_dir_name;
 use iced::widget::text::LineHeight;
-use iced::widget::{Space, button, column, container, row, scrollable, text, text_input};
+use iced::widget::{Space, button, column, container, row, text, text_input};
 use iced::{Center, Color, Element, Font, Length, Padding};
 
 pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
@@ -193,11 +195,6 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
     .padding(layout::XL_SPACING)
     .height(Length::Fill);
 
-    let card = container(card_content)
-        .style(styles::card_container_style)
-        .width(Length::Fill)
-        .height(Length::Fill);
-
     let status_indicator: Element<'_, Message> = match state.sse {
         SseState::Connecting { .. } => row![
             text("●")
@@ -254,11 +251,7 @@ pub fn view(state: &AnimeRpc) -> Element<'_, Message> {
         }))
         .padding([0., layout::XL_SPACING]),
         Space::new().height(layout::VERTICAL_SPACING),
-        scrollable(
-            column![card, Space::new().height(Length::Fill),].padding([0., layout::SPACING])
-        )
-        .direction(styles::slim_scrollbar())
-        .height(Length::Fill),
+        rounded_scrollable_card(card_content, |s| s),
         row![
             button(text(save_text).align_x(iced::alignment::Horizontal::Center))
                 .on_press(Message::Io(IoMessage::SaveClicked))
