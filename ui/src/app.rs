@@ -250,49 +250,12 @@ impl AnimeRpc {
                     iced::widget::operation::focus_next()
                 }
             }
-            (Message::OpenUrlClicked(url), _) => {
-                Task::perform(
-                    async move {
-                        #[cfg(target_os = "windows")]
-                        let _ = std::process::Command::new("cmd")
-                            .args(["/C", "start", &url])
-                            .spawn();
-
-                        #[cfg(target_os = "macos")]
-                        let _ = std::process::Command::new("open").arg(&url).spawn();
-
-                        #[cfg(target_os = "linux")]
-                        {
-                            {
-                                // This will not activate the uri handler
-                                // But I'll keep it here for when iced supports xdg-activation-v1
-                                let opened_via_portal =
-                                    async {
-                                        if let Ok(parsed_url) = ashpd::Uri::parse(&url)
-                                            && let Ok(proxy) =
-                                                ashpd::desktop::open_uri::OpenURIProxy::new().await
-                                            && let Ok(request) = proxy.open_uri(
-                                                None,
-                                                &parsed_url,
-                                                ashpd::desktop::open_uri::OpenFileOptions::default()
-                                            ).await {
-                                                    return request.response().is_ok();
-                                        }
-                                        false
-                                    }
-                                    .await;
-
-                                // Fallback
-                                if !opened_via_portal {
-                                    let _ =
-                                        std::process::Command::new("xdg-open").arg(&url).spawn();
-                                }
-                            }
-                        }
-                    },
-                    |_| Message::View(ViewMessage::Animate),
-                )
-            }
+            (Message::OpenUrlClicked(url), _) => Task::perform(
+                async move {
+                    let _ = webbrowser::open(&url);
+                },
+                |_| Message::View(ViewMessage::Animate),
+            ),
         };
 
         // animation sync
