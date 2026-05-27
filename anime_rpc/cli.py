@@ -72,9 +72,9 @@ _parser.add_argument(
     dest="pollers",
     metavar="POLLER",
     help=(
-        "poller to use. Can be specified multiple times "
-        "(e.g., --poller mpv:14567 --poller mpc). "
-        f"Options: {', '.join(POLLERS.keys())}"
+        "poller to use; can be specified multiple times "
+        "(e.g., --poller mpv:14567 --poller mpc); "
+        f"options: {', '.join(POLLERS.keys())}"
     ),
     default=[],
     type=parse_poller,
@@ -84,8 +84,8 @@ _parser.add_argument(
     action="store_true",
     help=(
         "automatically fetch episode titles from MyAnimeList "
-        "if ep_title is not present/captured by the match expression. "
-        "Requires `url` to be set to the corresponding MyAnimeList URL"
+        "if ep_title is not present/captured by the match expression; "
+        "requires `url` to be set to the corresponding MyAnimeList URL"
     ),
     default=False,
 )
@@ -93,9 +93,9 @@ _parser.add_argument(
     "-i",
     "--interval",
     type=int,
-    help="specify the interval in seconds for periodic updates. "
-    "Defaults to 0, meaning updates occur only on play/stop events. "
-    "Setting an interval ensures periodic updates in addition to play/stop events, "
+    help="specify the interval in seconds for periodic updates; "
+    "defaults to 0, meaning updates occur only on play/stop events; "
+    "setting an interval ensures periodic updates in addition to play/stop events, "
     "useful if you want to always override Spotify activity "
     "if both are running at the same time",
     default=0,
