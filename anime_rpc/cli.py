@@ -40,7 +40,7 @@ _parser.add_argument(
 _parser.add_argument(
     "--enable-webserver",
     action="store_true",
-    help="enable webserver (extension integration)",
+    help="enable webserver (userscript and UI editor integration)",
     default=False,
 )
 _parser.add_argument(
