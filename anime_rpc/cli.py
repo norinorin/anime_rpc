@@ -52,34 +52,32 @@ _parser.add_argument(
 POLLERS = BasePoller.get_pollers()
 
 
-def parse_pollers(s: str) -> list[BasePoller]:
-    ret: list[BasePoller] = []
-    for part in s.split(","):
-        part = part.strip()
-        if not part:
-            continue
+def parse_poller(s: str) -> BasePoller | None:
+    part = s.strip()
+    split = part.split(":")
+    name = split[0]
+    port = len(split) > 1 and split[1].isdigit() and int(split[1]) or None
 
-        split = part.split(":")
-        name = split[0]
-        port = len(split) > 1 and split[1].isdigit() and int(split[1]) or None
+    if name not in POLLERS:
+        raise argparse.ArgumentTypeError(
+            f"unknown poller '{name}'. Options: {', '.join(POLLERS.keys())}"
+        )
 
-        if name not in POLLERS:
-            raise argparse.ArgumentTypeError(
-                f"unknown poller '{name}'. Options: {', '.join(POLLERS.keys())}"
-            )
-
-        ret.append(POLLERS[name](port=port))
-
-    return ret
+    return POLLERS[name](port=port)
 
 
 _parser.add_argument(
-    "--pollers",
+    "--poller",
+    action="append",
+    dest="pollers",
+    metavar="POLLER",
     help=(
-        f"list of pollers to use (comma-separated) Options: {', '.join(POLLERS.keys())}"
+        "poller to use. Can be specified multiple times "
+        "(e.g., --poller mpv:14567 --poller mpc). "
+        f"Options: {', '.join(POLLERS.keys())}"
     ),
     default=[],
-    type=parse_pollers,
+    type=parse_poller,
 )
 _parser.add_argument(
     "--fetch-episode-titles",

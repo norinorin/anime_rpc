@@ -14,8 +14,8 @@
     types
     optional
     optionals
-    concatStringsSep
     concatLists
+    concatMap
     ;
 
   cfg = config.programs.anime_rpc;
@@ -59,10 +59,7 @@
       (toString cfg.settings.interval)
     ])
 
-    (optionals (pollerArgs != []) [
-      "--pollers"
-      (concatStringsSep "," pollerArgs)
-    ])
+    (concatMap (p: ["--poller" p]) pollerArgs)
 
     cfg.settings.extraArgs
   ];
