@@ -16,6 +16,7 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    ClassVar,
     Literal,
     TypeVar,
     TypedDict,
@@ -139,6 +140,13 @@ class HTTPMixin:
 
 
 class BaseMetadataProvider(HTTPMixin, ABC):
+    registry: ClassVar[dict[str, "BaseMetadataProvider"]] = {}
+
+    def __init__(self, session: aiohttp.ClientSession, **kwargs: Any) -> None:
+        super().__init__(session, **kwargs)
+
+        BaseMetadataProvider.registry[self.name] = self
+
     def get_cache_path(self, id_: str | None = None) -> Path:
         cache_dir = METADATA_CACHE_DIR / self.name
         if id_ is not None:
@@ -222,7 +230,7 @@ class _CachingMetadataProvider(BaseMetadataProvider):
 
     @abstractmethod
     async def _fetch_episodes(
-        self, id_: str, url: str, episode: str
+        self, id_: str, url: str, episode: str, metadata: Metadata
     ) -> dict[str, str]: ...
 
     @abstractmethod
@@ -322,13 +330,12 @@ class _CachingMetadataProvider(BaseMetadataProvider):
                 "Episode %s seems to be a new episode, updating cache", episode
             )
 
-        if not (episodes_url := metadata.get("episodes_url")):
-            return {}
-
         # time to hit the api
-        _LOGGER.info("[API CALL] Fetching episodes from %s", episodes_url)
+        _LOGGER.info("[API CALL] Fetching episodes for %s", url)
         assert "id" in metadata
-        new_episodes = await self._fetch_episodes(metadata["id"], url, episode)
+        new_episodes = await self._fetch_episodes(
+            metadata["id"], url, episode, metadata
+        )
         # this marks the episode as invalid if it
         # doesn't exist after re-hitting the API
         new_episodes.setdefault(episode, "")
@@ -409,12 +416,12 @@ class MALMetadataProvider(_CachingMetadataProvider, SearchProvider):
         ret["last_updated"] = int(time() * 1000)
         return ret
 
-    async def _fetch_episodes(self, id_: str, url: str, episode: str) -> dict[str, str]:
-        # _CachingScraper handles the metadata fetching and caching
-        # at this point, the cache should have the episodes_url
-        await self.wait_for_cache_ready()
-        assert self.last_queried and "episodes_url" in self.last_queried
-        episode_url = self.last_queried["episodes_url"]
+    async def _fetch_episodes(
+        self, id_: str, url: str, episode: str, metadata: Metadata
+    ) -> dict[str, str]:
+        if not (episode_url := metadata.get("episodes_url")):
+            _LOGGER.debug("Missing episodes_url in MAL cache for %s", url)
+            return {}
 
         ret: dict[str, str] = {}
         if isinstance(html := await self._get_text(episode_url), HTTPStatus):
@@ -527,8 +534,24 @@ class AniListMetadataProvider(_CachingMetadataProvider, SearchProvider):
         ret["last_updated"] = int(time() * 1000)
         return ret
 
-    async def _fetch_episodes(self, id_: str, url: str, episode: str) -> dict[str, str]:
-        # TODO: delegate to MALMetadataProvider using malID
+    # bypass _CachingMetadataProvider so we don't end up scraping MAL twice
+    async def get_episodes(self, url: str, episode: str) -> dict[str, str]:
+        mal_provider = self.registry.get("myanimelist")
+        assert mal_provider is not None, (
+            "MAL provider shouldn't be None! Did the name property change?"
+        )
+
+        metadata = await self.get_metadata(url)
+        if not (mal_id := metadata.get("mal_id")):
+            return {}
+
+        mal_url = f"https://myanimelist.net/anime/{mal_id}"
+        _LOGGER.debug("Delegating episode fetching for AniList -> MAL")
+        return await mal_provider.get_episodes(mal_url, episode)
+
+    async def _fetch_episodes(
+        self, id_: str, url: str, episode: str, metadata: Metadata
+    ) -> dict[str, str]:
         return {}
 
     async def search(self, query: str) -> list[SearchResult] | HTTPStatus:
