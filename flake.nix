@@ -63,6 +63,7 @@
             python3
             python3Packages.ruff
             python3Packages.pytest
+            python3Packages.fonttools
             basedpyright
             uv
 

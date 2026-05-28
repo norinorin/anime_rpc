@@ -18,6 +18,8 @@
   xorg,
   xdotool,
   libayatana-appindicator,
+  python3,
+  python3Packages,
 }:
 rustPlatform.buildRustPackage {
   pname = "anime_rpc_ui";
@@ -32,6 +34,8 @@ rustPlatform.buildRustPackage {
   nativeBuildInputs =
     [
       pkg-config
+      python3
+      python3Packages.fonttools
     ]
     ++ lib.optionals stdenv.isLinux [
       wrapGAppsHook3

@@ -12,7 +12,7 @@ mod utils;
 mod views;
 
 use app::AnimeRpc;
-use iced::{Size, window};
+use iced::{window, Size};
 
 pub fn main() -> iced::Result {
     iced::application::timed(
@@ -23,9 +23,10 @@ pub fn main() -> iced::Result {
     )
     .antialiasing(true)
     .title("Anime RPC")
-    .font(include_bytes!(
-        "../assets/MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf"
-    ))
+    .font(include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/MaterialSymbolsSubset.ttf"
+    )))
     .window(window::Settings {
         size: Size::new(constants::WINDOW_WIDTH, constants::WINDOW_HEIGHT),
         resizable: false,
