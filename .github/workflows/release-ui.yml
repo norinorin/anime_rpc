@@ -2,6 +2,9 @@ name: Publish UI Release
 
 on:
   workflow_dispatch:
+  
+permissions:
+  contents: write
 
 jobs:
   publish:

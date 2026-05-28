@@ -11,6 +11,10 @@ on:
     paths:
       - 'ui/**'
 
+permissions:
+  contents: read
+  actions: write
+  
 jobs:
   build:
     runs-on: windows-latest
