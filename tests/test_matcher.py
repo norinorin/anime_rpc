@@ -3,6 +3,7 @@ import re
 import pytest
 
 from anime_rpc.matcher import build_filename_pattern, exclude_non_media_files
+from anime_rpc.pollers.base_poller import EP_TEMPLATE, EP_TITLE_TEMPLATE
 
 # some random series to test against
 ARIFURETA = [
@@ -231,44 +232,74 @@ TOKYO_MAGNITUDE_8 = [
 
 
 @pytest.mark.parametrize(
-    ("name", "filenames", "expected_eps"),
+    ("name", "filenames", "pattern"),
     [
-        ("arifureta", ARIFURETA, [*range(1, 17)]),
-        ("dandadan", DANDADAN, [*range(1, 13)]),
-        ("salaryman", SALARYMAN, [*range(1, 13)]),
-        ("breaking_bad", BREAKING_BAD, [*range(1, 8)]),
-        ("house_md", HOUSE_MD, [*range(1, 23)]),
-        ("the_punisher", THE_PUNISHER, [*range(1, 14)]),
-        ("dungeon_meshi", DUNGEON_MESHI, [*range(1, 25)]),
-        ("bokuyaba", BOKUYABA, [1, *range(1, 14)]),
-        ("synthetic", SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES, [1, 2, 3, 4]),
-        ("mizuzokusei", MIZUZOKUSEI, [*range(1, 11)]),
-        ("initial_d", INITIAL_D_ARBITRARY_ORDER, [2, 1]),
-        ("tokyo_magnitude_8", TOKYO_MAGNITUDE_8, [*range(1, 12)]),
+        ("arifureta", ARIFURETA, r"\- %ep%"),
+        ("dandadan", DANDADAN, r"\- %ep%"),
+        ("salaryman", SALARYMAN, "E%ep%"),
+        ("breaking_bad", BREAKING_BAD, "e%ep%"),
+        ("house_md", HOUSE_MD, r"x%ep%\] \- %title%\."),
+        ("the_punisher", THE_PUNISHER, r"E%ep% %title%\."),
+        ("dungeon_meshi", DUNGEON_MESHI, r"\- %ep%"),
+        ("bokuyaba", BOKUYABA, r"E%ep%\-%title% \["),
+        (
+            "synthetic",
+            SYNTHETIC_WITH_INCONSISTENT_PREFIXES_AND_SUFFIXES,
+            r"%title% \- %ep%",
+        ),
+        ("mizuzokusei", MIZUZOKUSEI, r"E%ep%\.%title%\.1"),
+        ("initial_d", INITIAL_D_ARBITRARY_ORDER, r"Stage %ep% \- %title%\."),
+        ("tokyo_magnitude_8", TOKYO_MAGNITUDE_8, "E%ep%"),
     ],
 )
 def test_ordered_filenames(
     name: str,
     filenames: list[str],
-    expected_eps: list[int],
+    pattern: str,
 ) -> None:
-    pattern = build_filename_pattern(filenames)
+    generated_pattern = build_filename_pattern(filenames)
 
-    assert pattern is not None, f"Pattern should not be None for {name}"
+    assert generated_pattern is not None, f"Pattern should not be None for {name}"
 
-    pattern = pattern.replace("%ep%", r"(?P<ep>\d+)")
-    compiled_pattern = re.compile(pattern)
-    expected_eps.reverse()
+    # fmt: off
+    expected_regex = (pattern
+        .replace(*EP_TEMPLATE, 1)
+        .replace(*EP_TITLE_TEMPLATE, 1)
+    )
+    generated_regex = (generated_pattern
+        .replace(*EP_TEMPLATE, 1)
+        .replace(*EP_TITLE_TEMPLATE, 1)
+    )
+    # fmt: on
+
+    c_expected = re.compile(expected_regex)
+    c_generated = re.compile(generated_regex)
 
     for filename in exclude_non_media_files(filenames):
-        if not (match := compiled_pattern.search(filename)):
-            continue
-        ep = int(match.group("ep"))
-        assert ep == expected_eps.pop(), (
-            f"Episode {ep} does not match expected value for {name}"
+        expected_match = c_expected.search(filename)
+        generated_match = c_generated.search(filename)
+
+        assert bool(expected_match) is bool(generated_match), (
+            f"Match presence mismatch on {filename}"
         )
 
-    assert not expected_eps, f"Some episodes are unmatched: {expected_eps}"
+        if not (expected_match and generated_match):
+            continue
+
+        assert int(expected_match.group("ep")) == int(generated_match.group("ep")), (
+            f"Episode mismatch on {filename}"
+        )
+
+        if "title" not in expected_match.groupdict():
+            continue
+
+        assert "title" in generated_match.groupdict(), (
+            f"Generated pattern missing %title% capture on {filename}"
+        )
+        assert (
+            expected_match.group("title").strip()
+            == generated_match.group("title").strip()
+        ), f"Title mismatch on {filename}"
 
 
 @pytest.mark.parametrize(
@@ -314,8 +345,7 @@ def test_filenames_with_hashes_only() -> None:
         "[0EA543A4].mkv",
     ]
     pattern = build_filename_pattern(filenames)
-    # FIXME: should this return None instead?
-    assert pattern == "%ep%", "Pattern should fall back to %ep% for invalid sequences"
+    assert pattern is None, "Pattern should return None for invalid sequences"
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from itertools import pairwise
 import logging
 import mimetypes
 import re
@@ -14,6 +15,7 @@ MIN_N_SEQUENCE = 2
 SPACE_NORMALIZER = re.compile(r"\\\s+")
 NUM_NORMALIZER = re.compile(r"\d+")
 HANGING_BACKSLASH = re.compile(r"(?<!\\)\\$")
+BRACKETED_HASH = re.compile(r"(\s*[\[\(][A-Fa-f0-9]{6,9}[\]\)])")
 STRUCTURAL_PENALTY = -5
 SEQUENCE_WEIGHT = 100
 
@@ -23,8 +25,8 @@ NumberPosition: TypeAlias = list[tuple[tuple[int, int], str]]
 class Candidate(TypedDict):
     index: int
     score: float
-    before: str
-    after: str
+    matched_befores: list[str]
+    matched_afters: list[str]
 
 
 def _escape_normalise_regex(pattern: str) -> str:
@@ -55,7 +57,13 @@ def build_filename_pattern(filenames: list[str]) -> str | None:
     for name in filenames:
         positions: NumberPosition = []
         number_positions.append(positions)
+        hash_spans = [m.span() for m in BRACKETED_HASH.finditer(name)]
         for match in re.finditer(r"\d+", name):
+            if any(
+                start <= match.start() and match.end() <= end
+                for start, end in hash_spans
+            ):
+                continue
             positions.append((match.span(), match.group()))
 
     _LOGGER.debug("Number positions: %s", number_positions)
@@ -65,6 +73,44 @@ def build_filename_pattern(filenames: list[str]) -> str | None:
 def commonsuffix(filenames: list[str]) -> str:
     rev = [f[::-1] for f in filenames]
     return commonprefix(rev)[::-1]
+
+
+def analyse_side(strings: list[str]) -> tuple[str, int]:
+    if not strings:
+        return "", 0
+
+    clean = [BRACKETED_HASH.sub("", s) for s in strings]
+    has_hash = clean != strings
+
+    if len(set(clean)) <= 1:
+        if not has_hash:
+            return _escape_normalise_regex(strings[0]), 0
+        parts = BRACKETED_HASH.split(strings[0])
+        pat = "".join(
+            ".*" if i % 2 else _escape_normalise_regex(p) for i, p in enumerate(parts)
+        )
+        return pat, 0
+
+    cp = commonprefix(clean)
+    cs = commonsuffix(clean)
+
+    # prevent static affixes from stealing partial alphabetical words from the title
+    if cp and re.search(r"[A-Za-z]$", cp):
+        if any(len(s) > len(cp) and re.match(r"[A-Za-z]", s[len(cp)]) for s in clean):
+            cp = re.sub(r"[A-Za-z]+$", "", cp)
+
+    if cs and re.search(r"^[A-Za-z]", cs):
+        if any(
+            len(s) > len(cs) and re.match(r"[A-Za-z]", s[-len(cs) - 1]) for s in clean
+        ):
+            cs = re.sub(r"^[A-Za-z]+", "", cs)
+
+    ph = r"\s*(?:\[[A-Fa-f0-9]{{6,9}}\]|\([A-Fa-f0-9]{{6,9}}\))" if has_hash else ""
+    variance = max(0, len(clean[0]) - len(cp) - len(cs))
+    return (
+        f"{_escape_normalise_regex(cp)}{{TAG}}{ph}{_escape_normalise_regex(cs)}",
+        variance,
+    )
 
 
 def infer_episode_pattern(
@@ -117,7 +163,7 @@ def infer_episode_pattern(
                 ac = commonprefix([afters[i], afters[j]])
                 candidate_anchors.add((bc, ac))
 
-        best_before, best_after = "", ""
+        best_matches: list[tuple[int, tuple[int, int]]] = []
         best_inc_score = 0
         best_baked_score = -float("inf")
 
@@ -130,21 +176,23 @@ def infer_episode_pattern(
                 continue
 
             matched_nums: list[int] = []
-            for file_idx, (_, num) in valid_entries:
-                if compiled.search(filenames[file_idx]):
+            matches: list[tuple[int, tuple[int, int]]] = []
+            for file_idx, (span, num) in valid_entries:
+                if compiled.search(filename := filenames[file_idx]):
                     matched_nums.append(int(num))
+                    matches.append((file_idx, span))
 
             if len(matched_nums) < MIN_N_SEQUENCE:
                 continue
 
             sorted_nums = sorted(matched_nums)
-            inc_score = sum(b > a for a, b in zip(sorted_nums, sorted_nums[1:]))
+            inc_score = sum(b > a for a, b in pairwise(sorted_nums))
             baked_score = inc_score * SEQUENCE_WEIGHT + ss
 
             if baked_score > best_baked_score:
                 best_baked_score = baked_score
-                best_before, best_after = bc, ac
                 best_inc_score = inc_score
+                best_matches = matches
 
         if best_inc_score == 0:
             _LOGGER.debug("No increasing sequence found for index %d, ignoring...", idx)
@@ -154,8 +202,8 @@ def infer_episode_pattern(
             Candidate(
                 index=idx,
                 score=best_baked_score,
-                before=best_before,
-                after=best_after,
+                matched_befores=[filenames[i][: s[0]] for i, s in best_matches],
+                matched_afters=[filenames[i][s[1] :] for i, s in best_matches],
             ),
         )
 
@@ -163,11 +211,14 @@ def infer_episode_pattern(
         return None
 
     _LOGGER.debug("Candidates: %s", candidates)
-    best = sorted(candidates, key=lambda x: x["score"], reverse=True)[0]
-    pattern = (
-        f"{_escape_normalise_regex(best['before'])}{EP}"
-        f"{_escape_normalise_regex(best['after'])}"
-    )
+    best = max(candidates, key=lambda x: x["score"])
+    head_pat, head_var = analyse_side(best["matched_befores"])
+    tail_pat, tail_var = analyse_side(best["matched_afters"])
+    head_tag = "%title%" if head_var > tail_var else ".*"
+    tail_tag = "%title%" if tail_var >= head_var and tail_var > 0 else ".*"
+    head_pattern = head_pat.format(TAG=head_tag)
+    tail_pattern = tail_pat.format(TAG=tail_tag)
+    pattern = f"{head_pattern}{EP}{tail_pattern}"
     _LOGGER.debug("Generated pattern: %s", pattern)
     return pattern
 
