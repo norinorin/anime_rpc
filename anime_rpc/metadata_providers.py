@@ -223,8 +223,8 @@ class _CachingMetadataProvider(BaseMetadataProvider):
         super().__init__(session)
 
         self.file_watcher_manager = file_watcher_manager
-        self._last_queried: tuple[str, Metadata | None] | None = None
-        self._subscription: Subscription[Metadata] | None = None
+        self._last_queried: Metadata | None = None
+        self._subscription: tuple[str, Subscription[Metadata]] | None = None
         self._consumer_task: asyncio.Task[None] | None = None
         self._cache_ready_event = asyncio.Event()
 
@@ -242,7 +242,7 @@ class _CachingMetadataProvider(BaseMetadataProvider):
         _LOGGER.debug("Starting consumer for %s", id_)
         while 1:
             item = await queue.get()
-            self._last_queried = (id_, item)
+            self._last_queried = item
             (
                 self._cache_ready_event.clear()
                 if item is None
@@ -250,11 +250,11 @@ class _CachingMetadataProvider(BaseMetadataProvider):
             )
 
     async def subscribe(self, id_: str, path: Path) -> None:
-        if self._last_queried and self._last_queried[0] == id_:
+        if self._subscription and self._subscription[0] == id_:
             return None
 
         if self._subscription:
-            self.file_watcher_manager.unsubscribe(self._subscription)
+            self.file_watcher_manager.unsubscribe(self._subscription[1])
 
         if self._consumer_task:
             _LOGGER.debug("Cancelling consumer task %r", self._consumer_task.get_name())
@@ -264,9 +264,9 @@ class _CachingMetadataProvider(BaseMetadataProvider):
 
         path.parent.mkdir(parents=True, exist_ok=True)
         self._cache_ready_event.clear()
-        self._subscription = self.file_watcher_manager.subscribe(path, json.load)
+        self._subscription = id_, self.file_watcher_manager.subscribe(path, json.load)
         self._consumer_task = asyncio.create_task(
-            self._consume_queue(id_, self._subscription.queue),
+            self._consume_queue(id_, self._subscription[1].queue),
             name=f"consume-{id_}.json",
         )
         _LOGGER.debug("Spawning new consumer task %s", self._consumer_task.get_name())
@@ -274,10 +274,6 @@ class _CachingMetadataProvider(BaseMetadataProvider):
 
     async def wait_for_cache_ready(self) -> None:
         await self._cache_ready_event.wait()
-
-    @property
-    def last_queried(self) -> Metadata | None:
-        return self._last_queried[1] if self._last_queried else None
 
     async def get_metadata(self: "_CachingMetadataProvider", url: str) -> Metadata:
         if not (id_ := self.extract_id(url)):
@@ -291,8 +287,8 @@ class _CachingMetadataProvider(BaseMetadataProvider):
         # scraping fails and we've marked the url as invalid
         if path.exists():
             await task  # wait until we get the intial value
-            if self.last_queried is not None:
-                return self.last_queried
+            if self._last_queried is not None:
+                return self._last_queried
 
         _LOGGER.info("[API CALL] Fetching metadata from %s", url)
         metadata = await self._fetch_metadata(id_, url)
