@@ -7,7 +7,7 @@
   autoPatchelfHook ? null,
   alsa-lib ? null,
   libpulseaudio ? null,
-  xorg ? null,
+  libX11 ? null,
 }: let
   linuxNativeDeps = [
     autoPatchelfHook
@@ -15,7 +15,7 @@
   linuxSystemDeps = [
     alsa-lib
     libpulseaudio
-    xorg.libX11
+    libX11
   ];
 in
   python3Packages.buildPythonApplication {

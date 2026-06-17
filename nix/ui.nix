@@ -15,7 +15,10 @@
   vulkan-loader,
   wayland,
   libxkbcommon,
-  xorg,
+  libX11,
+  libXcursor,
+  libXi,
+  libXrandr,
   xdotool,
   libayatana-appindicator,
   python3,
@@ -55,10 +58,10 @@ rustPlatform.buildRustPackage {
       wayland
       libxkbcommon
       xdotool
-      xorg.libX11
-      xorg.libXcursor
-      xorg.libXi
-      xorg.libXrandr
+      libX11
+      libXcursor
+      libXi
+      libXrandr
     ];
 
   desktopItems = lib.optionals stdenv.isLinux [
