@@ -55,6 +55,16 @@ in
       "--set SETUPTOOLS_SCM_PRETEND_VERSION ${version}"
     ];
 
+    postPatch = ''
+      # TODO: Remove once nixpkgs ships aiohttp >= 3.14.1.
+      # We don't rely on features introduced in 3.14, and the CVE addressed in
+      # 3.14.1 concerns unbounded HTTP/1 pipelined request queues in aiohttp's
+      # server implementation. We bind to loopback only so exposure to untrusted
+      # clients is limited.
+      substituteInPlace pyproject.toml \
+        --replace-fail "aiohttp>=3.14.1" "aiohttp>=3.13.5"
+    '';
+
     meta = with lib; {
       description = "Anime Rich Presence integration";
       license = licenses.mit;
