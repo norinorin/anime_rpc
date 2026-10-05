@@ -10,8 +10,5 @@ test.py
 *.egg-info/
 anime_rpc/_version.py
 
-# Rust
-target/
-
 # Direnv
 .direnv/
