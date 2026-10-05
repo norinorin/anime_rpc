@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from io import TextIOWrapper
-from typing import SupportsInt, TypedDict
+from typing import TypedDict
 
 _LOGGER = logging.getLogger("config")
 _MISSING_LOG_MSG = "Missing %s in config file, ignoring..."
@@ -16,16 +16,25 @@ class Config(TypedDict):
 
     # OPTIONAL SETTINGS
     url: str             # defaults to ""
-    rewatching: bool     # defaults to 0
+    rewatching: bool     # defaults to False
     application_id: int  # defaults to DEFAULT_APPLICATION_ID
     match: str           # will attempt to generate a regex pattern if not set
 
 
-def _parse_int(value: SupportsInt, default: int = 0) -> int:
-    try:
-        return int(value)
-    except (ValueError, TypeError):
-        return default
+def _parse_bool(value: str | int | None) -> bool:
+    if value is None:
+        return False
+
+    if isinstance(value, int):
+        return bool(value)
+
+    if value.lower().strip() == "true":
+        return True
+
+    if value.isdigit():
+        return bool(int(value))
+
+    return False
 
 
 def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
@@ -52,7 +61,7 @@ def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
 
     # optional settings
     config.setdefault("url", "")
-    config["rewatching"] = bool(_parse_int(config.get("rewatching")))
+    config["rewatching"] = bool(_parse_bool(config.get("rewatching")))
     config["application_id"] = config.get("application_id", "default")
     return config
 
