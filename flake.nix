@@ -64,6 +64,16 @@
           basedpyright
           uv
         ];
+
+        LD_LIBRARY_PATH =
+          pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux
+          (pkgs.lib.makeLibraryPath [
+            pkgs.stdenv.cc.cc.lib
+            pkgs.libmediainfo
+            pkgs.alsa-lib
+            pkgs.libpulseaudio
+            pkgs.libX11
+          ]);
       };
     });
   };
