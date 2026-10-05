@@ -234,7 +234,7 @@ async def async_main() -> None:
     for p in _metadata_providers:
         metadata_providers[p.name] = p
 
-    webserver, app = None, None
+    runner, webserver, app = None, None, None
     signal.signal(signal.SIGINT, lambda *_: _sigint_callback(event))  # type: ignore[reportUnknownArgumentType]
     tasks: list[asyncio.Task[Any]] = []
 
@@ -242,7 +242,7 @@ async def async_main() -> None:
         if CLI_ARGS.enable_webserver:
             try:
                 app = await get_app(queue, metadata_providers)
-                webserver = await start_app(app)
+                runner, webserver = await start_app(app)
             except OSError as exc:
                 if exc.errno != errno.EADDRINUSE:
                     raise
@@ -288,8 +288,10 @@ async def async_main() -> None:
 
         await asyncio.gather(*tasks, return_exceptions=True)
 
-        if webserver is not None:
+        if webserver is not None and runner is not None:
             await webserver.stop()
+            await runner.shutdown()
+            await runner.cleanup()
 
         await session.close()
         file_watcher_manager.stop()
