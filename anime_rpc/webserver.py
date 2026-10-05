@@ -110,14 +110,12 @@ async def pollers_sse_handler(request: Request) -> StreamResponse:
     queue: asyncio.Queue[dict[str, PollerStatus]] = asyncio.Queue()
     sse_clients.append(queue)
 
-    await response.write(
-        f"data: {json.dumps(request.app['pollers'])}\n\n".encode("utf-8")
-    )
+    await response.write(f"data: {json.dumps(request.app['pollers'])}\n\n".encode())
 
     try:
         while True:
             data = await queue.get()
-            await response.write(f"data: {json.dumps(data)}\n\n".encode("utf-8"))
+            await response.write(f"data: {json.dumps(data)}\n\n".encode())
 
     except (asyncio.CancelledError, ConnectionResetError):
         pass
