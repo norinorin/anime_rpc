@@ -13,6 +13,5 @@ anime_rpc/_version.py
 # Rust
 target/
 
-# Nix cache
-# `nix develop --profile ./.nix`
-.nix*
+# Direnv
+.direnv/
