@@ -22,6 +22,7 @@ from aiohttp import WSMsgType
 from aiohttp.web import (
     Application,
     AppRunner,
+    FileResponse,
     Request,
     Response,
     StreamResponse,
@@ -133,6 +134,10 @@ def get_static_path() -> Path:
         return Path(__file__).parent / "web" / "static"
 
 
+async def index_handler(_request: Request) -> StreamResponse:
+    return FileResponse(get_static_path() / "index.html")
+
+
 async def handle_get_rpc(request: Request) -> Response:
     filedir = request.query.get("dir")
     if not filedir:
@@ -218,7 +223,8 @@ async def get_app(
     app.on_shutdown.append(_on_shutdown)
 
     static_dir = get_static_path()
-    app.router.add_static("/", path=str(static_dir), show_index=True)
+    app.router.add_get("/", index_handler)
+    app.router.add_static("/", path=str(static_dir))
 
     app.router.add_get("/ws", ws_handler(queue))
     app.router.add_get("/search", search_handler)
