@@ -163,27 +163,31 @@ async def handle_post_rpc(request: Request) -> Response:
             if rpc_path.exists()
             else []
         )
-        updates: Config = {
-            "title": data.get("title", ""),
-            "url": data.get("url", ""),
-            "image_url": data.get("image_url", ""),
-            "rewatching": bool(data.get("rewatching")),
-            "match": data.get("match", ""),
-            "application_id": data.get("application_id", ""),
+        updates: dict[str, str | bool | int] = {
+            key: data[key] for key in Config.__annotations__ if key in data
         }
-        updated_keys: set[str] = set()
+        present_keys: set[str] = set()
         new_lines: list[str] = []
+
         for line in raw_lines:
-            if "=" in line:
-                key, _ = line.split("=", 1)
-                if val := updates.get(key):
-                    new_lines.append(f"{key}={val}")
-                    continue
-                updated_keys.add(key)
-            new_lines.append(line)
+            if "=" not in line:
+                new_lines.append(line)
+                continue
+
+            key, _ = line.split("=", 1)
+
+            if key not in updates:
+                new_lines.append(line)
+                continue
+
+            present_keys.add(key)
+            val = updates[key]
+
+            if val:
+                new_lines.append(f"{key}={val}")
 
         for key, val in updates.items():
-            if key not in updated_keys:
+            if key not in present_keys and val:
                 new_lines.append(f"{key}={val}")
 
         rpc_path.write_text("\n".join(new_lines), encoding="utf-8")
