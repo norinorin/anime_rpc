@@ -116,10 +116,8 @@ async def pollers_sse_handler(request: Request) -> StreamResponse:
     await response.write(f"data: {json.dumps(request.app['pollers'])}\n\n".encode())
 
     try:
-        while True:
-            data = await queue.get()
+        while data := await queue.get():
             await response.write(f"data: {json.dumps(data)}\n\n".encode())
-
     except (asyncio.CancelledError, ConnectionResetError):
         pass
     finally:
@@ -195,6 +193,11 @@ async def handle_post_rpc(request: Request) -> Response:
         return Response(status=500, text=str(e))
 
 
+async def _on_shutdown(app: Application) -> None:
+    for queue in app.get("sse_clients", []):
+        await queue.put(None)
+
+
 async def get_app(
     queue: asyncio.Queue[State], metadata_providers: dict[str, BaseMetadataProvider]
 ) -> Application:
@@ -207,6 +210,8 @@ async def get_app(
         )
         for p in CLI_ARGS.pollers
     }
+
+    app.on_shutdown.append(_on_shutdown)
 
     static_dir = get_static_path()
     app.router.add_static("/", path=str(static_dir), show_index=True)
@@ -230,10 +235,10 @@ async def get_app(
     return app
 
 
-async def start_app(app: Application) -> TCPSite:
-    runner = AppRunner(app)
+async def start_app(app: Application) -> tuple[AppRunner, TCPSite]:
+    runner = AppRunner(app, handler_cancellation=True)
     await runner.setup()
     webserver = TCPSite(runner, "127.0.0.1", PORT)
     await webserver.start()
     _LOGGER.info("Serving WS on %d", PORT)
-    return webserver
+    return runner, webserver
