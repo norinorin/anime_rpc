@@ -248,7 +248,7 @@ async def async_main() -> None:
                     raise
 
                 _LOGGER.error(
-                    "Failed to bind to port %d. Is something else using the port?"
+                    "Failed to bind to port %d. Is something else using the port? "
                     "Proceeding without webserver...",
                     PORT,
                 )
