@@ -1,15 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.resources
 import json
 import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import aiohttp_cors
 from aiohttp.web_response import json_response
 
 from anime_rpc.cli import CLI_ARGS
+from anime_rpc.config import Config
 from anime_rpc.pollers import PollerStatus
 
 if TYPE_CHECKING:
@@ -125,6 +128,73 @@ async def pollers_sse_handler(request: Request) -> StreamResponse:
     return response
 
 
+def get_static_path() -> Path:
+    try:
+        return Path(str(importlib.resources.files("anime_rpc"))) / "web" / "static"
+    except Exception:  # noqa: BLE001
+        return Path(__file__).parent / "web" / "static"
+
+
+async def handle_get_rpc(request: Request) -> Response:
+    filedir = request.query.get("dir")
+    if not filedir:
+        return Response(status=400, text="Missing dir parameter")
+
+    rpc_path = Path(filedir) / ".rpc"
+    if not rpc_path.exists():
+        return Response(status=404, text="Not found")
+
+    try:
+        content = rpc_path.read_text(encoding="utf-8")
+        return Response(text=content)
+    except Exception as e:
+        _LOGGER.exception("Failed to read RPC config.")
+        return Response(status=500, text=str(e))
+
+
+async def handle_post_rpc(request: Request) -> Response:
+    try:
+        data = await request.json()
+        filedir = data.get("dir")
+        if not filedir:
+            return Response(status=400, text="Missing dir field")
+
+        rpc_path = Path(filedir) / ".rpc"
+        raw_lines = (
+            rpc_path.read_text(encoding="utf-8").splitlines()
+            if rpc_path.exists()
+            else []
+        )
+        updates: Config = {
+            "title": data.get("title", ""),
+            "url": data.get("url", ""),
+            "image_url": data.get("image_url", ""),
+            "rewatching": bool(data.get("rewatching")),
+            "match": data.get("match", ""),
+            "application_id": data.get("application_id", ""),
+        }
+        updated_keys: set[str] = set()
+        new_lines: list[str] = []
+        for line in raw_lines:
+            if "=" in line:
+                key, _ = line.split("=", 1)
+                if val := updates.get(key):
+                    new_lines.append(f"{key}={val}")
+                    continue
+                updated_keys.add(key)
+            new_lines.append(line)
+
+        for key, val in updates.items():
+            if key not in updated_keys:
+                new_lines.append(f"{key}={val}")
+
+        rpc_path.write_text("\n".join(new_lines), encoding="utf-8")
+        return Response(status=200, text="OK")
+    except Exception as e:
+        _LOGGER.exception("Failed to update RPC keys")
+        return Response(status=500, text=str(e))
+
+
 async def get_app(
     queue: asyncio.Queue[State], metadata_providers: dict[str, BaseMetadataProvider]
 ) -> Application:
@@ -138,10 +208,15 @@ async def get_app(
         for p in CLI_ARGS.pollers
     }
 
+    static_dir = get_static_path()
+    app.router.add_static("/", path=str(static_dir), show_index=True)
+
     app.router.add_get("/ws", ws_handler(queue))
     app.router.add_get("/search", search_handler)
     app.router.add_get("/pollers", pollers_handler)
     app.router.add_get("/pollers/events", pollers_sse_handler)
+    app.router.add_get("/rpc", handle_get_rpc)
+    app.router.add_post("/rpc", handle_post_rpc)
     cors = aiohttp_cors.setup(
         app,
         defaults={

@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-black text-white">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Anime RPC</title>
+
+    <!-- TODO: vendor these three -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- TODO: strip unused symbols -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+    />
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
+    ></script>
+    <style>
+      .material-symbols-rounded {
+        font-variation-settings:
+          "FILL" 1,
+          "wght" 400,
+          "GRAD" 0,
+          "opsz" 24;
+      }
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+    </style>
+  </head>
+  <body
+    class="h-full flex justify-center items-center bg-black font-sans antialiased select-none sm:p-4 md:p-6"
+    x-data="animeRpcApp()"
+    x-init="initApp()"
+  >
+    <div
+      class="w-full h-full sm:w-[400px] sm:h-[800px] md:w-full md:max-w-6xl md:h-[85vh] md:min-h-[650px] bg-black flex flex-col md:flex-row relative overflow-hidden border border-[#2A2A2C] sm:rounded-[32px] shadow-2xl md:divide-x md:divide-[#2A2A2C]"
+    >
+      <div
+        x-show="sseState !== 'connected' && search.results.length > 0 && (view === 'search' || isDesktop)"
+        x-transition
+        class="absolute top-0 left-0 right-0 z-50 bg-[#47381C]/90 text-amber-200 text-xs px-4 py-2 flex items-center justify-center gap-2 backdrop-blur-sm"
+      >
+        <span class="material-symbols-rounded text-base">warning</span>
+        <span
+          >Offline — showing cached
+          <span
+            x-text="search.provider === 'myanimelist' ? 'MyAnimeList' : 'AniList'"
+          ></span>
+          results</span
+        >
+      </div>
+
+      <div
+        x-show="view === 'config'"
+        class="flex-1 md:!flex md:w-[380px] md:min-w-[350px] md:max-w-[400px] md:flex-none flex flex-col pt-8 md:pt-6 pb-5 px-0 h-full overflow-hidden min-w-0"
+      >
+        <div class="px-6 mb-2 flex items-center gap-2 text-xs">
+          <span
+            class="inline-block w-2.5 h-2.5 rounded-full"
+            :class="{
+                'bg-[#10B981]': sseState === 'connected',
+                'bg-gray-600': sseState === 'connecting',
+                'bg-[#EF4444]': sseState === 'disconnected'
+              }"
+          ></span>
+
+          <template x-if="sseState === 'connecting'">
+            <span class="text-[#888888]">Connecting to daemon...</span>
+          </template>
+          <template x-if="sseState === 'connected'">
+            <span class="text-[#888888]">Daemon active</span>
+          </template>
+          <template x-if="sseState === 'disconnected'">
+            <div class="flex items-center gap-2 text-[#EF4444]">
+              <span
+                >Daemon offline. Reconnecting in
+                <span x-text="reconnectSeconds"></span>s...</span
+              >
+              <button
+                @click="connectSse()"
+                class="font-bold underline text-white hover:text-gray-200"
+              >
+                Connect now
+              </button>
+            </div>
+          </template>
+        </div>
+
+        <h1 class="px-6 text-3xl font-bold tracking-tight mb-4">Anime RPC</h1>
+
+        <div
+          class="flex-1 mx-4 bg-[#151515] rounded-3xl p-6 flex flex-col gap-4 overflow-y-auto no-scrollbar border border-[#2A2A2C]/50"
+        >
+          <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-medium text-white">Poller</span>
+              <button
+                @click="pollerDropdownOpen = !pollerDropdownOpen"
+                class="px-3 py-1.5 border border-[#666666] rounded-md text-xs text-[#888888] hover:text-white flex items-center gap-2 transition-colors"
+              >
+                <span
+                  x-text="activePoller ? activePoller.display_name : 'Select...'"
+                ></span>
+                <span
+                  class="text-[10px]"
+                  x-text="pollerDropdownOpen ? '▲' : '▼'"
+                ></span>
+              </button>
+            </div>
+
+            <div
+              x-show="pollerDropdownOpen"
+              x-transition
+              class="flex flex-col gap-1 mt-2 bg-[#1A1A1A] p-2 rounded-xl border border-[#2A2A2C]"
+            >
+              <template x-for="[id, p] in sortedPollers" :key="id">
+                <button
+                  @click="selectPoller(id)"
+                  :disabled="!p.active"
+                  class="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between text-xs transition-colors"
+                  :class="p.active ? 'hover:bg-[#3E91FF]/20 text-white' : 'text-[#888888] opacity-50 cursor-not-allowed'"
+                >
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="w-2 h-2 rounded-full"
+                      :class="activePollerId === id ? 'bg-[#10B981]' : 'bg-[#666666]'"
+                    ></span>
+                    <span class="font-medium" x-text="p.display_name"></span>
+                  </div>
+                  <span
+                    class="text-[11px] text-[#888888]"
+                    x-text="p.filedir ? 'Playing ' + cleanDirName(p.filedir) : 'Waiting'"
+                  ></span>
+                </button>
+              </template>
+            </div>
+          </div>
+
+          <div class="h-[1px] bg-[#2A2A2C]"></div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-[#888888]">Media title</label>
+            <input
+              type="text"
+              x-model="config.title"
+              :placeholder="titlePlaceholder || 'Title...'"
+              class="bg-transparent border-b border-[#2A2A2C] focus:border-[#3E91FF] text-sm py-1.5 outline-none transition-colors text-white placeholder-[#666666]"
+            />
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+              <label class="text-xs text-[#888888]">Media URL</label>
+              <button
+                x-show="config.url"
+                @click="openUrl(config.url)"
+                class="text-[#888888] hover:text-[#3E91FF]"
+              >
+                <span class="material-symbols-rounded text-sm"
+                  >open_in_new</span
+                >
+              </button>
+            </div>
+            <div
+              class="flex items-center gap-2 border-b border-[#2A2A2C] focus-within:border-[#3E91FF] transition-colors"
+            >
+              <input
+                type="text"
+                x-model="config.url"
+                placeholder="URL..."
+                class="bg-transparent text-sm py-1.5 outline-none flex-1 text-white placeholder-[#666666]"
+              />
+              <button
+                @click="focusSearch()"
+                class="text-[#888888] hover:text-[#3E91FF] p-1"
+              >
+                <span class="material-symbols-rounded text-xl">search</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="text-xs text-[#888888]">Image URL</label>
+            <input
+              type="text"
+              x-model="config.image_url"
+              placeholder="URL..."
+              class="bg-transparent border-b border-[#2A2A2C] focus:border-[#3E91FF] text-sm py-1.5 outline-none transition-colors text-white placeholder-[#666666]"
+            />
+          </div>
+
+          <div class="flex items-center justify-between py-1">
+            <span class="text-sm">Rewatching</span>
+            <button
+              @click="config.rewatching = !config.rewatching"
+              class="w-9 h-5 rounded-full p-0.5 transition-colors relative"
+              :class="config.rewatching ? 'bg-[#3E91FF]' : 'bg-[#666666]'"
+            >
+              <div
+                class="w-4 h-4 bg-white rounded-full transition-transform"
+                :class="config.rewatching ? 'translate-x-4' : 'translate-x-0'"
+              ></div>
+            </button>
+          </div>
+
+          <template x-if="config.image_url">
+            <div
+              class="flex flex-col items-center gap-2 pt-2 border-t border-[#2A2A2C]"
+            >
+              <span class="text-xs text-[#888888]">Image preview</span>
+              <img
+                :src="config.image_url"
+                @error="imageError = true"
+                x-show="!imageError"
+                class="max-w-[200px] h-auto rounded-lg border border-[#2A2A2C] object-contain max-h-[220px]"
+              />
+              <span x-show="imageError" class="text-xs text-[#666666]"
+                >Failed to load image</span
+              >
+            </div>
+          </template>
+        </div>
+
+        <div class="p-4 px-6">
+          <button
+            @click="saveConfig()"
+            class="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-200"
+            :class="{
+                  'bg-[#3E91FF] hover:bg-[#60A5FA] active:bg-[#2563EB]': saveStatus === 'idle',
+                  'bg-[#10B981]': saveStatus === 'saved',
+                  'bg-[#EF4444]': saveStatus === 'failed'
+                }"
+          >
+            <span
+              x-text="saveStatus === 'idle' ? 'Save Changes' : (saveStatus === 'saved' ? '✔ Saved' : 'Failed to Save')"
+            ></span>
+          </button>
+        </div>
+      </div>
+
+      <div
+        x-show="view === 'search'"
+        class="flex-1 md:!flex flex flex-col pt-8 md:pt-6 pb-5 px-0 h-full overflow-hidden min-w-0"
+      >
+        <div class="px-6 flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <button
+              x-show="!isDesktop"
+              @click="switchView('config')"
+              class="text-white hover:text-[#888888] p-1"
+            >
+              <span class="material-symbols-rounded text-2xl">arrow_back</span>
+            </button>
+            <h2 class="text-3xl font-bold">Search</h2>
+          </div>
+
+          <div class="flex items-center gap-2 text-xs">
+            <span
+              :class="search.provider === 'myanimelist' ? 'text-[#888888]' : 'text-[#666666]'"
+              >MAL</span
+            >
+            <button
+              @click="toggleProvider()"
+              class="w-9 h-5 rounded-full p-0.5 transition-colors relative"
+              :class="search.provider === 'anilist' ? 'bg-[#0B1622]' : 'bg-[#2E51A2]'"
+            >
+              <div
+                class="w-4 h-4 bg-white rounded-full transition-transform"
+                :class="search.provider === 'anilist' ? 'translate-x-4' : 'translate-x-0'"
+              ></div>
+            </button>
+            <span
+              :class="search.provider === 'anilist' ? 'text-[#888888]' : 'text-[#666666]'"
+              >AniList</span
+            >
+          </div>
+        </div>
+
+        <div class="px-6 mb-4">
+          <div
+            class="flex items-center bg-[#151515] rounded-xl px-3 py-1.5 border border-transparent focus-within:border-[#3E91FF]"
+          >
+            <input
+              type="text"
+              x-ref="searchInput"
+              x-model="search.query"
+              @input="search.hoveredIndex = null"
+              @keydown.enter="executeSearch()"
+              placeholder="Search title..."
+              class="bg-transparent text-sm py-1 outline-none flex-1 text-white placeholder-[#666666]"
+            />
+            <button
+              @click="executeSearch()"
+              class="text-white hover:text-[#888888] p-1"
+            >
+              <span class="material-symbols-rounded text-xl">search</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="search_scroll"
+          class="flex-1 mx-4 bg-[#151515] rounded-3xl p-3 overflow-y-auto no-scrollbar border border-[#2A2A2C]/50"
+        >
+          <template x-if="search.results.length === 0">
+            <div
+              class="flex-1 flex items-center justify-center h-40 text-sm text-[#666666]"
+            >
+              <span
+                x-text="sseState === 'connected' ? 'No results on ' + (search.provider === 'myanimelist' ? 'MyAnimeList' : 'AniList') : 'Daemon is offline'"
+              ></span>
+            </div>
+          </template>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            <template
+              x-for="(res, index) in search.results"
+              :key="res.id || index"
+            >
+              <div
+                @click="selectSearchResult(res)"
+                :id="'result-' + index"
+                class="p-3 rounded-2xl cursor-pointer flex gap-3 transition-colors duration-150 border border-transparent"
+                :class="search.hoveredIndex === index ? 'bg-[#3E91FF] text-white' : 'hover:bg-[#1A1A1A] bg-[#111111] md:bg-transparent'"
+              >
+                <img
+                  :src="res.image_url"
+                  class="w-12 h-18 bg-[#151515] rounded-md object-cover flex-shrink-0"
+                />
+
+                <div
+                  class="flex-1 flex flex-col justify-between overflow-hidden"
+                >
+                  <div class="flex justify-between items-start gap-2">
+                    <h3
+                      class="text-sm font-bold truncate leading-snug"
+                      x-text="res.title"
+                    ></h3>
+                    <span
+                      class="text-sm font-bold flex-shrink-0"
+                      :class="search.hoveredIndex === index ? 'text-white' : 'text-[#10B981]'"
+                      :style="search.hoveredIndex === index ? '' : { color: getScoreColor(res.score) }"
+                      x-text="res.score ? (res.score / 10).toFixed(2) + ' ★' : 'N/A'"
+                    ></span>
+                  </div>
+
+                  <div class="flex items-center justify-between text-xs mt-1">
+                    <div
+                      class="flex items-center gap-2"
+                      :class="search.hoveredIndex === index ? 'text-white' : 'text-[#888888]'"
+                    >
+                      <span
+                        x-show="res.media_format"
+                        x-text="res.media_format ? res.media_format.toUpperCase() : ''"
+                      ></span>
+                      <span x-show="res.year" x-text="res.year"></span>
+                      <span
+                        x-show="res.status"
+                        :class="search.hoveredIndex === index ? 'text-white' : (res.status === 'releasing' ? 'text-[#3E91FF]' : 'text-[#10B981]')"
+                        x-text="formatStatus(res.status)"
+                      ></span>
+                    </div>
+
+                    <button
+                      @click.stop="openUrl(res.url)"
+                      class="p-1 hover:opacity-80"
+                    >
+                      <span class="material-symbols-rounded text-base"
+                        >open_in_new</span
+                      >
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function animeRpcApp() {
+        return {
+          view: "config", // 'config' | 'search'
+          isDesktop: window.innerWidth >= 768,
+          sseState: "connecting", // 'connecting' | 'connected' | 'disconnected'
+          reconnectSeconds: 1,
+          reconnectAttempt: 1,
+          sseEventSource: null,
+
+          pollerDropdownOpen: false,
+          pollers: {},
+          activePollerId: null,
+          activeFiledir: null,
+          titlePlaceholder: "",
+
+          config: {
+            title: "",
+            url: "",
+            image_url: "",
+            rewatching: false,
+          },
+          imageError: false,
+          saveStatus: "idle", // 'idle' | 'saved' | 'failed'
+
+          search: {
+            query: "",
+            provider: "myanimelist", // 'myanimelist' | 'anilist'
+            results: [],
+            hoveredIndex: null,
+          },
+
+          getScoreColor(score) {
+            if (!score) return "#666666";
+            const t = Math.min(Math.max(score / 1000, 0), 1);
+            const r = Math.round(239 + (16 - 239) * t);
+            const g = Math.round(68 + (185 - 68) * t);
+            const b = Math.round(68 + (129 - 68) * t);
+            return `rgb(${r}, ${g}, ${b})`;
+          },
+
+          initApp() {
+            this.connectSse();
+            this.bindKeyboardShortcuts();
+
+            this.$watch("search.hoveredIndex", (idx) => {
+              if (idx !== null) {
+                this.$nextTick(() => {
+                  document
+                    .getElementById(`result-${idx}`)
+                    ?.scrollIntoView({ block: "nearest" });
+                });
+              }
+            });
+
+            window.addEventListener("resize", () => {
+              this.isDesktop = window.innerWidth >= 768;
+            });
+
+            this.$watch("config.image_url", () => {
+              this.imageError = false;
+            });
+          },
+
+          connectSse() {
+            if (this.sseEventSource) this.sseEventSource.close();
+            this.sseState = "connecting";
+
+            this.sseEventSource = new EventSource("/pollers/events");
+
+            this.sseEventSource.onopen = () => {
+              this.sseState = "connected";
+              this.reconnectAttempt = 1;
+            };
+
+            this.sseEventSource.onmessage = (e) => {
+              try {
+                const payload = JSON.parse(e.data);
+                this.pollers = payload;
+
+                if (
+                  this.activePollerId &&
+                  !this.pollers[this.activePollerId]?.active
+                ) {
+                  this.clearConfigForm();
+                }
+
+                if (!this.activePollerId) {
+                  const activeEntry = Object.entries(this.pollers).find(
+                    ([_, p]) => p.active,
+                  );
+                  if (activeEntry) {
+                    this.selectPoller(activeEntry[0]);
+                  }
+                }
+              } catch (err) {
+                console.error("Failed to parse SSE payload:", err);
+              }
+            };
+
+            this.sseEventSource.onerror = () => {
+              this.sseState = "disconnected";
+              this.sseEventSource.close();
+              this.scheduleReconnect();
+            };
+          },
+
+          scheduleReconnect() {
+            const backoff = Math.min(Math.pow(2, this.reconnectAttempt), 60);
+            this.reconnectSeconds = backoff;
+            this.reconnectAttempt++;
+
+            const timer = setInterval(() => {
+              this.reconnectSeconds--;
+              if (this.reconnectSeconds <= 0) {
+                clearInterval(timer);
+                this.connectSse();
+              }
+            }, 1000);
+          },
+
+          get sortedPollers() {
+            return Object.entries(this.pollers).sort(
+              (a, b) => (b[1].active ? 1 : 0) - (a[1].active ? 1 : 0),
+            );
+          },
+
+          get activePoller() {
+            return this.activePollerId
+              ? this.pollers[this.activePollerId]
+              : null;
+          },
+
+          selectPoller(id) {
+            this.activePollerId = id;
+            this.pollerDropdownOpen = false;
+            const p = this.pollers[id];
+            if (!p) return;
+
+            if (this.activeFiledir !== p.filedir) {
+              this.clearConfigForm();
+              this.activeFiledir = p.filedir;
+              this.titlePlaceholder = p.filedir
+                ? this.cleanDirName(p.filedir)
+                : "";
+              this.search.query = this.titlePlaceholder;
+            }
+
+            if (p.active && p.filedir) {
+              this.loadRpcConfig(p.filedir);
+            }
+          },
+
+          async loadRpcConfig(filedir) {
+            try {
+              const res = await fetch(
+                `/rpc?dir=${encodeURIComponent(filedir)}`,
+              );
+              if (!res.ok) return;
+              const text = await res.text();
+
+              let newConfig = {
+                title: "",
+                url: "",
+                image_url: "",
+                rewatching: false,
+              };
+              text.split("\n").forEach((line) => {
+                const [key, val] = line.split("=", 2);
+                if (key === "title") newConfig.title = val;
+                if (key === "url") newConfig.url = val;
+                if (key === "image_url") newConfig.image_url = val;
+                if (key === "rewatching") newConfig.rewatching = val === "1";
+              });
+              this.config = newConfig;
+              this.search.query = newConfig.title || this.titlePlaceholder;
+            } catch (e) {
+              console.error("Failed to load RPC config:", e);
+            }
+          },
+
+          async saveConfig() {
+            if (!this.activePoller || !this.activePoller.filedir) return;
+
+            try {
+              const res = await fetch("/rpc", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  dir: this.activePoller.filedir,
+                  title: this.config.title,
+                  url: this.config.url,
+                  image_url: this.config.image_url,
+                  rewatching: this.config.rewatching,
+                }),
+              });
+
+              this.saveStatus = res.ok ? "saved" : "failed";
+            } catch (e) {
+              this.saveStatus = "failed";
+            }
+
+            setTimeout(() => {
+              this.saveStatus = "idle";
+            }, 2000);
+          },
+
+          clearConfigForm() {
+            this.config = {
+              title: "",
+              url: "",
+              image_url: "",
+              rewatching: false,
+            };
+            this.activeFiledir = null;
+            this.titlePlaceholder = "";
+          },
+
+          async executeSearch() {
+            this.search.hoveredIndex = null;
+
+            if (!this.search.query) return;
+
+            try {
+              const res = await fetch(
+                `/search?q=${encodeURIComponent(this.search.query)}&provider=${this.search.provider}`,
+              );
+              if (res.ok) {
+                this.search.results = await res.json();
+                this.search.hoveredIndex = null;
+              }
+            } catch (e) {
+              console.error("Search failed:", e);
+            }
+          },
+
+          formatStatus(status) {
+            if (!status) return "";
+            const s = status.toLowerCase();
+            if (s === "tba") return "TBA";
+            if (s === "releasing") return "Airing";
+            return s.charAt(0).toUpperCase() + s.slice(1);
+          },
+
+          selectSearchResult(result) {
+            this.config.title = result.title;
+            this.config.url = result.url;
+            this.config.image_url = result.image_url;
+            if (!this.isDesktop) {
+              this.switchView("config");
+            }
+          },
+
+          toggleProvider() {
+            this.search.provider =
+              this.search.provider === "myanimelist"
+                ? "anilist"
+                : "myanimelist";
+            if (this.search.query) this.executeSearch();
+          },
+
+          focusSearch() {
+            if (this.activeFiledir && !this.search.query) {
+              this.search.query = this.cleanDirName(this.activeFiledir);
+            }
+            this.switchView("search");
+            this.$nextTick(() => {
+              this.$refs.searchInput?.focus();
+            });
+          },
+
+          switchView(targetView) {
+            if (
+              targetView === "search" &&
+              this.activeFiledir &&
+              !this.search.query
+            ) {
+              this.search.query = this.cleanDirName(this.activeFiledir);
+            }
+            this.view = targetView;
+
+            if (targetView === "search") {
+              this.$nextTick(() => {
+                this.$refs.searchInput?.focus();
+              });
+            }
+          },
+
+          cleanDirName(path) {
+            if (!path) return "";
+            const base = path.split(/[/\\]/).pop() || "";
+            return base
+              .replace(/\[.*?\]|\(.*?\)/g, "")
+              .replace(/\s+/g, " ")
+              .trim();
+          },
+
+          openUrl(url) {
+            if (url) window.open(url, "_blank");
+          },
+
+          focusSearch() {
+            if (!this.isDesktop && this.view !== "search") {
+              this.switchView("search");
+            }
+            this.$nextTick(() => {
+              this.$refs.searchInput?.focus();
+              this.$refs.searchInput?.select();
+            });
+          },
+
+          bindKeyboardShortcuts() {
+            window.addEventListener("keydown", (e) => {
+              if (
+                (e.metaKey || e.ctrlKey) &&
+                (e.key.toLowerCase() === "l" || e.key.toLowerCase() === "k")
+              ) {
+                e.preventDefault();
+                this.focusSearch();
+                return;
+              }
+
+              if (
+                e.key === "/" &&
+                document.activeElement?.tagName !== "INPUT"
+              ) {
+                e.preventDefault();
+                this.focusSearch();
+                return;
+              }
+
+              if (
+                e.key === "Escape" &&
+                this.view === "search" &&
+                !this.isDesktop
+              ) {
+                if (this.search.hoveredIndex !== null) {
+                  this.search.hoveredIndex = null;
+                } else {
+                  this.switchView("config");
+                }
+                return;
+              }
+
+              if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+                e.preventDefault();
+                this.saveConfig();
+                return;
+              }
+
+              const count = this.search.results.length;
+              if (count > 0) {
+                const cols = this.isDesktop ? 2 : 1;
+                let curr = this.search.hoveredIndex;
+
+                if (e.key === "ArrowRight" && this.isDesktop) {
+                  e.preventDefault();
+                  this.search.hoveredIndex =
+                    curr === null ? 0 : Math.min(curr + 1, count - 1);
+                } else if (e.key === "ArrowLeft" && this.isDesktop) {
+                  e.preventDefault();
+                  this.search.hoveredIndex =
+                    curr === null ? 0 : Math.max(curr - 1, 0);
+                } else if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  this.search.hoveredIndex =
+                    curr === null ? 0 : Math.min(curr + cols, count - 1);
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  this.search.hoveredIndex =
+                    curr === null ? 0 : Math.max(curr - cols, 0);
+                } else if (
+                  e.key === "Enter" &&
+                  curr !== null &&
+                  document.activeElement !== this.$refs.searchInput
+                ) {
+                  e.preventDefault();
+                  this.selectSearchResult(this.search.results[curr]);
+                }
+              }
+            });
+          },
+        };
+      }
+    </script>
+  </body>
+</html>
