@@ -54,54 +54,16 @@
     devShells = forAllSystems (system: let
       pkgs = nixpkgs.legacyPackages.${system};
       animeRpcPkg = pkgs.callPackage ./nix/package.nix {};
-      animeRpcUiPkg = pkgs.callPackage ./nix/ui.nix {};
     in {
       default = pkgs.mkShell {
-        inputsFrom = [animeRpcPkg animeRpcUiPkg];
-        packages = with pkgs;
-          [
-            python3
-            python3Packages.ruff
-            python3Packages.pytest
-            python3Packages.fonttools
-            basedpyright
-            uv
-
-            cargo
-            rustc
-            rustfmt
-            rust-analyzer
-            clippy
-
-            pkg-config
-          ]
-          ++ lib.optionals stdenv.isLinux [
-            vulkan-loader
-            glib
-            gtk3
-            atk
-            gdk-pixbuf
-            cairo
-            xdotool
-            wrapGAppsHook3
-          ];
-
-        LD_LIBRARY_PATH =
-          pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isLinux
-          (pkgs.lib.makeLibraryPath [
-            pkgs.libgccjit
-            pkgs.libmediainfo
-            pkgs.alsa-lib
-            pkgs.libpulseaudio
-            pkgs.libX11
-            pkgs.libXcursor
-            pkgs.libXi
-            pkgs.libXrandr
-            pkgs.wayland
-            pkgs.libxkbcommon
-            pkgs.libayatana-appindicator
-            pkgs.vulkan-loader
-          ]);
+        inputsFrom = [animeRpcPkg];
+        packages = with pkgs; [
+          python3
+          python3Packages.ruff
+          python3Packages.pytest
+          basedpyright
+          uv
+        ];
       };
     });
   };

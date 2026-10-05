@@ -73,14 +73,7 @@ in {
       description = "The anime_rpc executable package to use.";
     };
 
-    ui = {
-      enable = mkEnableOption "Anime RPC UI";
-      package = mkOption {
-        type = types.package;
-        default = self.packages.${pkgs.system}.ui;
-        description = "The anime_rpc_ui package to use.";
-      };
-    };
+    ui.enable = mkEnableOption "Anime RPC UI";
 
     settings = {
       clearOnPause =
@@ -172,9 +165,7 @@ in {
     programs.anime_rpc.settings.webserver.enable =
       mkDefault cfg.ui.enable;
 
-    home.packages =
-      [cfg.package]
-      ++ optional cfg.ui.enable cfg.ui.package;
+    home.packages = [cfg.package];
 
     systemd.user.services.anime_rpc = {
       Unit = {
