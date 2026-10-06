@@ -143,7 +143,10 @@ async def handle_get_rpc(request: Request) -> Response:
     if not filedir:
         return Response(status=400, text="Missing dir parameter")
 
-    rpc_path = Path(filedir) / ".rpc"
+    if not (target_dir := Path(filedir).resolve()).is_dir():
+        return Response(status=404, text="Directory not found")
+
+    rpc_path = target_dir / ".rpc"
     if not rpc_path.exists():
         return Response(status=404, text="Not found")
 
@@ -162,7 +165,10 @@ async def handle_post_rpc(request: Request) -> Response:
         if not filedir:
             return Response(status=400, text="Missing dir field")
 
-        rpc_path = Path(filedir) / ".rpc"
+        if not (target_dir := Path(filedir).resolve()).is_dir():
+            return Response(status=404, text="Directory not found")
+
+        rpc_path = target_dir / ".rpc"
         raw_lines = (
             rpc_path.read_text(encoding="utf-8").splitlines()
             if rpc_path.exists()
