@@ -412,6 +412,7 @@
             image_url: "",
             rewatching: false,
           },
+          configHistory: [],
           imageError: false,
           saveStatus: "idle", // 'idle' | 'saved' | 'failed'
 
@@ -420,6 +421,18 @@
             provider: "myanimelist", // 'myanimelist' | 'anilist'
             results: [],
             hoveredIndex: null,
+          },
+
+          pushHistory() {
+            this.configHistory.push(this.config ? { ...this.config } : {});
+            if (this.configHistory.length > 20) this.configHistory.shift();
+          },
+
+          undoConfig() {
+            if (this.configHistory.length > 0) {
+              this.config = this.configHistory.pop();
+              this.search.query = this.config.title || this.titlePlaceholder;
+            }
           },
 
           getScoreColor(score) {
@@ -544,6 +557,7 @@
           },
 
           async loadRpcConfig(filedir) {
+            this.pushHistory();
             try {
               const res = await fetch(
                 `/rpc?dir=${encodeURIComponent(filedir)}`,
@@ -635,6 +649,7 @@
           },
 
           selectSearchResult(result) {
+            this.pushHistory();
             this.config.title = result.title;
             this.config.url = result.url;
             this.config.image_url = result.image_url;
@@ -768,6 +783,20 @@
                 ) {
                   e.preventDefault();
                   this.selectSearchResult(this.search.results[curr]);
+                }
+              }
+
+              if (
+                (e.metaKey || e.ctrlKey) &&
+                e.key.toLowerCase() === "z" &&
+                !e.shiftKey
+              ) {
+                if (
+                  document.activeElement?.tagName !== "INPUT" &&
+                  this.configHistory.length > 0
+                ) {
+                  e.preventDefault();
+                  this.undoConfig();
                 }
               }
             });
