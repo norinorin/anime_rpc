@@ -207,6 +207,7 @@
               <label class="text-xs text-[#888888]">Media title</label>
               <input
                 type="text"
+                x-ref="titleInput"
                 x-model="config.title"
                 :placeholder="titlePlaceholder || 'Title...'"
                 class="bg-transparent border-b border-[#2A2A2C] focus:border-[#3E91FF] text-sm py-1.5 outline-none transition-colors text-white placeholder-[#666666]"
@@ -726,12 +727,23 @@
           },
 
           focusSearch() {
-            if (this.activeFiledir && !this.search.query) {
-              this.search.query = this.cleanDirName(this.activeFiledir);
+            if (!this.search.query) {
+              const currentTitle =
+                this.$refs.titleInput?.value || this.config?.title;
+              this.search.query =
+                currentTitle ||
+                (this.activeFiledir
+                  ? this.cleanDirName(this.activeFiledir)
+                  : "");
             }
-            this.switchView("search");
+
+            if (!this.isDesktop && this.view !== "search") {
+              this.switchView("search");
+            }
+
             this.$nextTick(() => {
               this.$refs.searchInput?.focus();
+              this.$refs.searchInput?.select();
             });
           },
 
@@ -763,16 +775,6 @@
 
           openUrl(url) {
             if (url) window.open(url, "_blank");
-          },
-
-          focusSearch() {
-            if (!this.isDesktop && this.view !== "search") {
-              this.switchView("search");
-            }
-            this.$nextTick(() => {
-              this.$refs.searchInput?.focus();
-              this.$refs.searchInput?.select();
-            });
           },
 
           bindKeyboardShortcuts() {
