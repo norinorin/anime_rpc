@@ -24,12 +24,59 @@
           "GRAD" 0,
           "opsz" 24;
       }
+
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
+
       .no-scrollbar {
         -ms-overflow-style: none;
         scrollbar-width: none;
+      }
+
+      @keyframes marquee-loop {
+        0% {
+          transform: translateX(0%);
+        }
+        100% {
+          transform: translateX(-50%);
+        }
+      }
+
+      .marquee-track {
+        width: 100%;
+      }
+
+      .marquee-item {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        width: 100%;
+      }
+
+      .marquee-duplicate {
+        display: none !important;
+      }
+
+      .group:hover .marquee-track,
+      .card-active .marquee-track,
+      .marquee-track.marquee-auto {
+        width: max-content;
+        animation: marquee-loop 8s linear infinite;
+      }
+
+      .group:hover .marquee-item,
+      .card-active .marquee-item,
+      .marquee-track.marquee-auto .marquee-item {
+        overflow: visible;
+        text-overflow: clip;
+        width: auto;
+      }
+
+      .group:hover .marquee-duplicate,
+      .card-active .marquee-duplicate,
+      .marquee-track.marquee-auto .marquee-duplicate {
+        display: block !important;
       }
     </style>
   </head>
@@ -182,7 +229,7 @@
                   <button
                     @click="selectPoller(id)"
                     :disabled="!p.active"
-                    class="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between text-xs transition-colors"
+                    class="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between text-xs transition-colors group"
                     :class="p.active ? 'hover:bg-[#3E91FF]/20 text-white' : 'text-[#888888] opacity-50 cursor-not-allowed'"
                   >
                     <div class="flex items-center gap-2">
@@ -192,10 +239,11 @@
                       ></span>
                       <span class="font-medium" x-text="p.display_name"></span>
                     </div>
-                    <span
-                      class="text-[11px] text-[#888888]"
-                      x-text="p.filedir ? 'Playing ' + cleanDirName(p.filedir) : 'Waiting'"
-                    ></span>
+                    <div
+                      class="overflow-hidden max-w-[180px]"
+                      :title="p.filedir"
+                      x-html="marqueeHtml(p.filedir ? 'Playing ' + cleanDirName(p.filedir) : '', { auto: activePollerId === id, classNames: 'text-[11px] text-[#888888]', threshold: 32 })"
+                    ></div>
                   </button>
                 </template>
               </div>
@@ -397,8 +445,8 @@
                 <div
                   @click="selectSearchResult(res)"
                   :id="'result-' + index"
-                  class="p-3 rounded-2xl cursor-pointer flex gap-3 transition-colors duration-150 border border-transparent"
-                  :class="search.hoveredIndex === index ? 'bg-[#3E91FF] text-white' : 'hover:bg-[#1A1A1A] bg-[#111111] md:bg-transparent'"
+                  class="p-3 rounded-2xl cursor-pointer flex gap-3 transition-colors duration-150 border border-transparent group"
+                  :class="search.hoveredIndex === index ? 'bg-[#3E91FF] text-white card-active' : 'hover:bg-[#1A1A1A] bg-[#111111] md:bg-transparent'"
                 >
                   <img
                     :src="res.image_url"
@@ -409,10 +457,11 @@
                     class="flex-1 flex flex-col justify-between overflow-hidden"
                   >
                     <div class="flex justify-between items-start gap-2">
-                      <h3
-                        class="text-sm font-bold truncate leading-snug"
-                        x-text="res.title"
-                      ></h3>
+                      <div
+                        class="overflow-hidden w-full"
+                        :title="res.title"
+                        x-html="marqueeHtml(res.title, { classNames: 'text-sm font-bold leading-snug' })"
+                      ></div>
                       <span
                         class="text-sm font-bold flex-shrink-0"
                         :class="search.hoveredIndex === index ? 'text-white' : 'text-[#10B981]'"
@@ -777,6 +826,38 @@
 
           openUrl(url) {
             if (url) window.open(url, "_blank");
+          },
+
+          escapeHtml(str) {
+            return String(str)
+              .replace(/&/g, "&amp;")
+              .replace(/</g, "&lt;")
+              .replace(/>/g, "&gt;")
+              .replace(/"/g, "&quot;");
+          },
+
+          marqueeHtml(text, options = {}) {
+            const {
+              auto = false,
+              threshold = 22,
+              classNames = "",
+              fallback = "Waiting",
+            } = options;
+
+            const rawText = text || fallback;
+            const safeText = this.escapeHtml(rawText);
+
+            if (!text || rawText.length <= threshold) {
+              return `<span class="${classNames} block truncate">${safeText}</span>`;
+            }
+
+            const autoClass = auto ? "marquee-auto" : "";
+            return `
+              <div class="flex marquee-track ${autoClass}">
+                <span class="${classNames} pr-6 marquee-item block">${safeText}</span>
+                <span class="${classNames} pr-6 marquee-duplicate">${safeText}</span>
+              </div>
+            `;
           },
 
           bindKeyboardShortcuts() {
