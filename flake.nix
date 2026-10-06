@@ -48,18 +48,14 @@
         else "+dirty";
 
       version = "${y}.${m}.${d}.0.dev${dev}${gitHash}";
-
       pythonSet = pkgs.callPackage ./nix/package.nix {
         inherit workspace pyproject-nix pyproject-build-systems version;
       };
+      venv = pythonSet.mkVirtualEnv "anime-rpc-env" workspace.deps.default;
     in {
-      default = (pythonSet.mkVirtualEnv "anime-rpc-env" workspace.deps.default).overrideAttrs (old: {
-        meta =
-          (old.meta or {})
-          // {
-            mainProgram = "anime_rpc";
-          };
-      });
+      default = pkgs.writeShellScriptBin "anime_rpc" ''
+        exec ${venv}/bin/anime_rpc "$@"
+      '';
     });
 
     overlays.default = final: prev: {
