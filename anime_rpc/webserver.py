@@ -12,7 +12,7 @@ import aiohttp_cors
 from aiohttp.web_response import json_response
 
 from anime_rpc.cli import CLI_ARGS
-from anime_rpc.config import Config
+from anime_rpc.config import Config, parse_rpc_config
 from anime_rpc.pollers import PollerStatus
 
 if TYPE_CHECKING:
@@ -141,21 +141,22 @@ async def index_handler(_request: Request) -> StreamResponse:
 async def handle_get_rpc(request: Request) -> Response:
     filedir = request.query.get("dir")
     if not filedir:
-        return Response(status=400, text="Missing dir parameter")
+        return json_response({"error": "Missing dir parameter"}, status=400)
 
     if not (target_dir := Path(filedir).resolve()).is_dir():
-        return Response(status=404, text="Directory not found")
+        return json_response({"error": "Directory not found"}, status=404)
 
     rpc_path = target_dir / ".rpc"
-    if not rpc_path.exists():
-        return Response(status=404, text="Not found")
+    if not rpc_path.is_file():
+        return json_response({"error": "Not found"}, status=404)
 
     try:
-        content = rpc_path.read_text(encoding="utf-8")
-        return Response(text=content)
+        with rpc_path.open("r", encoding="utf-8") as f:
+            config = parse_rpc_config(f)
+        return json_response(config)
     except Exception:
         _LOGGER.exception("Failed to read RPC config.")
-        return Response(status=500, text="Internal server error")
+        return json_response({"error": "Internal server error"}, status=500)
 
 
 async def handle_post_rpc(request: Request) -> Response:
@@ -163,10 +164,10 @@ async def handle_post_rpc(request: Request) -> Response:
         data = await request.json()
         filedir = data.get("dir")
         if not filedir:
-            return Response(status=400, text="Missing dir field")
+            return json_response({"error": "Missing dir field"}, status=400)
 
         if not (target_dir := Path(filedir).resolve()).is_dir():
-            return Response(status=404, text="Directory not found")
+            return json_response({"error": "Directory not found"}, status=404)
 
         rpc_path = target_dir / ".rpc"
         raw_lines = (
@@ -202,10 +203,10 @@ async def handle_post_rpc(request: Request) -> Response:
                 new_lines.append(f"{key}={val}")
 
         rpc_path.write_text("\n".join(new_lines), encoding="utf-8")
-        return Response(status=200, text="OK")
+        return json_response({"status": "ok"}, status=200)
     except Exception:
         _LOGGER.exception("Failed to update RPC keys")
-        return Response(status=500, text="Internal server error")
+        return json_response({"error": "Internal server error"}, status=500)
 
 
 async def _on_shutdown(app: Application) -> None:
