@@ -291,15 +291,22 @@
             <div
               class="flex items-center bg-[#151515] rounded-xl px-3 py-1.5 border border-transparent focus-within:border-[#3E91FF]"
             >
-              <input
-                type="text"
-                x-ref="searchInput"
-                x-model="search.query"
-                @input="search.hoveredIndex = null"
-                @keydown.enter="executeSearch()"
-                placeholder="Search title..."
-                class="bg-transparent text-sm py-1 outline-none flex-1 text-white placeholder-[#666666]"
-              />
+              <div class="relative flex items-center w-full">
+                <input
+                  type="text"
+                  x-ref="searchInput"
+                  x-model="search.query"
+                  @input="search.hoveredIndex = null"
+                  @keydown.enter="executeSearch()"
+                  placeholder="Search title..."
+                  class="bg-transparent text-sm py-1 outline-none flex-1 text-white placeholder-[#666666]"
+                />
+                <kbd
+                  class="hidden md:inline-flex absolute right-3 items-center gap-0.5 text-[10px] font-mono text-zinc-400 bg-[#2A2A2C] border border-[#3A3A3C] px-1.5 py-0.5 rounded select-none pointer-events-none"
+                >
+                  Ctrl K
+                </kbd>
+              </div>
               <button
                 @click="executeSearch()"
                 class="text-white hover:text-[#888888] p-1"
