@@ -95,7 +95,63 @@
             </template>
           </div>
 
-          <h1 class="px-6 text-3xl font-bold tracking-tight mb-4">Anime RPC</h1>
+          <div class="px-6 mb-4 flex items-center justify-between">
+            <h1 class="text-3xl font-bold tracking-tight">Anime RPC</h1>
+
+            <div class="hidden md:flex items-center gap-1">
+              <button
+                @click="undoConfig()"
+                :disabled="configHistory.length === 0"
+                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#2A2A2C] disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition relative group"
+                aria-label="Undo"
+              >
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                  />
+                </svg>
+                <span
+                  class="hidden group-hover:flex absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 items-center text-[10px] font-mono text-zinc-300 bg-[#1A1A1C] border border-[#3A3A3C] px-1.5 py-0.5 rounded shadow-md pointer-events-none whitespace-nowrap"
+                >
+                  Ctrl+Z
+                </span>
+              </button>
+
+              <button
+                @click="redoConfig()"
+                :disabled="configRedoHistory.length === 0"
+                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#2A2A2C] disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition relative group"
+                aria-label="Redo"
+              >
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"
+                  />
+                </svg>
+                <span
+                  class="hidden group-hover:flex absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 items-center text-[10px] font-mono text-zinc-300 bg-[#1A1A1C] border border-[#3A3A3C] px-1.5 py-0.5 rounded shadow-md pointer-events-none whitespace-nowrap"
+                >
+                  Ctrl+Shift+Z
+                </span>
+              </button>
+            </div>
+          </div>
 
           <div
             class="flex-1 mx-4 bg-[#151515] rounded-3xl p-6 flex flex-col gap-4 overflow-y-auto no-scrollbar border border-[#2A2A2C]/50"
@@ -420,6 +476,7 @@
             rewatching: false,
           },
           configHistory: [],
+          configRedoHistory: [],
           imageError: false,
           saveStatus: "idle", // 'idle' | 'saved' | 'failed'
 
@@ -433,11 +490,21 @@
           pushHistory() {
             this.configHistory.push(this.config ? { ...this.config } : {});
             if (this.configHistory.length > 20) this.configHistory.shift();
+            this.configRedoHistory = [];
           },
 
           undoConfig() {
             if (this.configHistory.length > 0) {
+              if (this.config) this.configRedoHistory.push({ ...this.config });
               this.config = this.configHistory.pop();
+              this.search.query = this.config.title || this.titlePlaceholder;
+            }
+          },
+
+          redoConfig() {
+            if (this.configRedoHistory.length > 0) {
+              if (this.config) this.configHistory.push({ ...this.config });
+              this.config = this.configRedoHistory.pop();
               this.search.query = this.config.title || this.titlePlaceholder;
             }
           },
@@ -780,15 +847,19 @@
 
               if (
                 (e.metaKey || e.ctrlKey) &&
-                e.key.toLowerCase() === "z" &&
-                !e.shiftKey
+                document.activeElement?.tagName !== "INPUT"
               ) {
-                if (
-                  document.activeElement?.tagName !== "INPUT" &&
-                  this.configHistory.length > 0
-                ) {
+                const key = e.key.toLowerCase();
+                if (key === "z") {
                   e.preventDefault();
-                  this.undoConfig();
+                  if (e.shiftKey) {
+                    this.redoConfig();
+                  } else {
+                    this.undoConfig();
+                  }
+                } else if (key === "y") {
+                  e.preventDefault();
+                  this.redoConfig();
                 }
               }
             });
