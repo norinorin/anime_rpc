@@ -37,7 +37,7 @@ def _parse_bool(value: str | int | None) -> bool:
     return False
 
 
-def parse_rpc_config(handle: TextIOWrapper) -> Config | None:
+def parse_rpc_config(handle: TextIOWrapper) -> Config:
     config: Config = {}  # type: ignore[reportGeneralTypeIssues]
     valid_keys = {*Config.__annotations__.keys()}
 
