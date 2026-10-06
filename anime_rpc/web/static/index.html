@@ -563,23 +563,8 @@
                 `/rpc?dir=${encodeURIComponent(filedir)}`,
               );
               if (!res.ok) return;
-              const text = await res.text();
-
-              let newConfig = {
-                title: "",
-                url: "",
-                image_url: "",
-                rewatching: false,
-              };
-              text.split("\n").forEach((line) => {
-                const [key, val] = line.split("=", 2);
-                if (key === "title") newConfig.title = val;
-                if (key === "url") newConfig.url = val;
-                if (key === "image_url") newConfig.image_url = val;
-                if (key === "rewatching") newConfig.rewatching = val === "1";
-              });
-              this.config = newConfig;
-              this.search.query = newConfig.title || this.titlePlaceholder;
+              this.config = await res.json();
+              this.search.query = this.config.title || this.titlePlaceholder;
             } catch (e) {
               console.error("Failed to load RPC config:", e);
             }
