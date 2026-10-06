@@ -10,5 +10,8 @@ test.py
 *.egg-info/
 anime_rpc/_version.py
 
+# Nix
+result
+
 # Direnv
 .direnv/

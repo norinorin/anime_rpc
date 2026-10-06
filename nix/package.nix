@@ -1,64 +1,49 @@
 {
+  pkgs,
   lib,
   stdenv,
-  python3Packages,
+  version,
+  workspace,
+  pyproject-nix,
+  pyproject-build-systems,
   libmediainfo,
-  version ? "0.0.0+unknown",
   autoPatchelfHook ? null,
   alsa-lib ? null,
   libpulseaudio ? null,
   libX11 ? null,
 }: let
-  linuxNativeDeps = [
-    autoPatchelfHook
-  ];
-  linuxSystemDeps = [
-    alsa-lib
-    libpulseaudio
-    libX11
-  ];
+  overlay = workspace.mkPyprojectOverlay {
+    sourcePreference = "wheel";
+  };
+
+  pyprojectOverrides = final: prev: {
+    anime-rpc = prev.anime-rpc.overrideAttrs (old: {
+      SETUPTOOLS_SCM_PRETEND_VERSION_FOR_ANIME_RPC = version;
+
+      nativeBuildInputs =
+        (old.nativeBuildInputs or [])
+        ++ lib.optionals stdenv.hostPlatform.isLinux [pkgs.autoPatchelfHook];
+
+      buildInputs =
+        (old.buildInputs or [])
+        ++ [libmediainfo]
+        ++ lib.optionals stdenv.hostPlatform.isLinux [
+          alsa-lib
+          libpulseaudio
+          libX11
+        ];
+    });
+  };
+
+  pythonSet = (pkgs.callPackage pyproject-nix.build.packages
+    {
+      python = pkgs.python3;
+    }).overrideScope (
+    lib.composeManyExtensions [
+      pyproject-build-systems.overlays.default
+      overlay
+      pyprojectOverrides
+    ]
+  );
 in
-  python3Packages.buildPythonApplication {
-    pname = "anime_rpc";
-    inherit version;
-
-    src = ../.;
-    format = "pyproject";
-
-    nativeBuildInputs = with python3Packages;
-      [
-        setuptools
-        setuptools-scm
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isLinux linuxNativeDeps;
-
-    propagatedBuildInputs = with python3Packages; [
-      setuptools-scm
-      aiohttp
-      aiohttp-cors
-      pymediainfo
-      beautifulsoup4
-      coloredlogs
-      platformdirs
-      watchdog
-      cffi
-      keyring
-    ];
-
-    buildInputs =
-      [
-        libmediainfo
-      ]
-      ++ lib.optionals stdenv.hostPlatform.isLinux linuxSystemDeps;
-
-    makeWrapperArgs = [
-      "--set SETUPTOOLS_SCM_PRETEND_VERSION ${version}"
-    ];
-
-    meta = with lib; {
-      description = "Anime Rich Presence integration";
-      license = licenses.mit;
-      mainProgram = "anime_rpc";
-      platforms = platforms.linux ++ platforms.darwin;
-    };
-  }
+  pythonSet
