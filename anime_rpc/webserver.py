@@ -150,9 +150,9 @@ async def handle_get_rpc(request: Request) -> Response:
     try:
         content = rpc_path.read_text(encoding="utf-8")
         return Response(text=content)
-    except Exception as e:
+    except Exception:
         _LOGGER.exception("Failed to read RPC config.")
-        return Response(status=500, text=str(e))
+        return Response(status=500, text="Internal server error")
 
 
 async def handle_post_rpc(request: Request) -> Response:
@@ -197,9 +197,9 @@ async def handle_post_rpc(request: Request) -> Response:
 
         rpc_path.write_text("\n".join(new_lines), encoding="utf-8")
         return Response(status=200, text="OK")
-    except Exception as e:
+    except Exception:
         _LOGGER.exception("Failed to update RPC keys")
-        return Response(status=500, text=str(e))
+        return Response(status=500, text="Internal server error")
 
 
 async def _on_shutdown(app: Application) -> None:
