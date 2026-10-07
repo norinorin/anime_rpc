@@ -78,6 +78,30 @@
       .marquee-track.marquee-auto .marquee-duplicate {
         display: block !important;
       }
+
+      .kbd-tooltip {
+        pointer-events: none;
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        opacity: 0;
+        transition: opacity 150ms ease;
+        padding: 0.125rem 0.375rem;
+        font-size: 10px;
+        font-family:
+          ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background-color: #1a1a1a;
+        color: #888888;
+        border: 1px solid #333333;
+        border-radius: 0.25rem;
+        white-space: nowrap;
+        z-index: 99;
+      }
+
+      .group:hover .kbd-tooltip,
+      .group:focus-within .kbd-tooltip {
+        opacity: 1;
+      }
     </style>
   </head>
   <body
@@ -165,11 +189,10 @@
                     d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
                   />
                 </svg>
-                <span
-                  class="hidden group-hover:flex absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 items-center text-[10px] font-mono text-zinc-300 bg-[#1A1A1C] border border-[#3A3A3C] px-1.5 py-0.5 rounded shadow-md pointer-events-none whitespace-nowrap"
-                >
-                  Ctrl+Z
-                </span>
+                <kbd
+                  class="kbd-tooltip -bottom-8"
+                  x-text="kbdText('Ctrl+Z')"
+                ></kbd>
               </button>
 
               <button
@@ -191,11 +214,10 @@
                     d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6"
                   />
                 </svg>
-                <span
-                  class="hidden group-hover:flex absolute -bottom-8 left-1/2 -translate-x-1/2 z-50 items-center text-[10px] font-mono text-zinc-300 bg-[#1A1A1C] border border-[#3A3A3C] px-1.5 py-0.5 rounded shadow-md pointer-events-none whitespace-nowrap"
-                >
-                  Ctrl+Shift+Z
-                </span>
+                <kbd
+                  class="kbd-tooltip -bottom-8 -ml-4"
+                  x-text="kbdText('Ctrl+Shift+Z')"
+                ></kbd>
               </button>
             </div>
           </div>
@@ -288,9 +310,13 @@
                 />
                 <button
                   @click="focusSearch()"
-                  class="text-[#888888] hover:text-[#3E91FF] p-1"
+                  class="relative group text-[#888888] hover:text-[#3E91FF] p-1"
                 >
                   <span class="material-symbols-rounded text-xl">search</span>
+                  <kbd
+                    class="kbd-tooltip -bottom-4"
+                    x-text="kbdText('Ctrl+K')"
+                  ></kbd>
                 </button>
               </div>
             </div>
@@ -340,7 +366,7 @@
           <div class="p-4 px-6">
             <button
               @click="saveConfig()"
-              class="w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-200"
+              class="relative group w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-200"
               :class="{
                   'bg-[#3E91FF] hover:bg-[#60A5FA] active:bg-[#2563EB]': saveStatus === 'idle',
                   'bg-[#10B981]': saveStatus === 'saved',
@@ -350,6 +376,7 @@
               <span
                 x-text="saveStatus === 'idle' ? 'Save Changes' : (saveStatus === 'saved' ? '✔ Saved' : 'Failed to Save')"
               ></span>
+              <kbd class="kbd-tooltip -top-8" x-text="kbdText('Ctrl+S')"></kbd>
             </button>
           </div>
         </div>
@@ -398,7 +425,7 @@
             <div
               class="flex items-center bg-[#151515] rounded-xl px-3 py-1.5 border border-transparent focus-within:border-[#3E91FF]"
             >
-              <div class="relative flex items-center w-full">
+              <div class="flex items-center w-full">
                 <input
                   type="text"
                   x-ref="searchInput"
@@ -408,17 +435,16 @@
                   placeholder="Search title..."
                   class="bg-transparent text-sm py-1 outline-none flex-1 text-white placeholder-[#666666]"
                 />
-                <kbd
-                  class="hidden md:inline-flex absolute right-3 items-center gap-0.5 text-[10px] font-mono text-zinc-400 bg-[#2A2A2C] border border-[#3A3A3C] px-1.5 py-0.5 rounded select-none pointer-events-none"
-                >
-                  Ctrl K
-                </kbd>
               </div>
               <button
                 @click="executeSearch()"
-                class="text-white hover:text-[#888888] p-1"
+                class="relative group text-white hover:text-[#888888] p-1"
               >
                 <span class="material-symbols-rounded text-xl">search</span>
+                <kbd
+                  class="kbd-tooltip -bottom-4"
+                  x-text="kbdText('Ctrl+K')"
+                ></kbd>
               </button>
             </div>
           </div>
@@ -858,6 +884,26 @@
                 <span class="${classNames} pr-6 marquee-duplicate">${safeText}</span>
               </div>
             `;
+          },
+
+          isMac: (() => {
+            if (typeof navigator === "undefined") return false;
+            if (navigator.userAgentData?.platform) {
+              return navigator.userAgentData.platform
+                .toLowerCase()
+                .includes("mac");
+            }
+            return /Mac|iPhone|iPad|iPod/i.test(
+              navigator.userAgent || navigator.platform || "",
+            );
+          })(),
+
+          kbdText(shortcut) {
+            if (!this.isMac) return shortcut;
+            return shortcut
+              .replace(/Ctrl|Cmd/gi, "⌘")
+              .replace(/Shift/gi, "⇧")
+              .replace(/\+/g, "");
           },
 
           bindKeyboardShortcuts() {
