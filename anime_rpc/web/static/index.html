@@ -358,11 +358,15 @@
                 <button
                   x-show="config.url"
                   @click="openUrl(config.url)"
-                  class="text-content-muted hover:text-brand-blue inline-flex items-center justify-center"
+                  class="relative group text-content-muted hover:text-brand-blue inline-flex items-center justify-center"
                 >
                   <span class="material-symbols-rounded text-sm block"
                     >open_in_new</span
                   >
+                  <kbd
+                    class="kbd-tooltip -bottom-8"
+                    x-text="kbdText('Ctrl+O')"
+                  ></kbd>
                 </button>
               </div>
               <div
@@ -401,13 +405,14 @@
               <span class="text-sm">Rewatching</span>
               <button
                 @click="config.rewatching = !config.rewatching"
-                class="w-9 h-5 rounded-full p-0.5 transition-colors relative"
+                class="relative group w-9 h-5 rounded-full p-0.5 transition-colors relative"
                 :class="config.rewatching ? 'bg-brand-blue' : 'bg-content-subtle'"
               >
                 <div
                   class="w-4 h-4 bg-white rounded-full transition-transform"
                   :class="config.rewatching ? 'translate-x-4' : 'translate-x-0'"
                 ></div>
+                <kbd class="kbd-tooltip -top-8" x-text="kbdText('Alt+R')"></kbd>
               </button>
             </div>
 
@@ -472,13 +477,17 @@
               >
               <button
                 @click="toggleProvider()"
-                class="w-9 h-5 rounded-full p-0.5 transition-colors relative"
+                class="relative group w-9 h-5 rounded-full p-0.5 transition-colors relative"
                 :class="search.provider === 'anilist' ? 'bg-brand-anilist' : 'bg-brand-mal'"
               >
                 <div
                   class="w-4 h-4 bg-white rounded-full transition-transform"
                   :class="search.provider === 'anilist' ? 'translate-x-4' : 'translate-x-0'"
                 ></div>
+                <kbd
+                  class="kbd-tooltip -bottom-8"
+                  x-text="kbdText('Alt+P')"
+                ></kbd>
               </button>
               <span
                 :class="search.provider === 'anilist' ? 'text-content-muted' : 'text-content-subtle'"
@@ -979,6 +988,7 @@
             return shortcut
               .replace(/Ctrl|Cmd/gi, "⌘")
               .replace(/Shift/gi, "⇧")
+              .replace(/Alt/gi, "⌥")
               .replace(/\+/g, "");
           },
 
@@ -997,6 +1007,29 @@
               ) {
                 e.preventDefault();
                 this.focusSearch();
+                return;
+              }
+
+              if (isCmdOrCtrl && key === "o") {
+                e.preventDefault();
+                const curr = this.search.hoveredIndex;
+                if (curr !== null && this.search.results[curr]?.url) {
+                  this.openUrl(this.search.results[curr].url);
+                } else if (this.config?.url) {
+                  this.openUrl(this.config.url);
+                }
+                return;
+              }
+
+              if (e.altKey && key === "r") {
+                e.preventDefault();
+                this.config.rewatching = !this.config.rewatching;
+                return;
+              }
+
+              if (e.altKey && key === "p") {
+                e.preventDefault();
+                this.toggleProvider();
                 return;
               }
 
