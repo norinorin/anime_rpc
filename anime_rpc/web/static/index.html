@@ -5,8 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Anime RPC</title>
 
-    <!-- TODO: vendor these three -->
+    <!-- TODO: vendor tailwind, alpinejs, and material symbols -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      const withOpacity = (varName) =>
+        `color-mix(in srgb, var(${varName}) calc(<alpha-value> * 100%), transparent)`;
+
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              surface: {
+                base: "var(--bg-base)",
+                card: "var(--bg-card)",
+                elevated: "var(--bg-elevated)",
+                item: "var(--bg-item)",
+              },
+              line: {
+                DEFAULT: withOpacity("--border-default"),
+                muted: "var(--border-muted)",
+                tooltip: "var(--border-tooltip)",
+              },
+              brand: {
+                blue: {
+                  DEFAULT: withOpacity("--color-blue"),
+                  hover: "var(--color-blue-hover)",
+                  active: "var(--color-blue-active)",
+                },
+                anilist: "var(--color-anilist)",
+                mal: "var(--color-mal)",
+              },
+              status: {
+                success: "var(--color-success)",
+                danger: "var(--color-danger)",
+                warning: "var(--color-warning-bg)",
+              },
+              content: {
+                muted: "var(--text-muted)",
+                subtle: "var(--text-subtle)",
+              },
+            },
+          },
+        },
+      };
+    </script>
     <!-- TODO: strip unused symbols -->
     <link
       rel="stylesheet"
@@ -17,6 +59,30 @@
       src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"
     ></script>
     <style>
+      :root {
+        --bg-base: #000000;
+        --bg-card: #151515;
+        --bg-elevated: #1a1a1a;
+        --bg-item: #111111;
+
+        --border-default: #2a2a2c;
+        --border-muted: #666666;
+        --border-tooltip: #333333;
+
+        --color-blue: #3e91ff;
+        --color-blue-hover: #60a5fa;
+        --color-blue-active: #2563eb;
+        --color-anilist: #0b1622;
+        --color-mal: #2e51a2;
+
+        --color-success: #10b981;
+        --color-danger: #ef4444;
+        --color-warning-bg: #47381c;
+
+        --text-muted: #888888;
+        --text-subtle: #666666;
+      }
+
       .material-symbols-rounded {
         font-variation-settings:
           "FILL" 1,
@@ -90,9 +156,9 @@
         font-size: 10px;
         font-family:
           ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        background-color: #1a1a1a;
-        color: #888888;
-        border: 1px solid #333333;
+        background-color: var(--bg-elevated);
+        color: var(--text-muted);
+        border: 1px solid var(--border-tooltip);
         border-radius: 0.25rem;
         white-space: nowrap;
         z-index: 99;
@@ -110,12 +176,12 @@
     x-init="initApp()"
   >
     <div
-      class="w-full h-full sm:w-[400px] sm:h-[800px] md:w-full md:max-w-6xl md:h-[85vh] md:min-h-[650px] bg-black flex flex-col relative overflow-hidden border border-[#2A2A2C] sm:rounded-[32px] shadow-2xl md:divide-x md:divide-[#2A2A2C]"
+      class="w-full h-full sm:w-[400px] sm:h-[800px] md:w-full md:max-w-6xl md:h-[85vh] md:min-h-[650px] bg-black flex flex-col relative overflow-hidden border border-line sm:rounded-[32px] shadow-2xl md:divide-x md:divide-line"
     >
       <div
         x-show="sseState !== 'connected' && search.results.length > 0 && (view === 'search' || isDesktop)"
         x-cloak
-        class="w-full flex-none bg-[#47381C] text-amber-200 text-xs px-4 py-2 flex items-center justify-center gap-2 border-b border-[#2A2A2C]"
+        class="w-full flex-none bg-status-warning text-amber-200 text-xs px-4 py-2 flex items-center justify-center gap-2 border-b border-line"
       >
         <span class="material-symbols-rounded text-base">warning</span>
         <span
@@ -128,7 +194,7 @@
       </div>
 
       <div
-        class="flex-1 flex flex-col md:flex-row overflow-hidden md:divide-x md:divide-[#2A2A2C]"
+        class="flex-1 flex flex-col md:flex-row overflow-hidden md:divide-x md:divide-line"
       >
         <div
           x-show="view === 'config'"
@@ -138,20 +204,20 @@
             <span
               class="inline-block w-2.5 h-2.5 rounded-full"
               :class="{
-                'bg-[#10B981]': sseState === 'connected',
+                'bg-status-success': sseState === 'connected',
                 'bg-gray-600': sseState === 'connecting',
-                'bg-[#EF4444]': sseState === 'disconnected'
+                'bg-status-danger': sseState === 'disconnected'
               }"
             ></span>
 
             <template x-if="sseState === 'connecting'">
-              <span class="text-[#888888]">Connecting to daemon...</span>
+              <span class="text-content-muted">Connecting to daemon...</span>
             </template>
             <template x-if="sseState === 'connected'">
-              <span class="text-[#888888]">Daemon active</span>
+              <span class="text-content-muted">Daemon active</span>
             </template>
             <template x-if="sseState === 'disconnected'">
-              <div class="flex items-center gap-2 text-[#EF4444]">
+              <div class="flex items-center gap-2 text-status-danger">
                 <span
                   >Daemon offline. Reconnecting in
                   <span x-text="reconnectSeconds"></span>s...</span
@@ -173,7 +239,7 @@
               <button
                 @click="undoConfig()"
                 :disabled="configHistory.length === 0"
-                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#2A2A2C] disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition relative group"
+                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-line disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition relative group"
                 aria-label="Undo"
               >
                 <svg
@@ -198,7 +264,7 @@
               <button
                 @click="redoConfig()"
                 :disabled="configRedoHistory.length === 0"
-                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#2A2A2C] disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition relative group"
+                class="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-line disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-zinc-400 transition relative group"
                 aria-label="Redo"
               >
                 <svg
@@ -223,14 +289,14 @@
           </div>
 
           <div
-            class="flex-1 mx-4 bg-[#151515] rounded-3xl p-6 flex flex-col gap-4 overflow-y-auto no-scrollbar border border-[#2A2A2C]/50"
+            class="flex-1 mx-4 bg-surface-card rounded-3xl p-6 flex flex-col gap-4 overflow-y-auto no-scrollbar border border-line/50"
           >
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <span class="text-sm font-medium text-white">Poller</span>
                 <button
                   @click="pollerDropdownOpen = !pollerDropdownOpen"
-                  class="px-3 py-1.5 border border-[#666666] rounded-md text-xs text-[#888888] hover:text-white flex items-center gap-2 transition-colors"
+                  class="px-3 py-1.5 border border-content-subtle rounded-md text-xs text-content-muted hover:text-white flex items-center gap-2 transition-colors"
                 >
                   <span
                     x-text="activePoller ? activePoller.display_name : 'Select...'"
@@ -245,54 +311,54 @@
               <div
                 x-show="pollerDropdownOpen"
                 x-transition
-                class="flex flex-col gap-1 mt-2 bg-[#1A1A1A] p-2 rounded-xl border border-[#2A2A2C]"
+                class="flex flex-col gap-1 mt-2 bg-surface-elevated p-2 rounded-xl border border-line"
               >
                 <template x-for="[id, p] in sortedPollers" :key="id">
                   <button
                     @click="selectPoller(id)"
                     :disabled="!p.active"
                     class="w-full text-left px-3 py-2 rounded-lg flex items-center justify-between text-xs transition-colors group"
-                    :class="p.active ? 'hover:bg-[#3E91FF]/20 text-white' : 'text-[#888888] opacity-50 cursor-not-allowed'"
+                    :class="p.active ? 'hover:bg-brand-blue/20 text-white' : 'text-content-muted opacity-50 cursor-not-allowed'"
                   >
                     <div class="flex items-center gap-2">
                       <span
                         class="w-2 h-2 rounded-full"
-                        :class="activePollerId === id ? 'bg-[#10B981]' : 'bg-[#666666]'"
+                        :class="activePollerId === id ? 'bg-status-success' : 'bg-content-subtle'"
                       ></span>
                       <span class="font-medium" x-text="p.display_name"></span>
                     </div>
                     <div
                       class="overflow-hidden max-w-[180px]"
                       :title="p.filedir"
-                      x-html="marqueeHtml(p.filedir ? 'Playing ' + cleanDirName(p.filedir) : '', { auto: activePollerId === id, classNames: 'text-[11px] text-[#888888]', threshold: 32 })"
+                      x-html="marqueeHtml(p.filedir ? 'Playing ' + cleanDirName(p.filedir) : '', { auto: activePollerId === id, classNames: 'text-[11px] text-content-muted', threshold: 32 })"
                     ></div>
                   </button>
                 </template>
               </div>
             </div>
 
-            <div class="h-[1px] bg-[#2A2A2C]"></div>
+            <div class="h-[1px] bg-line"></div>
 
             <div class="flex flex-col gap-1">
-              <label class="text-xs text-[#888888]">Media title</label>
+              <label class="text-xs text-content-muted">Media title</label>
               <input
                 type="text"
                 x-ref="titleInput"
                 x-model="config.title"
                 :placeholder="titlePlaceholder || 'Title...'"
-                class="bg-transparent border-b border-[#2A2A2C] focus:border-[#3E91FF] text-sm py-1.5 outline-none transition-colors text-white placeholder-[#666666]"
+                class="bg-transparent border-b border-line focus:border-brand-blue text-sm py-1.5 outline-none transition-colors text-white placeholder-content-subtle"
               />
             </div>
 
             <div class="flex flex-col gap-1">
               <div class="flex items-center justify-start gap-1">
-                <label class="text-xs text-[#888888] leading-none"
+                <label class="text-xs text-content-muted leading-none"
                   >Media URL</label
                 >
                 <button
                   x-show="config.url"
                   @click="openUrl(config.url)"
-                  class="text-[#888888] hover:text-[#3E91FF] inline-flex items-center justify-center"
+                  class="text-content-muted hover:text-brand-blue inline-flex items-center justify-center"
                 >
                   <span class="material-symbols-rounded text-sm block"
                     >open_in_new</span
@@ -300,17 +366,17 @@
                 </button>
               </div>
               <div
-                class="flex items-center gap-2 border-b border-[#2A2A2C] focus-within:border-[#3E91FF] transition-colors"
+                class="flex items-center gap-2 border-b border-line focus-within:border-brand-blue transition-colors"
               >
                 <input
                   type="text"
                   x-model="config.url"
                   placeholder="URL..."
-                  class="bg-transparent text-sm py-1.5 outline-none flex-1 text-white placeholder-[#666666]"
+                  class="bg-transparent text-sm py-1.5 outline-none flex-1 text-white placeholder-content-subtle"
                 />
                 <button
                   @click="focusSearch()"
-                  class="relative group text-[#888888] hover:text-[#3E91FF] p-1"
+                  class="relative group text-content-muted hover:text-brand-blue p-1"
                 >
                   <span class="material-symbols-rounded text-xl">search</span>
                   <kbd
@@ -322,12 +388,12 @@
             </div>
 
             <div class="flex flex-col gap-1">
-              <label class="text-xs text-[#888888]">Image URL</label>
+              <label class="text-xs text-content-muted">Image URL</label>
               <input
                 type="text"
                 x-model="config.image_url"
                 placeholder="URL..."
-                class="bg-transparent border-b border-[#2A2A2C] focus:border-[#3E91FF] text-sm py-1.5 outline-none transition-colors text-white placeholder-[#666666]"
+                class="bg-transparent border-b border-line focus:border-brand-blue text-sm py-1.5 outline-none transition-colors text-white placeholder-content-subtle"
               />
             </div>
 
@@ -336,7 +402,7 @@
               <button
                 @click="config.rewatching = !config.rewatching"
                 class="w-9 h-5 rounded-full p-0.5 transition-colors relative"
-                :class="config.rewatching ? 'bg-[#3E91FF]' : 'bg-[#666666]'"
+                :class="config.rewatching ? 'bg-brand-blue' : 'bg-content-subtle'"
               >
                 <div
                   class="w-4 h-4 bg-white rounded-full transition-transform"
@@ -347,16 +413,16 @@
 
             <template x-if="config.image_url">
               <div
-                class="flex flex-col items-center gap-2 pt-2 border-t border-[#2A2A2C]"
+                class="flex flex-col items-center gap-2 pt-2 border-t border-line"
               >
-                <span class="text-xs text-[#888888]">Image preview</span>
+                <span class="text-xs text-content-muted">Image preview</span>
                 <img
                   :src="config.image_url"
                   @error="imageError = true"
                   x-show="!imageError"
-                  class="max-w-[200px] h-auto rounded-lg border border-[#2A2A2C] object-contain max-h-[220px]"
+                  class="max-w-[200px] h-auto rounded-lg border border-line object-contain max-h-[220px]"
                 />
-                <span x-show="imageError" class="text-xs text-[#666666]"
+                <span x-show="imageError" class="text-xs text-content-subtle"
                   >Failed to load image</span
                 >
               </div>
@@ -368,10 +434,10 @@
               @click="saveConfig()"
               class="relative group w-full py-2.5 rounded-lg text-sm font-semibold text-white transition-all duration-200"
               :class="{
-                  'bg-[#3E91FF] hover:bg-[#60A5FA] active:bg-[#2563EB]': saveStatus === 'idle',
-                  'bg-[#10B981]': saveStatus === 'saved',
-                  'bg-[#EF4444]': saveStatus === 'failed'
-                }"
+                'bg-brand-blue hover:bg-brand-blue-hover active:bg-brand-blue-active': saveStatus === 'idle',
+                'bg-status-success': saveStatus === 'saved',
+                'bg-status-danger': saveStatus === 'failed'
+              }"
             >
               <span
                 x-text="saveStatus === 'idle' ? 'Save Changes' : (saveStatus === 'saved' ? '✔ Saved' : 'Failed to Save')"
@@ -390,7 +456,7 @@
               <button
                 x-show="!isDesktop"
                 @click="switchView('config')"
-                class="text-white hover:text-[#888888] p-1"
+                class="text-white hover:text-content-muted p-1"
               >
                 <span class="material-symbols-rounded text-2xl"
                   >arrow_back</span
@@ -401,13 +467,13 @@
 
             <div class="flex items-center gap-2 text-xs">
               <span
-                :class="search.provider === 'myanimelist' ? 'text-[#888888]' : 'text-[#666666]'"
+                :class="search.provider === 'myanimelist' ? 'text-content-muted' : 'text-content-subtle'"
                 >MAL</span
               >
               <button
                 @click="toggleProvider()"
                 class="w-9 h-5 rounded-full p-0.5 transition-colors relative"
-                :class="search.provider === 'anilist' ? 'bg-[#0B1622]' : 'bg-[#2E51A2]'"
+                :class="search.provider === 'anilist' ? 'bg-brand-anilist' : 'bg-brand-mal'"
               >
                 <div
                   class="w-4 h-4 bg-white rounded-full transition-transform"
@@ -415,7 +481,7 @@
                 ></div>
               </button>
               <span
-                :class="search.provider === 'anilist' ? 'text-[#888888]' : 'text-[#666666]'"
+                :class="search.provider === 'anilist' ? 'text-content-muted' : 'text-content-subtle'"
                 >AniList</span
               >
             </div>
@@ -423,7 +489,7 @@
 
           <div class="px-6 mb-4">
             <div
-              class="flex items-center bg-[#151515] rounded-xl px-3 py-1.5 border border-transparent focus-within:border-[#3E91FF]"
+              class="flex items-center bg-surface-card rounded-xl px-3 py-1.5 border border-transparent focus-within:border-brand-blue"
             >
               <div class="flex items-center w-full">
                 <input
@@ -433,12 +499,12 @@
                   @input="search.hoveredIndex = null"
                   @keydown.enter="executeSearch()"
                   placeholder="Search title..."
-                  class="bg-transparent text-sm py-1 outline-none flex-1 text-white placeholder-[#666666]"
+                  class="bg-transparent text-sm py-1 outline-none flex-1 text-white placeholder-content-subtle"
                 />
               </div>
               <button
                 @click="executeSearch()"
-                class="relative group text-white hover:text-[#888888] p-1"
+                class="relative group text-white hover:text-content-muted p-1"
               >
                 <span class="material-symbols-rounded text-xl">search</span>
                 <kbd
@@ -451,11 +517,11 @@
 
           <div
             id="search_scroll"
-            class="flex-1 mx-4 bg-[#151515] rounded-3xl p-3 overflow-y-auto no-scrollbar border border-[#2A2A2C]/50"
+            class="flex-1 mx-4 bg-surface-card rounded-3xl p-3 overflow-y-auto no-scrollbar border border-line/50"
           >
             <template x-if="search.results.length === 0">
               <div
-                class="flex-1 flex items-center justify-center h-40 text-sm text-[#666666]"
+                class="flex-1 flex items-center justify-center h-40 text-sm text-content-subtle"
               >
                 <span
                   x-text="sseState === 'connected' ? 'No results on ' + (search.provider === 'myanimelist' ? 'MyAnimeList' : 'AniList') : 'Daemon is offline'"
@@ -472,11 +538,11 @@
                   @click="selectSearchResult(res)"
                   :id="'result-' + index"
                   class="p-3 rounded-2xl cursor-pointer flex gap-3 transition-colors duration-150 border border-transparent group"
-                  :class="search.hoveredIndex === index ? 'bg-[#3E91FF] text-white card-active' : 'hover:bg-[#1A1A1A] bg-[#111111] md:bg-transparent'"
+                  :class="search.hoveredIndex === index ? 'bg-brand-blue text-white card-active' : 'hover:bg-surface-elevated bg-surface-item md:bg-transparent'"
                 >
                   <img
                     :src="res.image_url"
-                    class="w-12 h-18 bg-[#151515] rounded-md object-cover flex-shrink-0"
+                    class="w-12 h-18 bg-surface-card rounded-md object-cover flex-shrink-0"
                   />
 
                   <div
@@ -490,7 +556,7 @@
                       ></div>
                       <span
                         class="text-sm font-bold flex-shrink-0"
-                        :class="search.hoveredIndex === index ? 'text-white' : 'text-[#10B981]'"
+                        :class="search.hoveredIndex === index ? 'text-white' : 'text-status-success'"
                         :style="search.hoveredIndex === index ? '' : { color: getScoreColor(res.score) }"
                         x-text="res.score ? (res.score / 10).toFixed(2) + ' ★' : 'N/A'"
                       ></span>
@@ -499,7 +565,7 @@
                     <div class="flex items-center justify-between text-xs mt-1">
                       <div
                         class="flex items-center gap-2"
-                        :class="search.hoveredIndex === index ? 'text-white' : 'text-[#888888]'"
+                        :class="search.hoveredIndex === index ? 'text-white' : 'text-content-muted'"
                       >
                         <span
                           x-show="res.media_format"
@@ -588,12 +654,9 @@
           },
 
           getScoreColor(score) {
-            if (!score) return "#666666";
-            const t = Math.min(Math.max(score / 1000, 0), 1);
-            const r = Math.round(239 + (16 - 239) * t);
-            const g = Math.round(68 + (185 - 68) * t);
-            const b = Math.round(68 + (129 - 68) * t);
-            return `rgb(${r}, ${g}, ${b})`;
+            if (!score) return "var(--text-subtle)";
+            const percentage = Math.min(Math.max((score / 1000) * 100, 0), 100);
+            return `color-mix(in srgb, var(--color-success) ${percentage}%, var(--color-danger))`;
           },
 
           initApp() {
@@ -790,11 +853,11 @@
 
             switch (status?.toLowerCase()) {
               case "tba":
-                return "text-[#EF4444]";
+                return "text-status-danger";
               case "releasing":
-                return "text-[#3E91FF]";
+                return "text-brand-blue";
               default:
-                return "text-[#10B981]";
+                return "text-status-success";
             }
           },
 
