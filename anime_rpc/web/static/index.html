@@ -508,7 +508,7 @@
                         <span x-show="res.year" x-text="res.year"></span>
                         <span
                           x-show="res.status"
-                          :class="search.hoveredIndex === index ? 'text-white' : (res.status === 'releasing' ? 'text-[#3E91FF]' : 'text-[#10B981]')"
+                          :class="getStatusColor(res.status, search.hoveredIndex === index)"
                           x-text="formatStatus(res.status)"
                         ></span>
                       </div>
@@ -541,7 +541,7 @@
           reconnectAttempt: 1,
           sseEventSource: null,
 
-          pollerDropdownOpen: false,
+          pollerDropdownOpen: true,
           pollers: {},
           activePollerId: null,
           activeFiledir: null,
@@ -785,6 +785,19 @@
             return s.charAt(0).toUpperCase() + s.slice(1);
           },
 
+          getStatusColor(status, isHovered) {
+            if (isHovered) return "text-white";
+
+            switch (status?.toLowerCase()) {
+              case "tba":
+                return "text-[#EF4444]";
+              case "releasing":
+                return "text-[#3E91FF]";
+              default:
+                return "text-[#10B981]";
+            }
+          },
+
           selectSearchResult(result) {
             this.pushHistory();
             this.config.title = result.title;
@@ -879,11 +892,11 @@
 
             const autoClass = auto ? "marquee-auto" : "";
             return `
-              <div class="flex marquee-track ${autoClass}">
-                <span class="${classNames} pr-6 marquee-item block">${safeText}</span>
-                <span class="${classNames} pr-6 marquee-duplicate">${safeText}</span>
-              </div>
-            `;
+                    <div class="flex marquee-track ${autoClass}">
+                      <span class="${classNames} pr-6 marquee-item block">${safeText}</span>
+                      <span class="${classNames} pr-6 marquee-duplicate">${safeText}</span>
+                    </div>
+                  `;
           },
 
           isMac: (() => {
